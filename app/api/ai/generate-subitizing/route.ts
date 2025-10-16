@@ -53,21 +53,16 @@ Current context:
 
 Generate a JSON response with the following structure:
 {
-  "numObjects": number (5-10 for age 5-6, 3-8 for age 7+),
+  "numObjects": number (5-12),
   "arrangement": "random" | "line" | "circle" | "square" | "triangle" | "dice_pattern",
   "educationalTip": "brief tip about subitizing or number recognition",
   "encouragement": "age-appropriate encouraging message",
-  "timeLimit": number (milliseconds, 3000-5000 based on difficulty)
+  "timeLimit": number (milliseconds, 1000-2000 based on difficulty)
 }
 
 Guidelines:
-- For younger children (5-6): Use 5-10 objects, longer time limits (2000-3000ms), simpler arrangements
-- For older children (7+): Use 3-8 objects, shorter time limits (1000-2000ms), more complex arrangements
+- Use RANDOM between 5-12 objects, shorter time limits (1000-2000ms), more complex arrangements.
 - Objects should have different sizes (small, medium, large) and different shapes for visual variety
-- Increase difficulty gradually as question number increases
-- If previous answer was incorrect, provide a slightly easier pattern
-- Educational tips should be simple and age-appropriate
-- Encouragement should be positive and motivating
 
 Respond only with valid JSON.`
 

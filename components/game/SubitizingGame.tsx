@@ -399,8 +399,8 @@ export default function SubitizingGame({ userId, gameId, userAge, onGameComplete
 
           {/* Answer Buttons */}
           {!showObjects && (
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              {[1, 2, 3, 4, 5, 6].map((num) => (
+            <div className="grid grid-cols-4 gap-2 mb-4">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
                 <Button
                   key={num}
                   onClick={() => handleAnswer(num)}
