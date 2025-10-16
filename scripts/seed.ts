@@ -69,46 +69,36 @@ const initialGames = [
 
 async function seedDatabase() {
   try {
-    console.log('🌱 Starting database seed...')
-
     // Check if games already exist
     const existingGames = await DatabaseService.getAllGames()
     if (existingGames.length > 0) {
-      console.log('📚 Games already exist in database. Skipping seed.')
       return
     }
 
     // Create initial games
-    console.log('🎮 Creating initial games...')
     for (const gameData of initialGames) {
-      const game = await DatabaseService.createGame(gameData)
-      console.log(`✅ Created game: ${game.title}`)
+      await DatabaseService.createGame(gameData)
     }
 
     // Set up initial app settings
-    console.log('⚙️ Setting up app settings...')
     await DatabaseService.setSetting('app_version', '1.0.0')
     await DatabaseService.setSetting('welcome_message', 'Welcome to Learn Buddy!')
     await DatabaseService.setSetting('max_users', '10')
 
-    console.log('🎉 Database seed completed successfully!')
-    console.log(`📊 Created ${initialGames.length} games`)
-
   } catch (error) {
-    console.error('❌ Error seeding database:', error)
+    console.error('Error seeding database:', error)
     process.exit(1)
   }
 }
 
-// Run the seed function
+// Main execution
 if (require.main === module) {
   seedDatabase()
     .then(() => {
-      console.log('✨ Seed script finished')
       process.exit(0)
     })
     .catch((error) => {
-      console.error('💥 Seed script failed:', error)
+      console.error('Seed script failed:', error)
       process.exit(1)
     })
 }

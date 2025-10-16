@@ -11,8 +11,9 @@ import {
   SheetTitle, 
   SheetTrigger 
 } from '@/components/ui/sheet'
-import { Menu, Home, User as UserIcon, Trophy, Settings } from 'lucide-react'
+import { Menu, Home, User as UserIcon, Trophy, Settings, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Logo } from '@/components/ui/logo'
 import type { User } from '@/types'
 
 interface HeaderProps {
@@ -47,7 +48,7 @@ export function Header({ currentUser, onNavigate, className }: HeaderProps) {
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Logo and Title */}
         <div className="flex items-center gap-3">
-          <div className="text-2xl">🎮</div>
+          <Logo size="md" className="text-blue-600" />
           <div>
             <h1 className="text-xl font-bold text-gray-800">Learn Buddy</h1>
             <p className="text-xs text-gray-500 hidden sm:block">Fun Learning Games for Kids</p>
@@ -85,7 +86,7 @@ export function Header({ currentUser, onNavigate, className }: HeaderProps) {
             <SheetContent side="right" className="w-80">
               <SheetHeader>
                 <SheetTitle className="flex items-center gap-2">
-                  <div className="text-xl">🎮</div>
+                  <Logo size="sm" className="text-blue-600" />
                   Learn Buddy
                 </SheetTitle>
                 <SheetDescription>

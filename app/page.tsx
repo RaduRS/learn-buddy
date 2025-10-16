@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { GameCard } from '@/components/game/GameCard'
 import { Header } from '@/components/layout/Header'
 import { UserSelectionDialog } from '@/components/user/UserSelectionDialog'
-import { Sparkles, Tablet, Shield, Users } from 'lucide-react'
+import { Logo } from '@/components/ui/logo'
+import { Sparkles, Tablet, Shield, Users, Target } from 'lucide-react'
 import type { User, Game, CreateUserForm } from '@/types'
 
 export default function Home() {
@@ -108,7 +109,7 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-6xl mb-4">🎮</div>
+          <Logo size="xl" className="mx-auto mb-4" />
           <div className="text-xl font-semibold text-gray-600">Loading Learn Buddy...</div>
         </div>
       </div>
@@ -125,11 +126,12 @@ export default function Home() {
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Welcome Section */}
         <section className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-gray-800 mb-4">
+          <h2 className="text-3xl font-bold text-gray-800 mb-4 flex items-center justify-center gap-2">
             {currentUser 
-              ? `Welcome back, ${currentUser.name}! 🌟` 
-              : 'Welcome to Your Learning Adventure! 🌟'
+              ? `Welcome back, ${currentUser.name}!` 
+              : 'Welcome to Your Learning Adventure!'
             }
+            <Sparkles className="w-8 h-8 text-yellow-500" />
           </h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
             {currentUser
@@ -153,8 +155,9 @@ export default function Home() {
         {/* Games Grid */}
         {games.length > 0 && (
           <section className="mb-12">
-            <h3 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-              🎯 Choose Your Game
+            <h3 className="text-2xl font-bold text-gray-800 mb-6 text-center flex items-center justify-center gap-2">
+              <Target className="w-7 h-7 text-red-500" />
+              Choose Your Game
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {games.map((game) => {

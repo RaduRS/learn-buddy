@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { UserCard } from './UserCard'
-import { Plus, UserPlus } from 'lucide-react'
+import { Plus, UserPlus, User as UserIcon, Smile, Heart, Star, Zap, Crown, Sparkles, Sun, Moon, Coffee } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { User, CreateUserForm } from '@/types'
 
@@ -25,7 +25,18 @@ interface UserSelectionDialogProps {
   className?: string
 }
 
-const AVATAR_EMOJIS = ['😊', '😎', '🤓', '😄', '🥳', '🤗', '😇', '🙂', '😋', '🤩']
+const AVATAR_ICONS = [
+  { name: 'smile', icon: Smile, color: 'text-yellow-500' },
+  { name: 'heart', icon: Heart, color: 'text-red-500' },
+  { name: 'star', icon: Star, color: 'text-blue-500' },
+  { name: 'zap', icon: Zap, color: 'text-purple-500' },
+  { name: 'crown', icon: Crown, color: 'text-amber-500' },
+  { name: 'sparkles', icon: Sparkles, color: 'text-pink-500' },
+  { name: 'sun', icon: Sun, color: 'text-orange-500' },
+  { name: 'moon', icon: Moon, color: 'text-indigo-500' },
+  { name: 'coffee', icon: Coffee, color: 'text-brown-500' },
+  { name: 'user', icon: UserIcon, color: 'text-gray-500' },
+]
 
 export function UserSelectionDialog({
   isOpen,
@@ -39,7 +50,7 @@ export function UserSelectionDialog({
   const [selectedUser, setSelectedUser] = useState<string | null>(null)
   const [formData, setFormData] = useState<CreateUserForm>({
     name: '',
-    avatar: '😊',
+    avatar: 'smile',
     age: undefined,
     parentEmail: '',
   })
@@ -69,7 +80,7 @@ export function UserSelectionDialog({
   const resetForm = () => {
     setShowCreateForm(false)
     setSelectedUser(null)
-    setFormData({ name: '', avatar: '😊', age: undefined, parentEmail: '' })
+    setFormData({ name: '', avatar: 'smile', age: undefined, parentEmail: '' })
   }
 
   return (
@@ -142,16 +153,19 @@ export function UserSelectionDialog({
               <div className="grid gap-2">
                 <Label>Choose Your Avatar</Label>
                 <div className="grid grid-cols-5 gap-2">
-                  {AVATAR_EMOJIS.map((emoji) => (
-                    <Button
-                      key={emoji}
-                      variant={formData.avatar === emoji ? 'default' : 'outline'}
-                      className="aspect-square text-2xl p-2"
-                      onClick={() => setFormData(prev => ({ ...prev, avatar: emoji }))}
-                    >
-                      {emoji}
-                    </Button>
-                  ))}
+                  {AVATAR_ICONS.map((avatarIcon) => {
+                    const IconComponent = avatarIcon.icon
+                    return (
+                      <Button
+                        key={avatarIcon.name}
+                        variant={formData.avatar === avatarIcon.name ? 'default' : 'outline'}
+                        className="aspect-square p-2"
+                        onClick={() => setFormData(prev => ({ ...prev, avatar: avatarIcon.name }))}
+                      >
+                        <IconComponent className={`h-6 w-6 ${avatarIcon.color}`} />
+                      </Button>
+                    )
+                  })}
                 </div>
               </div>
 

@@ -3,9 +3,22 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Check, Trophy, Star } from 'lucide-react'
+import { Check, Trophy, Star, User as UserIcon, Smile, Heart, Zap, Crown, Sparkles, Sun, Moon, Coffee } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { UserCardProps } from '@/types'
+
+const AVATAR_ICON_MAP = {
+  smile: { icon: Smile, color: 'text-yellow-500' },
+  heart: { icon: Heart, color: 'text-red-500' },
+  star: { icon: Star, color: 'text-blue-500' },
+  zap: { icon: Zap, color: 'text-purple-500' },
+  crown: { icon: Crown, color: 'text-amber-500' },
+  sparkles: { icon: Sparkles, color: 'text-pink-500' },
+  sun: { icon: Sun, color: 'text-orange-500' },
+  moon: { icon: Moon, color: 'text-indigo-500' },
+  coffee: { icon: Coffee, color: 'text-brown-500' },
+  user: { icon: UserIcon, color: 'text-gray-500' },
+}
 
 export function UserCard({ user, onSelect, isSelected = false, className }: UserCardProps) {
   const getInitials = (name: string) => {
@@ -40,9 +53,16 @@ export function UserCard({ user, onSelect, isSelected = false, className }: User
       <CardContent className="p-6 text-center">
         <div className="mb-4">
           <Avatar className="w-16 h-16 mx-auto mb-3 ring-2 ring-gray-200 group-hover:ring-blue-300 transition-colors">
-            <AvatarImage src={user.avatar || undefined} alt={user.name} />
             <AvatarFallback className="text-lg font-bold bg-gradient-to-br from-blue-400 to-purple-500 text-white">
-              {user.avatar || getInitials(user.name)}
+              {user.avatar && AVATAR_ICON_MAP[user.avatar as keyof typeof AVATAR_ICON_MAP] ? (
+                (() => {
+                  const avatarConfig = AVATAR_ICON_MAP[user.avatar as keyof typeof AVATAR_ICON_MAP]
+                  const IconComponent = avatarConfig.icon
+                  return <IconComponent className={`h-8 w-8 ${avatarConfig.color}`} />
+                })()
+              ) : (
+                getInitials(user.name)
+              )}
             </AvatarFallback>
           </Avatar>
           
