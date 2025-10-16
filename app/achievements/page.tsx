@@ -82,7 +82,7 @@ export default function AchievementsPage() {
           const progress = userProgress.find((p: GameProgress) => p.gameId === game.id)
           const gameSpecificAchievements = userAchievements.filter((a: Achievement) => a.gameId === game.id)
           
-          const totalScore = progress?.score || 0
+          const totalScore = progress?.totalScore || 0
           
           // Check achievement levels
           const bronze = gameSpecificAchievements.find((a: Achievement) => a.title.includes('Bronze') || a.description.includes('10'))

@@ -42,30 +42,27 @@ export async function POST(request: Request) {
       balanceGuidance = `Previous questions: ${trueCount} true, ${falseCount} false. Perfectly balanced - randomly choose true or false.`
     }
 
-    // Simple questions for young children with better uniqueness
+    // Simple, varied questions for young children (no fixed examples)
       const questionPrompt = `Create a VERY SIMPLE true/false question for a ${age}-year-old child.
 
 CRITICAL REQUIREMENTS:
 - Use ONLY simple words a ${age}-year-old knows
-- Keep sentences SHORT (maximum 6-8 words)
+- Keep sentences SHORT (maximum 6–8 words)
 - Make it about things kids see every day
-- Question ${questionNumber} with seed ${seed} - make it COMPLETELY DIFFERENT from any other question
-- NO complex concepts like "wearing shells like backpacks" - too confusing for young kids
-- Make it either clearly TRUE or clearly FALSE - no confusing middle ground
-${usedQuestions.length > 0 ? `- AVOID these already used questions: ${usedQuestions.join(', ')}` : ''}
+- Question ${questionNumber} with seed ${seed} — produce a UNIQUE idea (not a paraphrase)
+- Make it either clearly TRUE or clearly FALSE — no ambiguity
+${usedQuestions.length > 0 ? `- DO NOT REPEAT or paraphrase any of these used questions: ${usedQuestions.join(', ')}` : ''}
 
 BALANCE GUIDANCE: ${balanceGuidance}
 
-SIMPLE TOPICS FOR ${age}-YEAR-OLDS:
-TRUE statements: "Dogs say woof", "The sky is blue", "People have two eyes", "Apples are sweet", "Cars have wheels", "Rain is wet"
-FALSE statements: "Cats have wings", "Snow is red", "Fish have legs", "Ice is hot", "Boats fly", "Fire is cold"
+TOPIC SUGGESTIONS (pick ONE randomly; do NOT include examples):
+- animals, colors, foods, weather, school objects, nature, vehicles,
+  family, playground activities, simple body parts, safety, everyday routines
 
-AVOID THESE COMPLEX IDEAS:
-- Animals taking off body parts
-- Scientific explanations
-- Abstract concepts
-- Long sentences
-- Difficult vocabulary
+AVOID:
+- complex or confusing ideas
+- scientific explanations or abstract concepts
+- long sentences or difficult vocabulary
 
 Return ONLY a JSON object with:
 {

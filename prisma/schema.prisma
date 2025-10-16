@@ -54,6 +54,7 @@ model GameProgress {
   level        Int      @default(1)
   score        Int      @default(0)
   bestScore    Int      @default(0)
+  totalScore   Int      @default(0)
   timesPlayed  Int      @default(0)
   lastPlayedAt DateTime @default(now())
   createdAt    DateTime @default(now())

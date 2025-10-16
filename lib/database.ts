@@ -110,6 +110,8 @@ export class DatabaseService {
       level?: number
       score?: number
       bestScore?: number
+      totalScore?: number
+      timesPlayed?: number
     }
   ) {
     const existingProgress = await prisma.gameProgress.findUnique({
@@ -134,7 +136,8 @@ export class DatabaseService {
           bestScore: data.bestScore
             ? Math.max(data.bestScore, existingProgress.bestScore)
             : existingProgress.bestScore,
-          timesPlayed: existingProgress.timesPlayed + 1,
+          totalScore: data.totalScore !== undefined ? data.totalScore : existingProgress.totalScore,
+          timesPlayed: data.timesPlayed !== undefined ? data.timesPlayed : existingProgress.timesPlayed + 1,
           lastPlayedAt: new Date(),
         },
       })
@@ -146,7 +149,8 @@ export class DatabaseService {
           level: data.level || 1,
           score: data.score || 0,
           bestScore: data.bestScore || data.score || 0,
-          timesPlayed: 1,
+          totalScore: data.totalScore || data.score || 0,
+          timesPlayed: data.timesPlayed || 1,
         },
       })
     }

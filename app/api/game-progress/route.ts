@@ -18,13 +18,17 @@ export async function POST(request: NextRequest) {
     const existingProgress = await DatabaseService.getUserGameProgress(userId, gameId)
     
     if (existingProgress) {
-      // Update existing progress with better score if applicable
+      // Update existing progress with better score if applicable and accumulate total score
       const newBestScore = Math.max(existingProgress.bestScore || 0, score)
+      const newTotalScore = (existingProgress.totalScore || 0) + score
+      const newTimesPlayed = (existingProgress.timesPlayed || 0) + 1
       
       const updatedProgress = await DatabaseService.updateGameProgress(userId, gameId, {
         score,
         level: level || existingProgress.level,
-        bestScore: newBestScore
+        bestScore: newBestScore,
+        totalScore: newTotalScore,
+        timesPlayed: newTimesPlayed
       })
       
       return NextResponse.json(updatedProgress)
@@ -33,7 +37,9 @@ export async function POST(request: NextRequest) {
       const newProgress = await DatabaseService.updateGameProgress(userId, gameId, {
         score,
         level: level || 1,
-        bestScore: score
+        bestScore: score,
+        totalScore: score,
+        timesPlayed: 1
       })
       
       return NextResponse.json(newProgress, { status: 201 })

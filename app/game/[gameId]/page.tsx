@@ -78,8 +78,7 @@ export default function GamePage() {
           userId: currentUser.id,
           gameId: gameId,
           score: score,
-          level: 1, // For now, we'll use level 1
-          bestScore: score
+          level: 1 // For now, we'll use level 1
         }),
       })
 
@@ -130,10 +129,22 @@ export default function GamePage() {
   }
 
   const handleNavigate = (page: string) => {
-    if (page === 'home') {
-      router.push('/')
+    switch (page) {
+      case 'home':
+        router.push('/')
+        break
+      case 'profile':
+        router.push('/') // For now, redirect to home since profile page doesn't exist
+        break
+      case 'achievements':
+        router.push('/achievements')
+        break
+      case 'settings':
+        router.push('/') // For now, redirect to home since settings page doesn't exist
+        break
+      default:
+        router.push('/')
     }
-    // Add other navigation logic as needed
   }
 
   return (
