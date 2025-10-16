@@ -11,7 +11,7 @@ import {
   SheetTitle, 
   SheetTrigger 
 } from '@/components/ui/sheet'
-import { Menu, Home, User, Trophy, Settings } from 'lucide-react'
+import { Menu, Home, User as UserIcon, Trophy, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { User } from '@/types'
 
@@ -33,7 +33,7 @@ export function Header({ currentUser, onNavigate, className }: HeaderProps) {
 
   const menuItems = [
     { id: 'home', label: 'Home', icon: Home },
-    { id: 'profile', label: 'My Profile', icon: User },
+    { id: 'profile', label: 'My Profile', icon: UserIcon },
     { id: 'achievements', label: 'Achievements', icon: Trophy },
     { id: 'settings', label: 'Settings', icon: Settings },
   ]

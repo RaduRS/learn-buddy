@@ -1,13 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { GameCard } from '@/components/game/GameCard'
 import { Header } from '@/components/layout/Header'
 import { UserSelectionDialog } from '@/components/user/UserSelectionDialog'
 import { Sparkles, Tablet, Shield, Users } from 'lucide-react'
-import { DatabaseService } from '@/lib/database'
 import type { User, Game, CreateUserForm } from '@/types'
 
 export default function Home() {
@@ -25,10 +24,13 @@ export default function Home() {
   const loadData = async () => {
     try {
       setIsLoading(true)
-      const [usersData, gamesData] = await Promise.all([
-        DatabaseService.getAllUsers(),
-        DatabaseService.getAllGames()
+      const [usersResponse, gamesResponse] = await Promise.all([
+        fetch('/api/users'),
+        fetch('/api/games')
       ])
+      
+      const usersData = await usersResponse.json()
+      const gamesData = await gamesResponse.json()
       
       setUsers(usersData)
       setGames(gamesData)
@@ -46,7 +48,19 @@ export default function Home() {
 
   const handleCreateUser = async (userData: CreateUserForm) => {
     try {
-      const newUser = await DatabaseService.createUser(userData)
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData),
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to create user')
+      }
+      
+      const newUser = await response.json()
       setUsers(prev => [newUser, ...prev])
       setCurrentUser(newUser)
     } catch (error) {
