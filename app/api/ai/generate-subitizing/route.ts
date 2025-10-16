@@ -53,7 +53,7 @@ Current context:
 
 Generate a JSON response with the following structure:
 {
-  "numObjects": number (5-12),
+  "numObjects": number (5-10),
   "arrangement": "random" | "line" | "circle" | "square" | "triangle" | "dice_pattern",
   "educationalTip": "brief tip about subitizing or number recognition",
   "encouragement": "age-appropriate encouraging message",
@@ -61,7 +61,7 @@ Generate a JSON response with the following structure:
 }
 
 Guidelines:
-- Use RANDOM between 5-12 objects, shorter time limits (1000-2000ms), more complex arrangements.
+- Use RANDOM between 5-10 objects, shorter time limits (2500-3000ms), more complex arrangements.
 - Objects should have different sizes (small, medium, large) and different shapes for visual variety
 
 Respond only with valid JSON.`
