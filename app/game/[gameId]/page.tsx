@@ -19,6 +19,7 @@ interface User {
   id: string
   name: string
   avatar?: string
+  age?: number
 }
 
 export default function GamePage() {
@@ -171,6 +172,7 @@ export default function GamePage() {
         <TrueFalseGame 
           userId={currentUser.id}
           gameId={gameId}
+          userAge={currentUser.age || 6}
           onGameComplete={handleGameComplete}
         />
       </div>
