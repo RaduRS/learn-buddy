@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import { cn } from '@/lib/utils'
 
 interface LogoProps {
@@ -5,19 +6,23 @@ interface LogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl'
 }
 
-const sizeClasses = {
-  sm: 'h-6 w-6',
-  md: 'h-8 w-8', 
-  lg: 'h-12 w-12',
-  xl: 'h-16 w-16'
+const sizeMap = {
+  sm: 24,
+  md: 32, 
+  lg: 48,
+  xl: 64
 }
 
 export function Logo({ className, size = 'md' }: LogoProps) {
+  const sizeValue = sizeMap[size]
+  
   return (
-    <img 
+    <Image 
       src="/icon-512.png" 
       alt="Learn Buddy Logo" 
-      className={cn(sizeClasses[size], className)}
+      width={sizeValue}
+      height={sizeValue}
+      className={cn(className)}
     />
   )
 }

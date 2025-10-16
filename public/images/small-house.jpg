@@ -1,0 +1,31 @@
+<svg width="300" height="200" viewBox="0 0 300 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Sky background -->
+  <rect width="300" height="200" fill="#87CEEB"/>
+  
+  <!-- Ground -->
+  <rect x="0" y="150" width="300" height="50" fill="#90EE90"/>
+  
+  <!-- Small house -->
+  <g transform="translate(120, 80)">
+    <!-- House base -->
+    <rect x="0" y="20" width="60" height="50" fill="#DEB887"/>
+    
+    <!-- Roof -->
+    <polygon points="0,20 30,0 60,20" fill="#8B4513"/>
+    
+    <!-- Door -->
+    <rect x="20" y="45" width="15" height="25" fill="#654321"/>
+    
+    <!-- Window -->
+    <rect x="40" y="35" width="12" height="12" fill="#87CEEB"/>
+    <line x1="46" y1="35" x2="46" y2="47" stroke="#654321" stroke-width="1"/>
+    <line x1="40" y1="41" x2="52" y2="41" stroke="#654321" stroke-width="1"/>
+  </g>
+  
+  <!-- Sun -->
+  <circle cx="250" cy="50" r="20" fill="#FFD700"/>
+  
+  <!-- Clouds -->
+  <ellipse cx="80" cy="40" rx="15" ry="8" fill="white"/>
+  <ellipse cx="90" cy="35" rx="12" ry="6" fill="white"/>
+</svg>

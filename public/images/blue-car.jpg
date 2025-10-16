@@ -1,0 +1,36 @@
+<svg width="300" height="200" viewBox="0 0 300 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="300" height="200" fill="#87CEEB"/>
+  
+  <!-- Road -->
+  <rect x="0" y="140" width="300" height="60" fill="#696969"/>
+  <rect x="0" y="165" width="300" height="5" fill="#FFFF00"/>
+  
+  <!-- Blue car -->
+  <g transform="translate(80, 110)">
+    <!-- Car body -->
+    <rect x="10" y="15" width="120" height="25" rx="5" fill="#4169E1"/>
+    
+    <!-- Car roof -->
+    <rect x="30" y="5" width="80" height="15" rx="8" fill="#4169E1"/>
+    
+    <!-- Windows -->
+    <rect x="35" y="8" width="25" height="10" rx="2" fill="#87CEEB"/>
+    <rect x="80" y="8" width="25" height="10" rx="2" fill="#87CEEB"/>
+    
+    <!-- Wheels -->
+    <circle cx="25" cy="45" r="8" fill="black"/>
+    <circle cx="25" cy="45" r="5" fill="#C0C0C0"/>
+    <circle cx="115" cy="45" r="8" fill="black"/>
+    <circle cx="115" cy="45" r="5" fill="#C0C0C0"/>
+    
+    <!-- Headlights -->
+    <circle cx="135" cy="25" r="4" fill="#FFFF99"/>
+    
+    <!-- Door handle -->
+    <rect x="70" y="25" width="3" height="2" fill="#C0C0C0"/>
+  </g>
+  
+  <!-- Sun -->
+  <circle cx="250" cy="50" r="20" fill="#FFD700"/>
+</svg>

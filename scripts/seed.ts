@@ -65,6 +65,14 @@ const initialGames = [
     difficulty: 1,
     isActive: false,
   },
+  {
+    title: 'True or False',
+    description: 'Look at pictures and decide if the statement is true or false!',
+    icon: '✅',
+    category: 'learning',
+    difficulty: 1,
+    isActive: true,
+  },
 ]
 
 async function seedDatabase() {

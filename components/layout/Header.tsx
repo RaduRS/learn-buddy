@@ -11,7 +11,7 @@ import {
   SheetTitle, 
   SheetTrigger 
 } from '@/components/ui/sheet'
-import { Menu, Home, User as UserIcon, Trophy, Settings, X } from 'lucide-react'
+import { Menu, Home, User as UserIcon, Trophy, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Logo } from '@/components/ui/logo'
 import type { User } from '@/types'

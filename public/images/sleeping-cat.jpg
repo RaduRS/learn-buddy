@@ -1,0 +1,54 @@
+<svg width="300" height="200" viewBox="0 0 300 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="300" height="200" fill="#F0F8FF"/>
+  
+  <!-- Cushion/bed -->
+  <ellipse cx="150" cy="140" rx="80" ry="20" fill="#FF69B4"/>
+  
+  <!-- Sleeping cat -->
+  <g transform="translate(150, 120)">
+    <!-- Body -->
+    <ellipse cx="0" cy="0" rx="35" ry="18" fill="#FFA500"/>
+    
+    <!-- Head -->
+    <circle cx="-25" cy="-5" r="20" fill="#FFA500"/>
+    
+    <!-- Ears -->
+    <polygon points="-35,-15 -30,-25 -25,-20" fill="#FFA500"/>
+    <polygon points="-25,-20 -20,-25 -15,-15" fill="#FFA500"/>
+    <polygon points="-32,-18 -28,-22 -26,-18" fill="#FFB6C1"/>
+    <polygon points="-24,-18 -22,-22 -18,-18" fill="#FFB6C1"/>
+    
+    <!-- Closed eyes (sleeping) -->
+    <path d="M -32 -8 Q -30 -6 -28 -8" stroke="black" stroke-width="2" fill="none"/>
+    <path d="M -22 -8 Q -20 -6 -18 -8" stroke="black" stroke-width="2" fill="none"/>
+    
+    <!-- Nose -->
+    <polygon points="-25,-2 -23,0 -27,0" fill="#FF69B4"/>
+    
+    <!-- Whiskers -->
+    <line x1="-35" y1="-5" x2="-45" y2="-7" stroke="black" stroke-width="1"/>
+    <line x1="-35" y1="-2" x2="-45" y2="-2" stroke="black" stroke-width="1"/>
+    <line x1="-35" y1="1" x2="-45" y2="3" stroke="black" stroke-width="1"/>
+    <line x1="-15" y1="-5" x2="-5" y2="-7" stroke="black" stroke-width="1"/>
+    <line x1="-15" y1="-2" x2="-5" y2="-2" stroke="black" stroke-width="1"/>
+    <line x1="-15" y1="1" x2="-5" y2="3" stroke="black" stroke-width="1"/>
+    
+    <!-- Tail curled up -->
+    <path d="M 30 5 Q 45 -10 35 -25 Q 25 -15 40 -5" stroke="#FFA500" stroke-width="8" fill="none"/>
+    
+    <!-- Paws tucked under -->
+    <ellipse cx="-10" cy="15" rx="8" ry="5" fill="#FFA500"/>
+    <ellipse cx="10" cy="15" rx="8" ry="5" fill="#FFA500"/>
+    
+    <!-- Stripes -->
+    <ellipse cx="-5" cy="-8" rx="3" ry="1" fill="#FF8C00"/>
+    <ellipse cx="5" cy="-3" rx="4" ry="1.5" fill="#FF8C00"/>
+    <ellipse cx="15" cy="2" rx="3" ry="1" fill="#FF8C00"/>
+  </g>
+  
+  <!-- Zzz sleep symbols -->
+  <text x="200" y="80" font-family="Arial" font-size="20" fill="#666">Z</text>
+  <text x="210" y="70" font-family="Arial" font-size="16" fill="#888">z</text>
+  <text x="220" y="65" font-family="Arial" font-size="12" fill="#AAA">z</text>
+</svg>

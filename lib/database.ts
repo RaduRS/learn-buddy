@@ -88,6 +88,20 @@ export class DatabaseService {
     })
   }
 
+  static async updateGame(id: string, data: {
+    title?: string
+    description?: string
+    icon?: string
+    category?: string
+    difficulty?: number
+    isActive?: boolean
+  }) {
+    return await prisma.game.update({
+      where: { id },
+      data,
+    })
+  }
+
   // Game progress tracking
   static async updateGameProgress(
     userId: string,

@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Check, Trophy, Star, User as UserIcon, Smile, Heart, Zap, Crown, Sparkles, Sun, Moon, Coffee } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { UserCardProps } from '@/types'

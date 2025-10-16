@@ -1,0 +1,42 @@
+<svg width="300" height="200" viewBox="0 0 300 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="300" height="200" fill="#87CEEB"/>
+  
+  <!-- Ground -->
+  <rect x="0" y="150" width="300" height="50" fill="#90EE90"/>
+  
+  <!-- Brown dog -->
+  <g transform="translate(100, 100)">
+    <!-- Body -->
+    <ellipse cx="50" cy="30" rx="40" ry="20" fill="#8B4513"/>
+    
+    <!-- Head -->
+    <circle cx="20" cy="20" r="18" fill="#8B4513"/>
+    
+    <!-- Ears -->
+    <ellipse cx="10" cy="10" rx="8" ry="12" fill="#654321"/>
+    <ellipse cx="30" cy="10" rx="8" ry="12" fill="#654321"/>
+    
+    <!-- Eyes -->
+    <circle cx="15" cy="18" r="3" fill="black"/>
+    <circle cx="25" cy="18" r="3" fill="black"/>
+    <circle cx="16" cy="17" r="1" fill="white"/>
+    <circle cx="26" cy="17" r="1" fill="white"/>
+    
+    <!-- Nose -->
+    <ellipse cx="20" cy="25" rx="2" ry="1.5" fill="black"/>
+    
+    <!-- Mouth -->
+    <path d="M 20 27 Q 15 30 12 28" stroke="black" stroke-width="1" fill="none"/>
+    <path d="M 20 27 Q 25 30 28 28" stroke="black" stroke-width="1" fill="none"/>
+    
+    <!-- Legs -->
+    <rect x="15" y="45" width="6" height="15" fill="#8B4513"/>
+    <rect x="25" y="45" width="6" height="15" fill="#8B4513"/>
+    <rect x="65" y="45" width="6" height="15" fill="#8B4513"/>
+    <rect x="75" y="45" width="6" height="15" fill="#8B4513"/>
+    
+    <!-- Tail -->
+    <ellipse cx="85" cy="25" rx="8" ry="4" fill="#8B4513"/>
+  </g>
+</svg>

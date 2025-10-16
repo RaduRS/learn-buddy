@@ -1,13 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { GameCard } from '@/components/game/GameCard'
 import { Header } from '@/components/layout/Header'
 import { UserSelectionDialog } from '@/components/user/UserSelectionDialog'
 import { Logo } from '@/components/ui/logo'
-import { Sparkles, Tablet, Shield, Users, Target } from 'lucide-react'
+import { Sparkles, Users, Target } from 'lucide-react'
 import type { User, Game, CreateUserForm } from '@/types'
 
 export default function Home() {
@@ -21,6 +20,17 @@ export default function Home() {
   useEffect(() => {
     loadData()
   }, [])
+
+  // Load saved user from localStorage
+  useEffect(() => {
+    const savedUserId = localStorage.getItem('selectedUserId')
+    if (savedUserId && users.length > 0) {
+      const savedUser = users.find(user => user.id === savedUserId)
+      if (savedUser) {
+        setCurrentUser(savedUser)
+      }
+    }
+  }, [users])
 
   const loadData = async () => {
     try {
@@ -64,6 +74,7 @@ export default function Home() {
       const newUser = await response.json()
       setUsers(prev => [newUser, ...prev])
       setCurrentUser(newUser)
+      localStorage.setItem('selectedUserId', newUser.id)
     } catch (error) {
       console.error('Failed to create user:', error)
     }
@@ -71,6 +82,7 @@ export default function Home() {
 
   const handleSelectUser = (user: User) => {
     setCurrentUser(user)
+    localStorage.setItem('selectedUserId', user.id)
   }
 
   const handlePlayGame = async (gameId: string) => {
@@ -79,10 +91,11 @@ export default function Home() {
       return
     }
 
-    // For now, just show an alert since games aren't implemented yet
     const game = games.find(g => g.id === gameId)
+    // Only allow active games
     if (game?.isActive) {
-      alert(`Starting ${game.title}! Game implementation coming soon.`)
+      // Navigate to the game page
+      window.location.href = `/game/${gameId}`
     } else {
       alert('This game is coming soon!')
     }
@@ -168,39 +181,14 @@ export default function Home() {
                     game={game}
                     progress={progress}
                     onPlay={handlePlayGame}
+                    className={!game.isActive ? 'opacity-40 pointer-events-none' : ''}
                   />
                 )
-              })}
-            </div>
+              })}</div>
           </section>
         )}
 
-        {/* Features Section */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="text-center p-6 bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200">
-            <Sparkles className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-gray-800 mb-2">Fun Games</h3>
-            <p className="text-gray-600">
-              Engaging and educational games designed specifically for kids
-            </p>
-          </Card>
-          
-          <Card className="text-center p-6 bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
-            <Tablet className="w-12 h-12 text-blue-500 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-gray-800 mb-2">Tablet Friendly</h3>
-            <p className="text-gray-600">
-              Optimized for touch screens and mobile devices
-            </p>
-          </Card>
-          
-          <Card className="text-center p-6 bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
-            <Shield className="w-12 h-12 text-green-500 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-gray-800 mb-2">Safe Learning</h3>
-            <p className="text-gray-600">
-              A secure environment for children to learn and play
-            </p>
-          </Card>
-        </section>
+
       </main>
 
       {/* User Selection Dialog */}
