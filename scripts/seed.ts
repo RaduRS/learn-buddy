@@ -18,11 +18,11 @@ const initialGames = [
     isActive: true,
   },
   {
-    title: 'Color Splash',
-    description: 'Explore colors and create beautiful patterns!',
-    icon: '🎨',
-    category: 'colors',
-    difficulty: 1,
+    title: 'Subitizing',
+    description: 'Quickly recognize quantities without counting - perfect for developing number sense',
+    icon: '👁️',
+    category: 'Math',
+    difficulty: 2,
     isActive: true,
   },
   {

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import TrueFalseGame from '@/components/game/TrueFalseGame'
+import SubitizingGame from '@/components/game/SubitizingGame'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Header } from '@/components/layout/Header'
@@ -141,12 +142,21 @@ export default function GamePage() {
         </div>
 
         {/* Game Component */}
-        <TrueFalseGame 
-          userId={currentUser.id}
-          gameId={gameId}
-          userAge={currentUser.age || 6}
-          onGameComplete={handleGameComplete}
-        />
+        {game.title === 'Subitizing' ? (
+          <SubitizingGame 
+            userId={currentUser.id}
+            gameId={game.id}
+            userAge={currentUser.age || 6}
+            onGameComplete={handleGameComplete}
+          />
+        ) : (
+          <TrueFalseGame 
+            userId={currentUser.id}
+            gameId={game.id}
+            userAge={currentUser.age || 6}
+            onGameComplete={handleGameComplete}
+          />
+        )}
       </div>
     </div>
   )
