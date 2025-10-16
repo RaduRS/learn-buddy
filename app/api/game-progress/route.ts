@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { DatabaseService } from '@/lib/database'
+import { Prisma } from '@prisma/client'
+
+type GameProgressWithGame = Prisma.GameProgressGetPayload<{ include: { game: true } }>
 
 // POST /api/game-progress - Save or update game progress
 export async function POST(request: NextRequest) {
@@ -18,14 +21,15 @@ export async function POST(request: NextRequest) {
     const existingProgress = await DatabaseService.getUserGameProgress(userId, gameId)
     
     if (existingProgress) {
-      // Update existing progress
-      const newBestScore = Math.max(existingProgress.bestScore, score)
-      const newTotalScore = existingProgress.totalScore + score
-      const newTimesPlayed = existingProgress.timesPlayed + 1
+      // Update existing progress - explicit type assertion for Vercel
+      const progress = existingProgress as GameProgressWithGame
+      const newBestScore = Math.max(progress.bestScore, score)
+      const newTotalScore = progress.totalScore + score
+      const newTimesPlayed = progress.timesPlayed + 1
       
       const updatedProgress = await DatabaseService.updateGameProgress(userId, gameId, {
         score,
-        level: level || existingProgress.level,
+        level: level || progress.level,
         bestScore: newBestScore,
         totalScore: newTotalScore,
         timesPlayed: newTimesPlayed
