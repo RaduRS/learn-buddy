@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
   try {
@@ -106,6 +106,7 @@ Return ONLY a JSON object with:
     let questionData
     try {
       questionData = JSON.parse(questionContent)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       throw new Error('Invalid question format received')
     }

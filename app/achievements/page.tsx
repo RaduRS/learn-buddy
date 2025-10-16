@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/Header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -26,11 +26,7 @@ export default function AchievementsPage() {
   const [gameAchievements, setGameAchievements] = useState<GameAchievement[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    loadUserAndAchievements()
-  }, [])
-
-  const loadUserAndAchievements = async () => {
+  const loadUserAndAchievements = useCallback(async () => {
     try {
       // Get current user
       const savedUserId = localStorage.getItem('selectedUserId')
@@ -118,7 +114,11 @@ export default function AchievementsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [router])
+
+  useEffect(() => {
+    loadUserAndAchievements()
+  }, [loadUserAndAchievements])
 
   const handleNavigate = (page: string) => {
     switch (page) {
