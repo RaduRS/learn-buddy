@@ -19,9 +19,9 @@ export async function POST(request: NextRequest) {
     
     if (existingProgress) {
       // Update existing progress
-      const newBestScore = Math.max(existingProgress.bestScore || 0, score)
-      const newTotalScore = (existingProgress.totalScore || 0) + score
-      const newTimesPlayed = (existingProgress.timesPlayed || 0) + 1
+      const newBestScore = Math.max(existingProgress.bestScore, score)
+      const newTotalScore = existingProgress.totalScore + score
+      const newTimesPlayed = existingProgress.timesPlayed + 1
       
       const updatedProgress = await DatabaseService.updateGameProgress(userId, gameId, {
         score,
