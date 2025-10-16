@@ -137,7 +137,7 @@ export class DatabaseService {
             ? Math.max(data.bestScore, existingProgress.bestScore)
             : existingProgress.bestScore,
           totalScore: data.totalScore !== undefined ? data.totalScore : existingProgress.totalScore,
-          timesPlayed: data.timesPlayed !== undefined ? data.timesPlayed : existingProgress.timesPlayed + 1,
+          timesPlayed: data.timesPlayed !== undefined ? data.timesPlayed : existingProgress.timesPlayed,
           lastPlayedAt: new Date(),
         },
       })
