@@ -32,6 +32,7 @@ export type GameProgress = {
   level: number
   score: number
   bestScore: number
+  totalScore: number
   timesPlayed: number
   lastPlayedAt: Date
   createdAt: Date

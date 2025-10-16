@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -29,6 +29,7 @@ interface AIContent {
   difficulty: number
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export default function TrueFalseGame({ userId: _userId, gameId: _gameId, userAge, onGameComplete }: TrueFalseGameProps) {
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null)
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
@@ -49,7 +50,7 @@ export default function TrueFalseGame({ userId: _userId, gameId: _gameId, userAg
   const progress = ((currentQuestionIndex + 1) / totalQuestions) * 100
 
   // Generate a single question with duplicate prevention
-  const generateQuestion = async (questionNumber: number, retryCount = 0) => {
+  const generateQuestion = useCallback(async (questionNumber: number, retryCount = 0) => {
     // Prevent duplicate calls
     if (isGeneratingRef.current) {
       console.log('Question generation already in progress, skipping...')
@@ -106,7 +107,7 @@ export default function TrueFalseGame({ userId: _userId, gameId: _gameId, userAg
       setLoading(false)
       isGeneratingRef.current = false
     }
-  }
+  }, [userAge, usedQuestions, trueFalseHistory])
 
   // Generate first question on component mount
   useEffect(() => {
@@ -114,7 +115,7 @@ export default function TrueFalseGame({ userId: _userId, gameId: _gameId, userAg
       setHasInitialized(true)
       generateQuestion(1)
     }
-  }, [hasInitialized, currentQuestion, loading])
+  }, [hasInitialized, currentQuestion, loading, generateQuestion])
 
   const handleAnswer = (answer: boolean) => {
     if (!currentQuestion) return
