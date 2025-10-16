@@ -63,16 +63,7 @@ export async function GET(request: NextRequest) {
 
     // If no parameters provided, return all progress (for achievements page)
     if (!userId && !gameId) {
-      const { prisma } = await import('@/lib/database')
-      const allProgress = await prisma.gameProgress.findMany({
-        include: {
-          game: true,
-          user: true,
-        },
-        orderBy: {
-          lastPlayedAt: 'desc',
-        },
-      })
+      const allProgress = await DatabaseService.getAllGameProgress()
       return NextResponse.json(allProgress)
     }
 

@@ -170,6 +170,18 @@ export class DatabaseService {
     })
   }
 
+  static async getAllGameProgress(): Promise<Prisma.GameProgressGetPayload<{ include: { game: true, user: true } }>[]> {
+    return await prisma.gameProgress.findMany({
+      include: {
+        game: true,
+        user: true,
+      },
+      orderBy: {
+        lastPlayedAt: 'desc',
+      },
+    })
+  }
+
   // Achievement system
   static async unlockAchievement(
     userId: string,
