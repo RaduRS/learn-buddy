@@ -5,22 +5,9 @@ import { useParams, useRouter } from 'next/navigation'
 import TrueFalseGame from '@/components/game/TrueFalseGame'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Header } from '@/components/layout/Header'
 import { ArrowLeft } from 'lucide-react'
-
-interface Game {
-  id: string
-  title: string
-  description: string
-  icon: string
-  category: string
-}
-
-interface User {
-  id: string
-  name: string
-  avatar?: string
-  age?: number
-}
+import type { User, Game } from '@/types'
 
 export default function GamePage() {
   const params = useParams()
@@ -142,30 +129,25 @@ export default function GamePage() {
     )
   }
 
+  const handleNavigate = (page: string) => {
+    if (page === 'home') {
+      router.push('/')
+    }
+    // Add other navigation logic as needed
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
-          <Button 
-            variant="outline" 
-            onClick={() => router.push('/')}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold">{game.title}</h1>
-            <p className="text-gray-600">{game.description}</p>
-          </div>
-          <div className="text-right">
-            <div className="text-sm text-gray-500">Playing as</div>
-            <div className="font-semibold flex items-center gap-2">
-              <span>{currentUser.avatar || '👤'}</span>
-              {currentUser.name}
-            </div>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+      <Header 
+        currentUser={currentUser} 
+        onNavigate={handleNavigate}
+      />
+      
+      <div className="max-w-4xl mx-auto p-4">
+        {/* Game Title Section */}
+        <div className="mb-0 text-center">
+          <h1 className="text-3xl font-bold text-gray-800 mb-0">{game.title}</h1>
+          {/* <p className="text-gray-600 text-lg">{game.description}</p> */}
         </div>
 
         {/* Game Component */}

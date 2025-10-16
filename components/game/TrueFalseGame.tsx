@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -37,18 +37,27 @@ export default function TrueFalseGame({ userId: _userId, gameId: _gameId, userAg
   const [showResult, setShowResult] = useState(false)
   const [gameCompleted, setGameCompleted] = useState(false)
   const [selectedAnswer, setSelectedAnswer] = useState<boolean | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [usedQuestions, setUsedQuestions] = useState<Set<string>>(new Set())
   const [showNextButton, setShowNextButton] = useState(false)
   const [trueFalseHistory, setTrueFalseHistory] = useState<boolean[]>([])
+  const [hasInitialized, setHasInitialized] = useState(false)
+  const isGeneratingRef = useRef(false)
 
   const totalQuestions = 5
   const progress = ((currentQuestionIndex + 1) / totalQuestions) * 100
 
   // Generate a single question with duplicate prevention
   const generateQuestion = async (questionNumber: number, retryCount = 0) => {
+    // Prevent duplicate calls
+    if (isGeneratingRef.current) {
+      console.log('Question generation already in progress, skipping...')
+      return
+    }
+    
     try {
+      isGeneratingRef.current = true
       setLoading(true)
       setError(null)
       
@@ -90,17 +99,22 @@ export default function TrueFalseGame({ userId: _userId, gameId: _gameId, userAg
       setUsedQuestions(prev => new Set([...prev, content.statement]))
       setCurrentQuestion(newQuestion)
       setLoading(false)
+      isGeneratingRef.current = false
     } catch (error) {
       console.error('Error generating question:', error)
       setError('Failed to generate question. Please try again.')
       setLoading(false)
+      isGeneratingRef.current = false
     }
   }
 
   // Generate first question on component mount
   useEffect(() => {
-    generateQuestion(1)
-  }, [userAge])
+    if (!hasInitialized && !currentQuestion && !loading) {
+      setHasInitialized(true)
+      generateQuestion(1)
+    }
+  }, [hasInitialized, currentQuestion, loading])
 
   const handleAnswer = (answer: boolean) => {
     if (!currentQuestion) return
@@ -153,7 +167,9 @@ export default function TrueFalseGame({ userId: _userId, gameId: _gameId, userAg
     setShowNextButton(false)
     setUsedQuestions(new Set()) // Clear used questions
     setTrueFalseHistory([]) // Clear true/false history for new game
-    generateQuestion(1)
+    setHasInitialized(false) // Reset initialization flag
+    isGeneratingRef.current = false // Reset generation flag
+    // Don't call generateQuestion here - let useEffect handle it
   }
 
   // Loading state
@@ -268,20 +284,6 @@ export default function TrueFalseGame({ userId: _userId, gameId: _gameId, userAg
 
   return (
     <div className="max-w-2xl mx-auto p-6">
-      {/* Progress Bar */}
-      <div className="mb-6">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-medium">Question {currentQuestionIndex + 1} of {totalQuestions}</span>
-          <span className="text-sm text-gray-500">{score} correct</span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
-          <div 
-            className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      </div>
-
       {/* Question Card */}
       <Card className="mb-6">
         <CardContent className="p-6">
@@ -305,7 +307,6 @@ export default function TrueFalseGame({ userId: _userId, gameId: _gameId, userAg
           {/* Question Text */}
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold mb-2">{currentQuestion.statement}</h2>
-            <p className="text-gray-600">Is this statement true or false?</p>
           </div>
 
           {/* Answer Buttons */}
@@ -354,6 +355,20 @@ export default function TrueFalseGame({ userId: _userId, gameId: _gameId, userAg
           )}
         </CardContent>
       </Card>
+
+            {/* Progress Bar */}
+      <div className="mb-6">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-sm font-medium">Question {currentQuestionIndex + 1} of {totalQuestions}</span>
+          <span className="text-sm text-gray-500">{score} correct</span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div 
+            className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
 
       {/* Difficulty Badge */}
       <div className="text-center">
