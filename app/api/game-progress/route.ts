@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { DatabaseService } from '@/lib/database'
+import type { GameProgress, Game } from '@prisma/client'
 
 // POST /api/game-progress - Save or update game progress
 export async function POST(request: NextRequest) {
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if progress already exists
-    const existingProgress = await DatabaseService.getUserGameProgress(userId, gameId)
+    const existingProgress = await DatabaseService.getUserGameProgress(userId, gameId) as (GameProgress & { game: Game }) | null
     
     if (existingProgress) {
       // Update existing progress with better score if applicable and accumulate total score
