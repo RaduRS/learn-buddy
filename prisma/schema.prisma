@@ -1,0 +1,96 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// User model for kid accounts
+model User {
+  id          String   @id @default(cuid())
+  name        String
+  avatar      String?  // Avatar image URL or emoji
+  age         Int?     // Optional age for age-appropriate content
+  parentEmail String?  // Parent's email for account management
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  gameProgress GameProgress[]
+  achievements Achievement[]
+
+  @@map("users")
+}
+
+// Game definitions
+model Game {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  icon        String   // Emoji or icon identifier
+  category    String   // e.g., "memory", "numbers", "colors"
+  difficulty  Int      @default(1) // 1-5 difficulty level
+  isActive    Boolean  @default(false) // Whether the game is available
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  gameProgress GameProgress[]
+  achievements Achievement[]
+
+  @@map("games")
+}
+
+// Track user progress in games
+model GameProgress {
+  id           String   @id @default(cuid())
+  userId       String
+  gameId       String
+  level        Int      @default(1)
+  score        Int      @default(0)
+  bestScore    Int      @default(0)
+  timesPlayed  Int      @default(0)
+  lastPlayedAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, gameId])
+  @@map("game_progress")
+}
+
+// Achievement system for motivation
+model Achievement {
+  id          String   @id @default(cuid())
+  userId      String
+  gameId      String?  // Optional - some achievements are game-specific
+  title       String
+  description String
+  icon        String   // Emoji or icon for the achievement
+  unlockedAt  DateTime @default(now())
+
+  // Relations
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  game Game? @relation(fields: [gameId], references: [id], onDelete: SetNull)
+
+  @@map("achievements")
+}
+
+// Settings for the app
+model AppSettings {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("app_settings")
+}
