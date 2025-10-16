@@ -16,7 +16,7 @@ interface SubitizingGameProps {
 
 interface SubitizingQuestion {
   id: number
-  objects: Array<{ x: number; y: number; color: string; shape: string }>
+  objects: Array<{ x: number; y: number; color: string; shape: string; size?: 'small' | 'medium' | 'large' }>
   correctAnswer: number
   difficulty: number
   timeLimit: number
@@ -201,7 +201,7 @@ export default function SubitizingGame({ userId, gameId, userAge, onGameComplete
       })
       
       try {
-        await incrementScore(userId, points)
+        await incrementScore(gameId, points)
       } catch (error) {
         console.error('Error updating score:', error)
       }
@@ -209,7 +209,7 @@ export default function SubitizingGame({ userId, gameId, userAge, onGameComplete
 
     // Show Next button instead of auto-advancing
     setShowNextButton(true)
-  }, [gameState, selectedAnswer, currentQuestion, userId, incrementScore])
+  }, [gameState, selectedAnswer, currentQuestion, gameId, incrementScore])
 
   // Handle next question
   const handleNext = () => {
@@ -263,13 +263,19 @@ export default function SubitizingGame({ userId, gameId, userAge, onGameComplete
     setShowNextButton(false)
   }
 
-  const renderShape = (obj: { x: number; y: number; color: string; shape: string }, index: number) => {
+  const renderShape = (obj: { x: number; y: number; color: string; shape: string; size?: 'small' | 'medium' | 'large' }, index: number) => {
+    const sizeMap = {
+      small: '1.5rem',
+      medium: '2rem',
+      large: '2.5rem'
+    }
+    
     const style = {
       position: 'absolute' as const,
       left: `${obj.x}%`,
       top: `${obj.y}%`,
       color: obj.color,
-      fontSize: '2rem',
+      fontSize: sizeMap[obj.size || 'medium'],
       transform: 'translate(-50%, -50%)',
       transition: 'all 0.3s ease',
       opacity: showObjects ? 1 : 0

@@ -16,6 +16,7 @@ interface SubitizingPattern {
     y: number
     color: string
     shape: string
+    size: 'small' | 'medium' | 'large'
   }>
   correctAnswer: number
   difficulty: number
@@ -52,16 +53,17 @@ Current context:
 
 Generate a JSON response with the following structure:
 {
-  "numObjects": number (3-7 for age 5-6, 1-6 for age 7+),
+  "numObjects": number (5-10 for age 5-6, 3-8 for age 7+),
   "arrangement": "random" | "line" | "circle" | "square" | "triangle" | "dice_pattern",
   "educationalTip": "brief tip about subitizing or number recognition",
   "encouragement": "age-appropriate encouraging message",
-  "timeLimit": number (milliseconds, 2000-4000 based on difficulty)
+  "timeLimit": number (milliseconds, 3000-5000 based on difficulty)
 }
 
 Guidelines:
-- For younger children (5-6): Use 3-7 objects, longer time limits, simpler arrangements
-- For older children (7+): Use 1-6 objects, shorter time limits, more complex arrangements
+- For younger children (5-6): Use 5-10 objects, longer time limits (2000-3000ms), simpler arrangements
+- For older children (7+): Use 3-8 objects, shorter time limits (1000-2000ms), more complex arrangements
+- Objects should have different sizes (small, medium, large) and different shapes for visual variety
 - Increase difficulty gradually as question number increases
 - If previous answer was incorrect, provide a slightly easier pattern
 - Educational tips should be simple and age-appropriate
@@ -146,6 +148,7 @@ function generatePattern(aiData: AIData): SubitizingPattern {
   const { numObjects, arrangement, timeLimit } = aiData
   const shapes = ['circle', 'square', 'triangle', 'star', 'heart']
   const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8']
+  const sizes = ['small', 'medium', 'large'] as const
   
   const objects = []
   
@@ -157,7 +160,8 @@ function generatePattern(aiData: AIData): SubitizingPattern {
           x: 20 + (i * 60 / Math.max(1, numObjects - 1)),
           y: 50 + (Math.random() - 0.5) * 10,
           color: colors[Math.floor(Math.random() * colors.length)],
-          shape: shapes[Math.floor(Math.random() * shapes.length)]
+          shape: shapes[Math.floor(Math.random() * shapes.length)],
+          size: sizes[Math.floor(Math.random() * sizes.length)]
         })
       }
       break
@@ -172,7 +176,8 @@ function generatePattern(aiData: AIData): SubitizingPattern {
           x: centerX + radius * Math.cos(angle),
           y: centerY + radius * Math.sin(angle),
           color: colors[Math.floor(Math.random() * colors.length)],
-          shape: shapes[Math.floor(Math.random() * shapes.length)]
+          shape: shapes[Math.floor(Math.random() * shapes.length)],
+          size: sizes[Math.floor(Math.random() * sizes.length)]
         })
       }
       break
@@ -194,7 +199,8 @@ function generatePattern(aiData: AIData): SubitizingPattern {
             x: pos.x,
             y: pos.y,
             color: colors[Math.floor(Math.random() * colors.length)],
-            shape: shapes[Math.floor(Math.random() * shapes.length)]
+            shape: shapes[Math.floor(Math.random() * shapes.length)],
+            size: sizes[Math.floor(Math.random() * sizes.length)]
           })
         }
       })
@@ -219,7 +225,8 @@ function generatePattern(aiData: AIData): SubitizingPattern {
             x: x * 10 + Math.random() * 5,
             y: y * 10 + Math.random() * 5,
             color: colors[Math.floor(Math.random() * colors.length)],
-            shape: shapes[Math.floor(Math.random() * shapes.length)]
+            shape: shapes[Math.floor(Math.random() * shapes.length)],
+            size: sizes[Math.floor(Math.random() * sizes.length)]
           })
         }
       }
@@ -234,14 +241,15 @@ function generatePattern(aiData: AIData): SubitizingPattern {
 }
 
 function generateFallbackPattern(userAge: number, difficulty: number, questionNumber: number): SubitizingPattern {
-  // For 5-6 year olds, use range 3-7 objects
-  const minObjects = 3
-  const maxObjects = userAge >= 5 && userAge <= 6 ? 7 : (userAge >= 6 ? Math.min(5, 2 + Math.floor(questionNumber / 3)) : Math.min(4, 2 + Math.floor(questionNumber / 4)))
+  // For 5-6 year olds, use range 5-10 objects
+  const minObjects = userAge >= 5 && userAge <= 6 ? 5 : 3
+  const maxObjects = userAge >= 5 && userAge <= 6 ? 10 : (userAge >= 7 ? Math.min(8, 3 + Math.floor(questionNumber / 3)) : Math.min(6, 2 + Math.floor(questionNumber / 4)))
   const numObjects = Math.floor(Math.random() * (maxObjects - minObjects + 1)) + minObjects
-  const timeLimit = userAge >= 6 ? Math.max(2000, 4000 - (questionNumber * 100)) : Math.max(2500, 4500 - (questionNumber * 100))
+  const timeLimit = userAge >= 5 && userAge <= 6 ? Math.max(3000, 5000 - (questionNumber * 100)) : Math.max(2000, 4000 - (questionNumber * 100))
   
   const shapes = ['circle', 'square', 'triangle', 'star', 'heart']
   const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8']
+  const sizes = ['small', 'medium', 'large'] as const
   
   const objects = []
   const usedPositions = new Set()
@@ -263,7 +271,8 @@ function generateFallbackPattern(userAge: number, difficulty: number, questionNu
         x: x * 10 + Math.random() * 5,
         y: y * 10 + Math.random() * 5,
         color: colors[Math.floor(Math.random() * colors.length)],
-        shape: shapes[Math.floor(Math.random() * shapes.length)]
+        shape: shapes[Math.floor(Math.random() * shapes.length)],
+        size: sizes[Math.floor(Math.random() * sizes.length)]
       })
     }
   }
