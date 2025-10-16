@@ -105,20 +105,27 @@ Respond only with valid JSON.`
     let aiData
     try {
       aiData = JSON.parse(aiResponse)
+      console.log('AI generated data:', aiData)
     } catch (error) {
       console.error('Failed to parse AI response:', aiResponse)
-      // Fallback to default pattern
+      // Fallback to default pattern with correct ranges
+      const minObjects = userAge >= 5 && userAge <= 6 ? 5 : 3
+      const maxObjects = userAge >= 5 && userAge <= 6 ? 10 : 8
+      const numObjects = Math.floor(Math.random() * (maxObjects - minObjects + 1)) + minObjects
+      
       aiData = {
-        numObjects: Math.min(userAge >= 6 ? 4 : 3, difficulty + 1),
+        numObjects: numObjects,
         arrangement: 'random',
         educationalTip: 'Look at the objects quickly and trust your first instinct!',
         encouragement: 'You\'re doing great! Keep practicing!',
-        timeLimit: userAge >= 6 ? 3000 : 3500
+        timeLimit: userAge >= 5 && userAge <= 6 ? 4000 : 3000
       }
+      console.log('Using fallback pattern with', numObjects, 'objects for age', userAge)
     }
 
     // Generate the actual pattern based on AI recommendations
     const pattern = generatePattern(aiData)
+    console.log('Generated pattern with', pattern.objects.length, 'objects using AI data')
 
     return NextResponse.json({
       ...pattern,
@@ -131,6 +138,7 @@ Respond only with valid JSON.`
     
     // Fallback pattern generation
     const fallbackPattern = generateFallbackPattern(userAge, difficulty, questionNumber)
+    console.log('Using complete fallback pattern with', fallbackPattern.objects.length, 'objects for age', userAge)
     
     return NextResponse.json(fallbackPattern)
   }
@@ -189,21 +197,53 @@ function generatePattern(aiData: AIData): SubitizingPattern {
         3: [{x: 30, y: 30}, {x: 50, y: 50}, {x: 70, y: 70}],
         4: [{x: 30, y: 30}, {x: 70, y: 30}, {x: 30, y: 70}, {x: 70, y: 70}],
         5: [{x: 30, y: 30}, {x: 70, y: 30}, {x: 50, y: 50}, {x: 30, y: 70}, {x: 70, y: 70}],
-        6: [{x: 30, y: 25}, {x: 70, y: 25}, {x: 30, y: 50}, {x: 70, y: 50}, {x: 30, y: 75}, {x: 70, y: 75}]
+        6: [{x: 30, y: 25}, {x: 70, y: 25}, {x: 30, y: 50}, {x: 70, y: 50}, {x: 30, y: 75}, {x: 70, y: 75}],
+        7: [{x: 20, y: 20}, {x: 50, y: 20}, {x: 80, y: 20}, {x: 35, y: 50}, {x: 65, y: 50}, {x: 20, y: 80}, {x: 80, y: 80}],
+        8: [{x: 25, y: 20}, {x: 50, y: 20}, {x: 75, y: 20}, {x: 25, y: 50}, {x: 75, y: 50}, {x: 25, y: 80}, {x: 50, y: 80}, {x: 75, y: 80}],
+        9: [{x: 20, y: 15}, {x: 50, y: 15}, {x: 80, y: 15}, {x: 20, y: 45}, {x: 50, y: 45}, {x: 80, y: 45}, {x: 20, y: 75}, {x: 50, y: 75}, {x: 80, y: 75}],
+        10: [{x: 15, y: 15}, {x: 35, y: 15}, {x: 55, y: 15}, {x: 75, y: 15}, {x: 25, y: 40}, {x: 65, y: 40}, {x: 15, y: 65}, {x: 35, y: 65}, {x: 55, y: 65}, {x: 75, y: 65}]
       }
       
-      const pattern = dicePatterns[Math.min(numObjects, 6)] || dicePatterns[1]
-      pattern.forEach((pos, i) => {
-        if (i < numObjects) {
-          objects.push({
-            x: pos.x,
-            y: pos.y,
-            color: colors[Math.floor(Math.random() * colors.length)],
-            shape: shapes[Math.floor(Math.random() * shapes.length)],
-            size: sizes[Math.floor(Math.random() * sizes.length)]
-          })
+      // For numbers > 10, fall back to random arrangement
+      if (numObjects > 10) {
+        // Fall back to random arrangement for very high numbers
+        const usedPositions = new Set()
+        for (let i = 0; i < numObjects; i++) {
+          let x, y, posKey
+          let attempts = 0
+          
+          do {
+            x = Math.floor(Math.random() * 8) + 1
+            y = Math.floor(Math.random() * 6) + 1
+            posKey = `${x}-${y}`
+            attempts++
+          } while (usedPositions.has(posKey) && attempts < 20)
+          
+          if (attempts < 20) {
+            usedPositions.add(posKey)
+            objects.push({
+              x: x * 10 + Math.random() * 5,
+              y: y * 10 + Math.random() * 5,
+              color: colors[Math.floor(Math.random() * colors.length)],
+              shape: shapes[Math.floor(Math.random() * shapes.length)],
+              size: sizes[Math.floor(Math.random() * sizes.length)]
+            })
+          }
         }
-      })
+      } else {
+        const pattern = dicePatterns[numObjects] || dicePatterns[6]
+        pattern.forEach((pos, i) => {
+          if (i < numObjects) {
+            objects.push({
+              x: pos.x,
+              y: pos.y,
+              color: colors[Math.floor(Math.random() * colors.length)],
+              shape: shapes[Math.floor(Math.random() * shapes.length)],
+              size: sizes[Math.floor(Math.random() * sizes.length)]
+            })
+          }
+        })
+      }
       break
       
     default: // random

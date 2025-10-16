@@ -266,8 +266,8 @@ export default function SubitizingGame({ userId, gameId, userAge, onGameComplete
   const renderShape = (obj: { x: number; y: number; color: string; shape: string; size?: 'small' | 'medium' | 'large' }, index: number) => {
     const sizeMap = {
       small: '1.5rem',
-      medium: '2rem',
-      large: '2.5rem'
+      medium: '3rem',
+      large: '4.5rem'
     }
     
     const style = {
