@@ -71,10 +71,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(allProgress)
     }
 
-    // If only partial parameters, return error
+    // If only userId provided, return all progress for that user
+    if (userId && !gameId) {
+      const allProgress = await DatabaseService.getAllGameProgress()
+      const userProgress = allProgress.filter(progress => progress.userId === userId)
+      return NextResponse.json(userProgress)
+    }
+
+    // If only gameId provided, return error
+    if (!userId && gameId) {
+      return NextResponse.json(
+        { error: 'User ID is required' },
+        { status: 400 }
+      )
+    }
+
+    // At this point, both userId and gameId must be non-null strings
     if (!userId || !gameId) {
       return NextResponse.json(
-        { error: 'User ID and Game ID are required for specific progress lookup' },
+        { error: 'Both User ID and Game ID are required' },
         { status: 400 }
       )
     }

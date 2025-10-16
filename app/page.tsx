@@ -8,10 +8,12 @@ import { Header } from '@/components/layout/Header'
 import { UserSelectionDialog } from '@/components/user/UserSelectionDialog'
 import { Logo } from '@/components/ui/logo'
 import { Sparkles, Users, Target } from 'lucide-react'
+import { useScore } from '@/hooks/useScore'
 import type { User, Game, CreateUserForm } from '@/types'
 
 export default function Home() {
   const router = useRouter()
+  const { loadUserScore } = useScore()
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [users, setUsers] = useState<User[]>([])
   const [games, setGames] = useState<Game[]>([])
@@ -30,9 +32,10 @@ export default function Home() {
       const savedUser = users.find(user => user.id === savedUserId)
       if (savedUser) {
         setCurrentUser(savedUser)
+        loadUserScore(savedUser.id)
       }
     }
-  }, [users])
+  }, [users, loadUserScore])
 
   const loadData = async () => {
     try {
@@ -85,6 +88,7 @@ export default function Home() {
   const handleSelectUser = (user: User) => {
     setCurrentUser(user)
     localStorage.setItem('selectedUserId', user.id)
+    loadUserScore(user.id)
   }
 
   const handlePlayGame = async (gameId: string) => {
@@ -134,7 +138,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
       <Header 
-        currentUser={currentUser}
+        currentUser={currentUser} 
         onNavigate={handleNavigation}
       />
 

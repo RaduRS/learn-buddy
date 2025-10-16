@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { CheckCircle, XCircle, RotateCcw, Trophy, Loader2 } from 'lucide-react'
+import { useScore } from '@/hooks/useScore'
 
 interface Question {
   id: number
@@ -30,7 +31,8 @@ interface AIContent {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export default function TrueFalseGame({ userId: _userId, gameId: _gameId, userAge, onGameComplete }: TrueFalseGameProps) {
+export default function TrueFalseGame({ userId, gameId, userAge, onGameComplete }: TrueFalseGameProps) {
+  const { incrementScore } = useScore()
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null)
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [score, setScore] = useState(0)
@@ -48,6 +50,24 @@ export default function TrueFalseGame({ userId: _userId, gameId: _gameId, userAg
 
   const totalQuestions = 5
   const progress = ((currentQuestionIndex + 1) / totalQuestions) * 100
+
+  // Function to load initial total score
+  const loadInitialTotalScore = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/game-progress?userId=${userId}&gameId=${gameId}`)
+      if (response.ok) {
+        // Score is now handled by the useScore context
+      }
+    } catch (error) {
+      console.error('Error loading initial total score:', error)
+    }
+  }, [userId, gameId])
+
+  // Function to save progress after each correct answer
+  const saveProgressAfterCorrectAnswer = async () => {
+    // Use the score context to increment score by 1 point
+    incrementScore(gameId, 1)
+  }
 
   // Generate a single question with duplicate prevention
   const generateQuestion = useCallback(async (questionNumber: number, retryCount = 0) => {
@@ -117,7 +137,12 @@ export default function TrueFalseGame({ userId: _userId, gameId: _gameId, userAg
     }
   }, [hasInitialized, currentQuestion, loading, generateQuestion])
 
-  const handleAnswer = (answer: boolean) => {
+  // Load initial total score on component mount
+  useEffect(() => {
+    loadInitialTotalScore()
+  }, [userId, gameId, loadInitialTotalScore])
+
+  const handleAnswer = async (answer: boolean) => {
     if (!currentQuestion) return
 
     setSelectedAnswer(answer)
@@ -130,6 +155,8 @@ export default function TrueFalseGame({ userId: _userId, gameId: _gameId, userAg
     // Update score if correct
     if (isCorrect) {
       setScore(score + 1)
+      // Save progress immediately after correct answer
+      await saveProgressAfterCorrectAnswer()
     }
     
     setShowResult(true)
@@ -361,7 +388,6 @@ export default function TrueFalseGame({ userId: _userId, gameId: _gameId, userAg
       <div className="mb-6">
         <div className="flex justify-between items-center mb-2">
           <span className="text-sm font-medium">Question {currentQuestionIndex + 1} of {totalQuestions}</span>
-          <span className="text-sm text-gray-500">{score} correct</span>
         </div>
         <div className="w-full bg-gray-200 rounded-full h-2">
           <div 
