@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, GameProgress, Game } from '@prisma/client'
 
 // Prevent multiple instances of Prisma Client in development
 const globalForPrisma = globalThis as unknown as {
@@ -156,7 +156,7 @@ export class DatabaseService {
     }
   }
 
-  static async getUserGameProgress(userId: string, gameId: string) {
+  static async getUserGameProgress(userId: string, gameId: string): Promise<(GameProgress & { game: Game }) | null> {
     return await prisma.gameProgress.findUnique({
       where: {
         userId_gameId: {
