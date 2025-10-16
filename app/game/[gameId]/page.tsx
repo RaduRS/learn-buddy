@@ -64,6 +64,7 @@ export default function GamePage() {
     loadCurrentUser()
   }, [gameId, loadGameData, loadCurrentUser])
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleGameComplete = async (score: number, _totalQuestions: number) => {
     if (!currentUser) return
 

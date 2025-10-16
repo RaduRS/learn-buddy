@@ -85,6 +85,7 @@ Make sure the statement and image prompt are appropriate for a ${age}-year-old c
     let questionData: QuestionResponse
     try {
       questionData = JSON.parse(content)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (parseError) {
       // If JSON parsing fails, try to extract information manually
       console.error('Failed to parse DeepSeek response as JSON:', content)
