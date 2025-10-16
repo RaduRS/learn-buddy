@@ -48,15 +48,32 @@ export async function POST(request: NextRequest) {
 }
 
 // GET /api/game-progress?userId=xxx&gameId=xxx - Get specific user's progress for a game
+// GET /api/game-progress - Get all game progress (for achievements page)
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
     const gameId = searchParams.get('gameId')
 
+    // If no parameters provided, return all progress (for achievements page)
+    if (!userId && !gameId) {
+      const { prisma } = await import('@/lib/database')
+      const allProgress = await prisma.gameProgress.findMany({
+        include: {
+          game: true,
+          user: true,
+        },
+        orderBy: {
+          lastPlayedAt: 'desc',
+        },
+      })
+      return NextResponse.json(allProgress)
+    }
+
+    // If only partial parameters, return error
     if (!userId || !gameId) {
       return NextResponse.json(
-        { error: 'User ID and Game ID are required' },
+        { error: 'User ID and Game ID are required for specific progress lookup' },
         { status: 400 }
       )
     }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { GameCard } from '@/components/game/GameCard'
 import { Header } from '@/components/layout/Header'
@@ -10,6 +11,7 @@ import { Sparkles, Users, Target } from 'lucide-react'
 import type { User, Game, CreateUserForm } from '@/types'
 
 export default function Home() {
+  const router = useRouter()
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [users, setUsers] = useState<User[]>([])
   const [games, setGames] = useState<Game[]>([])
@@ -107,7 +109,7 @@ export default function Home() {
         setShowUserDialog(true)
         break
       case 'achievements':
-        alert('Achievements page coming soon!')
+        router.push('/achievements')
         break
       case 'settings':
         alert('Settings page coming soon!')
