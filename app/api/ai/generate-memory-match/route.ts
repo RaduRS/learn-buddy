@@ -10,7 +10,9 @@ interface MemoryMatchCard {
 
 interface MemoryMatchConfig {
   cards: MemoryMatchCard[]
-  gridSize: number
+  gridRows: number
+  gridCols: number
+  numPairs: number
   timeLimit: number
 }
 
@@ -34,11 +36,21 @@ const EMOJI_POOL = [
 
 export async function POST(request: Request) {
   try {
-    const { userAge } = await request.json()
+    const { userAge, rows, cols, pairs } = await request.json()
     
-    // Fixed configuration for 5x5 grid
-    const numPairs = 12 // 12 pairs = 24 cards for 5x5 grid (with 1 empty space)
-    const gridSize = 5
+    // Use provided configuration or fall back to defaults
+    const gridRows = rows || 5
+    const gridCols = cols || 5
+    const totalSlots = gridRows * gridCols
+    const numPairs = pairs || Math.floor(totalSlots / 2)
+    
+    // Validate that we have enough slots for the pairs
+    if (numPairs * 2 > totalSlots) {
+      return NextResponse.json(
+        { error: `Cannot fit ${numPairs} pairs (${numPairs * 2} cards) in a ${gridRows}x${gridCols} grid (${totalSlots} slots)` },
+        { status: 400 }
+      )
+    }
     
     // Randomly select emojis for this game
     const shuffledEmojis = [...EMOJI_POOL].sort(() => Math.random() - 0.5)
@@ -70,6 +82,18 @@ export async function POST(request: Request) {
       )
     }
 
+    // Add empty slots if needed to fill the grid
+    const emptySlots = totalSlots - (numPairs * 2)
+    for (let i = 0; i < emptySlots; i++) {
+      cards.push({
+        id: `empty-${i}`,
+        emoji: '',
+        isFlipped: true, // Empty slots are always "flipped" (visible as empty)
+        isMatched: true, // Empty slots are always "matched" (can't be clicked)
+        pairId: `empty-${i}`,
+      })
+    }
+
     // Shuffle cards
     for (let i = cards.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -78,7 +102,9 @@ export async function POST(request: Request) {
 
     const config: MemoryMatchConfig = {
       cards,
-      gridSize,
+      gridRows,
+      gridCols,
+      numPairs,
       timeLimit: 300000, // 5 minutes
     }
 

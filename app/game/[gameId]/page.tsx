@@ -6,6 +6,7 @@ import TrueFalseGame from '@/components/game/TrueFalseGame'
 import SubitizingGame from '@/components/game/SubitizingGame'
 import PuzzleGame from '@/components/game/PuzzleGame'
 import MemoryMatchGame from '@/components/game/MemoryMatchGame'
+import MemoryMatchConfig from '@/components/game/MemoryMatchConfig'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Header } from '@/components/layout/Header'
@@ -20,6 +21,7 @@ export default function GamePage() {
   const [game, setGame] = useState<Game | null>(null)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [memoryMatchConfig, setMemoryMatchConfig] = useState<{ rows: number; cols: number; pairs: number } | null>(null)
 
   const loadGameData = useCallback(async () => {
     try {
@@ -134,11 +136,21 @@ export default function GamePage() {
     }
 
     if (game.title === 'Memory Match') {
+      if (!memoryMatchConfig) {
+        return (
+          <MemoryMatchConfig
+            onConfigSelect={setMemoryMatchConfig}
+            onCancel={() => router.push('/')}
+          />
+        )
+      }
+      
       return (
         <MemoryMatchGame 
           userId={currentUser.id}
           gameId={game.id}
           userAge={currentUser.age || 6}
+          gridConfig={memoryMatchConfig}
           incrementScore={() => handleGameComplete(1, 1)}
           onGameComplete={handleGameComplete}
         />

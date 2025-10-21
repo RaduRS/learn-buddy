@@ -17,7 +17,9 @@ interface MemoryCard {
 
 interface MemoryMatchConfig {
   cards: MemoryCard[]
-  gridSize: number
+  gridRows: number
+  gridCols: number
+  numPairs: number
   timeLimit?: number
 }
 
@@ -25,11 +27,12 @@ interface MemoryMatchGameProps {
   userId?: string
   gameId?: string
   userAge: number
+  gridConfig?: { rows: number; cols: number; pairs: number }
   incrementScore: () => void
   onGameComplete: (score: number, totalQuestions: number) => void
 }
 
-export default function MemoryMatchGame({ userAge, userId, gameId, incrementScore, onGameComplete }: MemoryMatchGameProps) {
+export default function MemoryMatchGame({ userAge, userId, gameId, gridConfig, incrementScore, onGameComplete }: MemoryMatchGameProps) {
   const [config, setConfig] = useState<MemoryMatchConfig | null>(null)
   const [cards, setCards] = useState<MemoryCard[]>([])
   const [flippedCards, setFlippedCards] = useState<string[]>([])
@@ -66,7 +69,12 @@ export default function MemoryMatchGame({ userAge, userId, gameId, incrementScor
       const response = await fetch('/api/ai/generate-memory-match', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userAge })
+        body: JSON.stringify({ 
+          userAge,
+          rows: gridConfig?.rows,
+          cols: gridConfig?.cols,
+          pairs: gridConfig?.pairs
+        })
       })
 
       if (!response.ok) {
@@ -187,13 +195,15 @@ export default function MemoryMatchGame({ userAge, userId, gameId, incrementScor
     return `${seconds}s`
   }
 
-  const getGridCols = (gridSize: number) => {
-    switch (gridSize) {
+  const getGridCols = (cols: number) => {
+    switch (cols) {
       case 2: return 'grid-cols-2'
       case 3: return 'grid-cols-3'
       case 4: return 'grid-cols-4'
       case 5: return 'grid-cols-5'
       case 6: return 'grid-cols-6'
+      case 7: return 'grid-cols-7'
+      case 8: return 'grid-cols-8'
       default: return 'grid-cols-4'
     }
   }
@@ -241,40 +251,52 @@ export default function MemoryMatchGame({ userAge, userId, gameId, incrementScor
       {config && (
         <div className={cn(
           "grid gap-3 mx-auto max-w-2xl",
-          getGridCols(config.gridSize)
+          getGridCols(config.gridCols)
         )}>
-          {cards.map((card) => (
-            <Card 
-              key={card.id}
-              className={cn(
-                "aspect-square cursor-pointer transition-all duration-300 hover:scale-105",
-                "relative overflow-hidden",
-                card.isMatched && "ring-2 ring-green-500 ring-opacity-50",
-                (card.isFlipped || card.isMatched) ? "bg-white" : "bg-gradient-to-br from-blue-500 to-purple-600"
-              )}
-              onClick={() => handleCardClick(card.id)}
-            >
-              <CardContent className="p-0 h-full relative">
-                {/* Card Back */}
-                <div className={cn(
-                  "absolute inset-0 flex items-center justify-center transition-opacity duration-300",
-                  (card.isFlipped || card.isMatched) ? "opacity-0" : "opacity-100"
-                )}>
-                  <div className="text-white text-2xl font-bold">?</div>
-                </div>
-                
-                {/* Card Front */}
-                <div className={cn(
-                  "absolute inset-0 transition-opacity duration-300",
-                  (card.isFlipped || card.isMatched) ? "opacity-100" : "opacity-0"
-                )}>
-                  <div className="w-full h-full flex items-center justify-center text-4xl">
-                    {card.emoji}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          {cards.map((card) => {
+            const isEmpty = card.emoji === ''
+            
+            return (
+              <Card 
+                key={card.id}
+                className={cn(
+                  "aspect-square transition-all duration-300 relative overflow-hidden",
+                  isEmpty 
+                    ? "bg-gray-100 border-gray-200" 
+                    : cn(
+                        "cursor-pointer hover:scale-105",
+                        card.isMatched && "ring-2 ring-green-500 ring-opacity-50",
+                        (card.isFlipped || card.isMatched) ? "bg-white" : "bg-gradient-to-br from-blue-500 to-purple-600"
+                      )
+                )}
+                onClick={() => !isEmpty && handleCardClick(card.id)}
+              >
+                <CardContent className="p-0 h-full relative">
+                  {/* Card Back */}
+                  {!isEmpty && (
+                    <div className={cn(
+                      "absolute inset-0 flex items-center justify-center transition-opacity duration-300",
+                      (card.isFlipped || card.isMatched) ? "opacity-0" : "opacity-100"
+                    )}>
+                      <div className="text-white text-2xl font-bold">?</div>
+                    </div>
+                  )}
+                  
+                  {/* Card Front */}
+                  {!isEmpty && (
+                    <div className={cn(
+                      "absolute inset-0 transition-opacity duration-300",
+                      (card.isFlipped || card.isMatched) ? "opacity-100" : "opacity-0"
+                    )}>
+                      <div className="w-full h-full flex items-center justify-center text-4xl">
+                        {card.emoji}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       )}
 
