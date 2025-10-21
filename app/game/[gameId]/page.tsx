@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import TrueFalseGame from '@/components/game/TrueFalseGame'
 import SubitizingGame from '@/components/game/SubitizingGame'
 import PuzzleGame from '@/components/game/PuzzleGame'
+import MemoryMatchGame from '@/components/game/MemoryMatchGame'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Header } from '@/components/layout/Header'
@@ -127,6 +128,18 @@ export default function GamePage() {
           userId={currentUser.id}
           gameId={game.id}
           userAge={currentUser.age || 6}
+          onGameComplete={handleGameComplete}
+        />
+      )
+    }
+
+    if (game.title === 'Memory Match') {
+      return (
+        <MemoryMatchGame 
+          userId={currentUser.id}
+          gameId={game.id}
+          userAge={currentUser.age || 6}
+          incrementScore={() => handleGameComplete(1, 1)}
           onGameComplete={handleGameComplete}
         />
       )
