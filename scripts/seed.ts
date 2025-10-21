@@ -42,14 +42,6 @@ const initialGames = [
     isActive: false,
   },
   {
-    title: 'Puzzle Time',
-    description: 'Solve fun puzzles and develop problem-solving skills!',
-    icon: '🧩',
-    category: 'puzzles',
-    difficulty: 3,
-    isActive: false,
-  },
-  {
     title: 'Music Maker',
     description: 'Create music and learn about sounds and rhythms!',
     icon: '🎵',

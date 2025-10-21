@@ -84,9 +84,10 @@ export default function PuzzleGame({ userId, gameId, userAge, onGameComplete }: 
     }
   }, [userAge])
 
+  // Load puzzle only once on mount
   useEffect(() => {
     loadPuzzle()
-  }, [loadPuzzle])
+  }, []) // Remove loadPuzzle dependency to prevent double calls
 
   const backgroundSize = (gridSize: number) => `${gridSize * 100}% ${gridSize * 100}%`
   const backgroundPosition = (row: number, col: number, gridSize: number) => {
@@ -124,6 +125,7 @@ export default function PuzzleGame({ userId, gameId, userAge, onGameComplete }: 
     }
   }
 
+  // Check completion when pieces are placed
   useEffect(() => {
     if (!config || isCompleted) return
     const total = config.pieces.length
@@ -135,7 +137,7 @@ export default function PuzzleGame({ userId, gameId, userAge, onGameComplete }: 
       unlockAchievement('First Game', 'Completed your first Puzzle!', '🧩')
       onGameComplete?.(1, 1)
     }
-  }, [placed, config, gameId, incrementScore])
+  }, [placed, config, isCompleted, gameId]) // Remove incrementScore from deps
 
   if (loading || !config) {
     return (
