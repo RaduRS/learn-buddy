@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import TrueFalseGame from '@/components/game/TrueFalseGame'
 import SubitizingGame from '@/components/game/SubitizingGame'
+import PuzzleGame from '@/components/game/PuzzleGame'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Header } from '@/components/layout/Header'
@@ -108,25 +109,57 @@ export default function GamePage() {
     )
   }
 
+  const renderGame = () => {
+    if (game.title === 'Subitizing') {
+      return (
+        <SubitizingGame 
+          userId={currentUser.id}
+          gameId={game.id}
+          userAge={currentUser.age || 6}
+          onGameComplete={handleGameComplete}
+        />
+      )
+    }
+
+    if (game.title === 'Puzzle') {
+      return (
+        <PuzzleGame 
+          userId={currentUser.id}
+          gameId={game.id}
+          userAge={currentUser.age || 6}
+          onGameComplete={handleGameComplete}
+        />
+      )
+    }
+
+    return (
+      <TrueFalseGame 
+        userId={currentUser.id}
+        gameId={game.id}
+        userAge={currentUser.age || 6}
+        onGameComplete={handleGameComplete}
+      />
+    )
+  }
+
   const handleNavigate = (page: string) => {
     switch (page) {
       case 'home':
         router.push('/')
         break
-      case 'profile':
-        router.push('/') // For now, redirect to home since profile page doesn't exist
-        break
       case 'achievements':
         router.push('/achievements')
         break
+      case 'profile':
+        router.push('/')
+        break
       case 'settings':
-        router.push('/') // For now, redirect to home since settings page doesn't exist
+        router.push('/')
         break
       default:
         router.push('/')
     }
   }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
       <Header 
@@ -142,21 +175,7 @@ export default function GamePage() {
         </div>
 
         {/* Game Component */}
-        {game.title === 'Subitizing' ? (
-          <SubitizingGame 
-            userId={currentUser.id}
-            gameId={game.id}
-            userAge={currentUser.age || 6}
-            onGameComplete={handleGameComplete}
-          />
-        ) : (
-          <TrueFalseGame 
-            userId={currentUser.id}
-            gameId={game.id}
-            userAge={currentUser.age || 6}
-            onGameComplete={handleGameComplete}
-          />
-        )}
+        {renderGame()}
       </div>
     </div>
   )

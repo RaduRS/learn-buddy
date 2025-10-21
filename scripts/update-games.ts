@@ -41,6 +41,22 @@ async function updateGames() {
         console.log('Subitizing game already exists')
       }
     }
+
+    // Ensure Puzzle game exists
+    const puzzleGame = existingGames.find(game => game.title === 'Puzzle')
+    if (!puzzleGame) {
+      await DatabaseService.createGame({
+        title: 'Puzzle',
+        description: 'Drag-and-drop jigsaw puzzles generated from kid-friendly images',
+        icon: '🧩',
+        category: 'Logic',
+        difficulty: 2,
+        isActive: true
+      })
+      console.log('Added new Puzzle game')
+    } else {
+      console.log('Puzzle game already exists')
+    }
     
     console.log('Games update completed successfully!')
     
