@@ -134,7 +134,6 @@ export default function MemoryMatchGame({ userAge, userId, gameId, gridConfig, o
               ? { ...card, isMatched: true, isFlipped: true }
               : card
           ))
-          if (gameId) incrementScore(gameId, 1)
         } else {
           // No match, flip cards back
           setCards(prev => prev.map(card => 

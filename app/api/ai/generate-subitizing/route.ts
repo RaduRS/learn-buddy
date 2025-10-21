@@ -53,15 +53,19 @@ Current context:
 
 Generate a JSON response with the following structure:
 {
-  "numObjects": number (5-12),
+  "numObjects": number (MUST be between 5-12 inclusive, use Math.floor(Math.random() * 8) + 5),
   "arrangement": "random" | "line" | "circle" | "square" | "triangle" | "dice_pattern",
   "educationalTip": "brief tip about subitizing or number recognition",
   "encouragement": "age-appropriate encouraging message",
-  "timeLimit": number (milliseconds, 1000-2000 based on difficulty)
+  "timeLimit": number (milliseconds, 2500-3500 based on difficulty)
 }
 
+CRITICAL: The numObjects MUST be a random number between 5 and 12 (inclusive). Do not bias towards higher or lower numbers. Each number from 5-12 should have equal probability.
+
 Guidelines:
-- Use RANDOM between 5-12 objects, shorter time limits (2500-3000ms), more complex arrangements.
+- Use TRUE RANDOM between 5-12 objects (equal probability for each number)
+- Time limits should be 2500-3500ms
+- Use varied arrangements for visual interest
 - Objects should have different sizes (small, medium, large) and different shapes for visual variety
 
 Respond only with valid JSON.`
@@ -100,12 +104,17 @@ Respond only with valid JSON.`
     let aiData
     try {
       aiData = JSON.parse(aiResponse)
-      console.log('AI generated data:', aiData)
+      
+      // ALWAYS override AI's numObjects with our own random generation for true randomness
+      aiData.numObjects = Math.floor(Math.random() * 8) + 5 // Force 5-12 range
+      console.log('AI generated data, but overrode numObjects to:', aiData.numObjects)
+      
+      console.log('Final AI data:', aiData)
     } catch (error) {
       console.error('Failed to parse AI response:', aiResponse)
-      // Fallback to default pattern with correct ranges
-      const minObjects = userAge >= 5 && userAge <= 6 ? 5 : 3
-      const maxObjects = userAge >= 5 && userAge <= 6 ? 10 : 8
+      // Fallback to default pattern with 5-12 range
+      const minObjects = 5
+      const maxObjects = 12
       const numObjects = Math.floor(Math.random() * (maxObjects - minObjects + 1)) + minObjects
       
       aiData = {
@@ -113,7 +122,7 @@ Respond only with valid JSON.`
         arrangement: 'random',
         educationalTip: 'Look at the objects quickly and trust your first instinct!',
         encouragement: 'You\'re doing great! Keep practicing!',
-        timeLimit: userAge >= 5 && userAge <= 6 ? 4000 : 3000
+        timeLimit: 3000
       }
       console.log('Using fallback pattern with', numObjects, 'objects for age', userAge)
     }
@@ -196,11 +205,13 @@ function generatePattern(aiData: AIData): SubitizingPattern {
         7: [{x: 20, y: 20}, {x: 50, y: 20}, {x: 80, y: 20}, {x: 35, y: 50}, {x: 65, y: 50}, {x: 20, y: 80}, {x: 80, y: 80}],
         8: [{x: 25, y: 20}, {x: 50, y: 20}, {x: 75, y: 20}, {x: 25, y: 50}, {x: 75, y: 50}, {x: 25, y: 80}, {x: 50, y: 80}, {x: 75, y: 80}],
         9: [{x: 20, y: 15}, {x: 50, y: 15}, {x: 80, y: 15}, {x: 20, y: 45}, {x: 50, y: 45}, {x: 80, y: 45}, {x: 20, y: 75}, {x: 50, y: 75}, {x: 80, y: 75}],
-        10: [{x: 15, y: 15}, {x: 35, y: 15}, {x: 55, y: 15}, {x: 75, y: 15}, {x: 25, y: 40}, {x: 65, y: 40}, {x: 15, y: 65}, {x: 35, y: 65}, {x: 55, y: 65}, {x: 75, y: 65}]
+        10: [{x: 15, y: 15}, {x: 35, y: 15}, {x: 55, y: 15}, {x: 75, y: 15}, {x: 25, y: 40}, {x: 65, y: 40}, {x: 15, y: 65}, {x: 35, y: 65}, {x: 55, y: 65}, {x: 75, y: 65}],
+        11: [{x: 10, y: 10}, {x: 30, y: 10}, {x: 50, y: 10}, {x: 70, y: 10}, {x: 90, y: 10}, {x: 20, y: 40}, {x: 40, y: 40}, {x: 60, y: 40}, {x: 80, y: 40}, {x: 25, y: 70}, {x: 75, y: 70}],
+        12: [{x: 10, y: 10}, {x: 30, y: 10}, {x: 50, y: 10}, {x: 70, y: 10}, {x: 90, y: 10}, {x: 10, y: 40}, {x: 30, y: 40}, {x: 50, y: 40}, {x: 70, y: 40}, {x: 90, y: 40}, {x: 30, y: 70}, {x: 70, y: 70}]
       }
       
-      // For numbers > 10, fall back to random arrangement
-      if (numObjects > 10) {
+      // For numbers > 12, fall back to random arrangement
+      if (numObjects > 12) {
         // Fall back to random arrangement for very high numbers
         const usedPositions = new Set()
         for (let i = 0; i < numObjects; i++) {
@@ -276,11 +287,11 @@ function generatePattern(aiData: AIData): SubitizingPattern {
 }
 
 function generateFallbackPattern(userAge: number, difficulty: number, questionNumber: number): SubitizingPattern {
-  // For 5-6 year olds, use range 5-10 objects
-  const minObjects = userAge >= 5 && userAge <= 6 ? 5 : 3
-  const maxObjects = userAge >= 5 && userAge <= 6 ? 10 : (userAge >= 7 ? Math.min(8, 3 + Math.floor(questionNumber / 3)) : Math.min(6, 2 + Math.floor(questionNumber / 4)))
+  // Always use range 5-12 objects for true randomness
+  const minObjects = 5
+  const maxObjects = 12
   const numObjects = Math.floor(Math.random() * (maxObjects - minObjects + 1)) + minObjects
-  const timeLimit = userAge >= 5 && userAge <= 6 ? Math.max(3000, 5000 - (questionNumber * 100)) : Math.max(2000, 4000 - (questionNumber * 100))
+  const timeLimit = Math.max(2500, 4000 - (questionNumber * 100))
   
   const shapes = ['circle', 'square', 'triangle', 'star', 'heart']
   const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8']
