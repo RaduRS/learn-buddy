@@ -47,7 +47,7 @@ const initialGames = [
     icon: '🎵',
     category: 'music',
     difficulty: 2,
-    isActive: false,
+    isActive: true,
   },
   {
     title: 'Animal Friends',

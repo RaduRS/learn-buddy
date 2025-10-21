@@ -8,6 +8,7 @@ import PuzzleGame from '@/components/game/PuzzleGame'
 import MemoryMatchGame from '@/components/game/MemoryMatchGame'
 import MemoryMatchConfig from '@/components/game/MemoryMatchConfig'
 import NumberFunGame from '@/components/game/NumberFunGame'
+import MusicLearningGame from '@/components/game/MusicLearningGame'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Header } from '@/components/layout/Header'
@@ -179,6 +180,17 @@ export default function GamePage() {
     if (game.title === 'Number Fun') {
       return (
         <NumberFunGame 
+          userId={currentUser.id}
+          gameId={game.id}
+          userAge={currentUser.age || 6}
+          onGameComplete={handleGameComplete}
+        />
+      )
+    }
+
+    if (game.title === 'Music Maker') {
+      return (
+        <MusicLearningGame 
           userId={currentUser.id}
           gameId={game.id}
           userAge={currentUser.age || 6}
