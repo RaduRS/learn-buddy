@@ -76,12 +76,14 @@ export default function SubitizingGame({ userId, gameId, userAge, onGameComplete
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
         },
         body: JSON.stringify({
           userAge,
           difficulty: Math.ceil(questionNumber / 3),
           questionNumber,
-          previousCorrect: isCorrect
+          previousCorrect: isCorrect,
+          timestamp: Date.now() // Cache busting
         })
       })
 

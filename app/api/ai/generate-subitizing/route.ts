@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from 'next/server'
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions'
 
+// Debug counter for tracking number distribution
+const numberCounter: { [key: number]: number } = {}
+
 interface SubitizingRequest {
   userAge: number
   difficulty: number
@@ -53,14 +56,12 @@ Current context:
 
 Generate a JSON response with the following structure:
 {
-  "numObjects": number (MUST be between 5-12 inclusive, use Math.floor(Math.random() * 8) + 5),
+  "numObjects": number (any number, will be overridden),
   "arrangement": "random" | "line" | "circle" | "square" | "triangle" | "dice_pattern",
   "educationalTip": "brief tip about subitizing or number recognition",
   "encouragement": "age-appropriate encouraging message",
   "timeLimit": number (milliseconds, 2500-3500 based on difficulty)
 }
-
-CRITICAL: The numObjects MUST be a random number between 5 and 12 (inclusive). Do not bias towards higher or lower numbers. Each number from 5-12 should have equal probability.
 
 Guidelines:
 - Use TRUE RANDOM between 5-12 objects (equal probability for each number)
@@ -106,8 +107,23 @@ Respond only with valid JSON.`
       aiData = JSON.parse(aiResponse)
       
       // ALWAYS override AI's numObjects with our own random generation for true randomness
-      aiData.numObjects = Math.floor(Math.random() * 8) + 5 // Force 5-12 range
-      console.log('AI generated data, but overrode numObjects to:', aiData.numObjects)
+      const randomValue = Math.random()
+      const scaledValue = randomValue * 8
+      const flooredValue = Math.floor(scaledValue)
+      const finalValue = flooredValue + 5
+      
+      aiData.numObjects = finalValue
+      
+      // Track number distribution
+      numberCounter[finalValue] = (numberCounter[finalValue] || 0) + 1
+      
+      console.log('🎲 RANDOM GENERATION DEBUG:')
+      console.log('  - Math.random():', randomValue)
+      console.log('  - * 8:', scaledValue)
+      console.log('  - Math.floor():', flooredValue)
+      console.log('  - + 5 (final):', finalValue)
+      console.log('  - Generated numObjects:', aiData.numObjects)
+      console.log('  - Distribution so far:', numberCounter)
       
       console.log('Final AI data:', aiData)
     } catch (error) {
@@ -115,7 +131,20 @@ Respond only with valid JSON.`
       // Fallback to default pattern with 5-12 range
       const minObjects = 5
       const maxObjects = 12
-      const numObjects = Math.floor(Math.random() * (maxObjects - minObjects + 1)) + minObjects
+      const randomValue = Math.random()
+      const scaledValue = randomValue * (maxObjects - minObjects + 1)
+      const flooredValue = Math.floor(scaledValue)
+      const numObjects = flooredValue + minObjects
+      
+      // Track number distribution
+      numberCounter[numObjects] = (numberCounter[numObjects] || 0) + 1
+      
+      console.log('🎲 FALLBACK RANDOM GENERATION DEBUG:')
+      console.log('  - Math.random():', randomValue)
+      console.log('  - * 8:', scaledValue)
+      console.log('  - Math.floor():', flooredValue)
+      console.log('  - + 5 (final):', numObjects)
+      console.log('  - Distribution so far:', numberCounter)
       
       aiData = {
         numObjects: numObjects,
