@@ -69,11 +69,30 @@ export default function GamePage() {
     loadCurrentUser()
   }, [gameId, loadGameData, loadCurrentUser])
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleGameComplete = async (score: number, _totalQuestions: number) => {
-    // Game completion handler - individual scores are already tracked per correct answer
-    // No need to save total score again to prevent double-counting
-    console.log(`Game completed with score: ${score}/${_totalQuestions}`)
+    if (!currentUser || !game) return
+    
+    try {
+      // Save game progress to database
+      const response = await fetch('/api/game-progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser.id,
+          gameId: game.id,
+          score: score,
+          level: 1
+        })
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to save game progress')
+      }
+      
+      console.log(`Game completed with score: ${score}/${_totalQuestions}`)
+    } catch (error) {
+      console.error('Error saving game progress:', error)
+    }
   }
 
   if (loading) {
@@ -151,7 +170,6 @@ export default function GamePage() {
           gameId={game.id}
           userAge={currentUser.age || 6}
           gridConfig={memoryMatchConfig}
-          incrementScore={() => handleGameComplete(1, 1)}
           onGameComplete={handleGameComplete}
         />
       )

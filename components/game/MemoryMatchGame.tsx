@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, RotateCcw, Trophy, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useScore } from '@/hooks/useScore'
 
 interface MemoryCard {
   id: string
@@ -28,11 +29,11 @@ interface MemoryMatchGameProps {
   gameId?: string
   userAge: number
   gridConfig?: { rows: number; cols: number; pairs: number }
-  incrementScore: () => void
   onGameComplete: (score: number, totalQuestions: number) => void
 }
 
-export default function MemoryMatchGame({ userAge, userId, gameId, gridConfig, incrementScore, onGameComplete }: MemoryMatchGameProps) {
+export default function MemoryMatchGame({ userAge, userId, gameId, gridConfig, onGameComplete }: MemoryMatchGameProps) {
+  const { incrementScore } = useScore()
   const [config, setConfig] = useState<MemoryMatchConfig | null>(null)
   const [cards, setCards] = useState<MemoryCard[]>([])
   const [flippedCards, setFlippedCards] = useState<string[]>([])
@@ -133,7 +134,7 @@ export default function MemoryMatchGame({ userAge, userId, gameId, gridConfig, i
               ? { ...card, isMatched: true, isFlipped: true }
               : card
           ))
-          incrementScore()
+          if (gameId) incrementScore(gameId, 1)
         } else {
           // No match, flip cards back
           setCards(prev => prev.map(card => 
