@@ -35,9 +35,22 @@ export default function PuzzleGame({ userId, gameId, userAge, onGameComplete }: 
   const [bank, setBank] = useState<PuzzlePiece[]>([])
   const [selectedPieceId, setSelectedPieceId] = useState<string | null>(null)
   const [score, setScore] = useState(0)
+  const [isCompleted, setIsCompleted] = useState(false)
   const { incrementScore } = useScore()
 
   const gridPx = 320 // board size in pixels
+
+  const unlockAchievement = async (title: string, description: string, icon: string) => {
+    try {
+      await fetch('/api/achievements', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, gameId, title, description, icon }),
+      })
+    } catch (err) {
+      console.error('Error unlocking achievement:', err)
+    }
+  }
 
   const loadPuzzle = useCallback(async () => {
     try {
@@ -46,6 +59,7 @@ export default function PuzzleGame({ userId, gameId, userAge, onGameComplete }: 
       setConfig(null)
       setPlaced({})
       setSelectedPieceId(null)
+      setIsCompleted(false)
 
       const response = await fetch('/api/ai/generate-puzzle', {
         method: 'POST',
@@ -111,16 +125,17 @@ export default function PuzzleGame({ userId, gameId, userAge, onGameComplete }: 
   }
 
   useEffect(() => {
-    if (!config) return
+    if (!config || isCompleted) return
     const total = config.pieces.length
     const placedCount = Object.values(placed).filter(Boolean).length
     if (placedCount === total) {
-      // Completed puzzle!
+      setIsCompleted(true)
       setScore(s => s + 1)
       incrementScore(gameId, 1)
+      unlockAchievement('First Game', 'Completed your first Puzzle!', '🧩')
       onGameComplete?.(1, 1)
     }
-  }, [placed, config, gameId, incrementScore, onGameComplete])
+  }, [placed, config, gameId, incrementScore])
 
   if (loading || !config) {
     return (
@@ -188,7 +203,7 @@ export default function PuzzleGame({ userId, gameId, userAge, onGameComplete }: 
 
             {/* Pieces bank */}
             <div className="flex-1">
-              <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
+              <div className="grid grid-cols-5 gap-2">
                 {bank.map(piece => (
                   <div
                     key={piece.id}

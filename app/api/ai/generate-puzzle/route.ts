@@ -28,7 +28,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Determine grid size by difficulty
-    const gridSize = Math.min(4, Math.max(2, difficulty + 1)) // 1->2x2, 2->3x3, 3->4x4
+    // const gridSize = Math.min(4, Math.max(2, difficulty + 1)) // 1->2x2, 2->3x3, 3->4x4
+    const gridSize = 5 // fixed to 5x5 as requested
 
     // Child-friendly themes
     const defaultThemes = [
