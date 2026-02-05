@@ -1,97 +1,129 @@
-'use client'
+"use client";
 
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { CheckCircle, XCircle, RotateCcw, Trophy, Loader2, Eye } from 'lucide-react'
-import { useScore } from '@/hooks/useScore'
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  CheckCircle,
+  XCircle,
+  RotateCcw,
+  Trophy,
+  Loader2,
+  Eye,
+} from "lucide-react";
+import { useScore } from "@/hooks/useScore";
 
 interface SubitizingGameProps {
-  userId: string
-  gameId: string
-  userAge: number
-  onGameComplete: (score: number, totalQuestions: number) => void
+  userId: string;
+  gameId: string;
+  userAge: number;
+  onGameComplete: (score: number, totalQuestions: number) => void;
 }
 
 interface SubitizingQuestion {
-  id: number
-  objects: Array<{ x: number; y: number; color: string; shape: string; size?: 'small' | 'medium' | 'large' }>
-  correctAnswer: number
-  difficulty: number
-  timeLimit: number
-  educationalTip?: string
-  encouragement?: string
+  id: number;
+  objects: Array<{
+    x: number;
+    y: number;
+    color: string;
+    shape: string;
+    size?: "small" | "medium" | "large";
+  }>;
+  correctAnswer: number;
+  difficulty: number;
+  timeLimit: number;
+  educationalTip?: string;
+  encouragement?: string;
 }
 
-const SHAPES = ['circle', 'square', 'triangle', 'star', 'heart']
-const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8']
+const SHAPES = ["circle", "square", "triangle", "star", "heart"];
+const COLORS = [
+  "#FF6B6B",
+  "#4ECDC4",
+  "#45B7D1",
+  "#96CEB4",
+  "#FFEAA7",
+  "#DDA0DD",
+  "#98D8C8",
+];
 
-export default function SubitizingGame({ userId, gameId, userAge, onGameComplete }: SubitizingGameProps) {
-  const [currentQuestion, setCurrentQuestion] = useState<SubitizingQuestion | null>(null)
-  const [questionNumber, setQuestionNumber] = useState(1)
-  const [score, setScore] = useState(0)
-  const [gameState, setGameState] = useState<'playing' | 'answered' | 'complete'>('playing')
-  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
-  const [isCorrect, setIsCorrect] = useState<boolean | null>(null)
-  const [timeLeft, setTimeLeft] = useState(0)
-  const [showObjects, setShowObjects] = useState(true)
-  const [isLoading, setIsLoading] = useState(false)
-  const [showNextButton, setShowNextButton] = useState(false)
-  const { incrementScore } = useScore()
-  const generatingRef = useRef(false)
+export default function SubitizingGame({
+  userId,
+  gameId,
+  userAge,
+  onGameComplete,
+}: SubitizingGameProps) {
+  const [currentQuestion, setCurrentQuestion] =
+    useState<SubitizingQuestion | null>(null);
+  const [questionNumber, setQuestionNumber] = useState(1);
+  const [score, setScore] = useState(0);
+  const [gameState, setGameState] = useState<
+    "playing" | "answered" | "complete"
+  >("playing");
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [showObjects, setShowObjects] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showNextButton, setShowNextButton] = useState(false);
+  const { incrementScore } = useScore();
+  const generatingRef = useRef(false);
 
   // Achievement unlocking function
-  const unlockAchievement = async (title: string, description: string, icon: string) => {
-    try {
-      await fetch('/api/achievements', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId,
-          gameId,
-          title,
-          description,
-          icon,
-        }),
-      })
-    } catch (error) {
-      console.error('Error unlocking achievement:', error)
-    }
-  }
+  const unlockAchievement = useCallback(
+    async (title: string, description: string, icon: string) => {
+      try {
+        await fetch("/api/achievements", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId,
+            gameId,
+            title,
+            description,
+            icon,
+          }),
+        });
+      } catch (error) {
+        console.error("Error unlocking achievement:", error);
+      }
+    },
+    [userId, gameId],
+  );
 
-  const totalQuestions = 10
+  const totalQuestions = 10;
 
   // Generate a random subitizing question using AI
   const generateQuestion = useCallback(async () => {
-    if (generatingRef.current) return // Prevent duplicate calls
-    generatingRef.current = true
-    setIsLoading(true)
-    
+    if (generatingRef.current) return; // Prevent duplicate calls
+    generatingRef.current = true;
+    setIsLoading(true);
+
     try {
       // Call the AI API to generate an enhanced subitizing pattern
-      const response = await fetch('/api/ai/generate-subitizing', {
-        method: 'POST',
+      const response = await fetch("/api/ai/generate-subitizing", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache',
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache",
         },
         body: JSON.stringify({
           userAge,
           difficulty: Math.ceil(questionNumber / 3),
           questionNumber,
           previousCorrect: isCorrect,
-          timestamp: Date.now() // Cache busting
-        })
-      })
+          timestamp: Date.now(), // Cache busting
+        }),
+      });
 
       if (!response.ok) {
-        throw new Error('Failed to generate AI pattern')
+        throw new Error("Failed to generate AI pattern");
       }
 
-      const aiPattern = await response.json()
+      const aiPattern = await response.json();
 
       const question: SubitizingQuestion = {
         id: questionNumber,
@@ -100,57 +132,56 @@ export default function SubitizingGame({ userId, gameId, userAge, onGameComplete
         difficulty: aiPattern.difficulty,
         timeLimit: aiPattern.timeLimit,
         educationalTip: aiPattern.educationalTip,
-        encouragement: aiPattern.encouragement
-      }
+        encouragement: aiPattern.encouragement,
+      };
 
-      setCurrentQuestion(question)
-      setTimeLeft(aiPattern.timeLimit)
-      setShowObjects(true)
-      setIsLoading(false)
+      setCurrentQuestion(question);
+      setTimeLeft(aiPattern.timeLimit);
+      setShowObjects(true);
+      setIsLoading(false);
 
       // Hide objects after time limit for subitizing practice
       setTimeout(() => {
-        setShowObjects(false)
-      }, aiPattern.timeLimit)
-
+        setShowObjects(false);
+      }, aiPattern.timeLimit);
     } catch (error) {
-      console.error('Error generating AI pattern, using fallback:', error)
-      
+      console.error("Error generating AI pattern, using fallback:", error);
+
       // Fallback to original logic if AI fails
-      let maxObjects = 3
-      let timeLimit = 3000
-      
+      let maxObjects = 3;
+      let timeLimit = 3000;
+
       if (userAge >= 6) {
-        maxObjects = Math.min(5, 2 + Math.floor(questionNumber / 3))
-        timeLimit = Math.max(2000, 4000 - (questionNumber * 100))
+        maxObjects = Math.min(5, 2 + Math.floor(questionNumber / 3));
+        timeLimit = Math.max(2000, 4000 - questionNumber * 100);
       } else {
-        maxObjects = Math.min(4, 2 + Math.floor(questionNumber / 4))
-        timeLimit = Math.max(2500, 4500 - (questionNumber * 100))
+        maxObjects = Math.min(4, 2 + Math.floor(questionNumber / 4));
+        timeLimit = Math.max(2500, 4500 - questionNumber * 100);
       }
 
-      const numObjects = Math.floor(Math.random() * maxObjects) + 1
-      const objects = []
-      const usedPositions = new Set()
-      
+      const numObjects = Math.floor(Math.random() * maxObjects) + 1;
+      const objects = [];
+      const usedPositions = new Set();
+
       for (let i = 0; i < numObjects; i++) {
-        let x, y, posKey
-        let attempts = 0
-        
+        let x, y, posKey;
+        let attempts = 0;
+
         do {
-          x = Math.floor(Math.random() * 8) + 1
-          y = Math.floor(Math.random() * 6) + 1
-          posKey = `${x}-${y}`
-          attempts++
-        } while (usedPositions.has(posKey) && attempts < 20)
-        
+          x = Math.floor(Math.random() * 8) + 1;
+          y = Math.floor(Math.random() * 6) + 1;
+          posKey = `${x}-${y}`;
+          attempts++;
+        } while (usedPositions.has(posKey) && attempts < 20);
+
         if (attempts < 20) {
-          usedPositions.add(posKey)
+          usedPositions.add(posKey);
           objects.push({
             x: x * 10 + Math.random() * 5,
             y: y * 10 + Math.random() * 5,
             color: COLORS[Math.floor(Math.random() * COLORS.length)],
-            shape: SHAPES[Math.floor(Math.random() * SHAPES.length)]
-          })
+            shape: SHAPES[Math.floor(Math.random() * SHAPES.length)],
+          });
         }
       }
 
@@ -160,150 +191,203 @@ export default function SubitizingGame({ userId, gameId, userAge, onGameComplete
         correctAnswer: objects.length,
         difficulty: Math.ceil(objects.length / 2),
         timeLimit,
-        educationalTip: 'Look quickly and trust your first instinct!',
-        encouragement: 'You\'re doing great! Keep practicing!'
-      }
+        educationalTip: "Look quickly and trust your first instinct!",
+        encouragement: "You're doing great! Keep practicing!",
+      };
 
-      setCurrentQuestion(question)
-      setTimeLeft(timeLimit)
-      setShowObjects(true)
-      setIsLoading(false)
+      setCurrentQuestion(question);
+      setTimeLeft(timeLimit);
+      setShowObjects(true);
+      setIsLoading(false);
 
       setTimeout(() => {
-        setShowObjects(false)
-      }, timeLimit)
+        setShowObjects(false);
+      }, timeLimit);
     }
-    
-    generatingRef.current = false // Reset the flag
-  }, [questionNumber, userAge])
+
+    generatingRef.current = false; // Reset the flag
+  }, [questionNumber, userAge, isCorrect]);
 
   // Handle answer selection
-  const handleAnswer = useCallback(async (answer: number) => {
-    if (gameState !== 'playing' || selectedAnswer !== null) return
+  const handleAnswer = useCallback(
+    async (answer: number) => {
+      if (gameState !== "playing" || selectedAnswer !== null) return;
 
-    setSelectedAnswer(answer)
-    const correct = answer === currentQuestion?.correctAnswer
-    setIsCorrect(correct)
-    setGameState('answered')
+      setSelectedAnswer(answer);
+      const correct = answer === currentQuestion?.correctAnswer;
+      setIsCorrect(correct);
+      setGameState("answered");
 
-    if (correct) {
-      const points = 1 // Always award 1 point per correct answer
-      setScore(prev => {
-        const newScore = prev + points
-        
-        // Create achievement records on first point so they show up in achievements page
-        if (newScore === 1) {
-          // Create all three achievement records so they show up with progress tracking
-          unlockAchievement('Bronze Achievement', 'Scored 10 points in Subitizing!', '🥉')
-          unlockAchievement('Silver Achievement', 'Scored 50 points in Subitizing!', '🥈')
-          unlockAchievement('Gold Achievement', 'Scored 100 points in Subitizing!', '🥇')
+      if (correct) {
+        const points = 1; // Always award 1 point per correct answer
+        setScore((prev) => {
+          const newScore = prev + points;
+
+          // Create achievement records on first point so they show up in achievements page
+          if (newScore === 1) {
+            // Create all three achievement records so they show up with progress tracking
+            unlockAchievement(
+              "Bronze Achievement",
+              "Scored 10 points in Subitizing!",
+              "🥉",
+            );
+            unlockAchievement(
+              "Silver Achievement",
+              "Scored 50 points in Subitizing!",
+              "🥈",
+            );
+            unlockAchievement(
+              "Gold Achievement",
+              "Scored 100 points in Subitizing!",
+              "🥇",
+            );
+          }
+
+          return newScore;
+        });
+
+        try {
+          await incrementScore(gameId, points);
+        } catch (error) {
+          console.error("Error updating score:", error);
         }
-        
-        return newScore
-      })
-      
-      try {
-        await incrementScore(gameId, points)
-      } catch (error) {
-        console.error('Error updating score:', error)
       }
-    }
 
-    // Show Next button instead of auto-advancing
-    setShowNextButton(true)
-  }, [gameState, selectedAnswer, currentQuestion, gameId, incrementScore])
+      // Show Next button instead of auto-advancing
+      setShowNextButton(true);
+    },
+    [
+      gameState,
+      selectedAnswer,
+      currentQuestion,
+      gameId,
+      incrementScore,
+      unlockAchievement,
+    ],
+  );
 
   // Handle next question
   const handleNext = () => {
-    setShowNextButton(false)
-    setSelectedAnswer(null)
-    setIsCorrect(null)
-    
+    setShowNextButton(false);
+    setSelectedAnswer(null);
+    setIsCorrect(null);
+
     if (questionNumber >= totalQuestions) {
-      setGameState('complete')
-      
+      setGameState("complete");
+
       // Unlock completion-based achievements
-      unlockAchievement('First Game', 'Completed your first Subitizing game!', '🎮')
-      
+      unlockAchievement(
+        "First Game",
+        "Completed your first Subitizing game!",
+        "🎮",
+      );
+
       if (score >= 8) {
-        unlockAchievement('High Scorer', 'Scored 8 or more points in a single game!', '🧠')
+        unlockAchievement(
+          "High Scorer",
+          "Scored 8 or more points in a single game!",
+          "🧠",
+        );
       }
-      
+
       if (score === totalQuestions) {
-        unlockAchievement('Perfect Game', 'Got every question right in a game!', '💎')
+        unlockAchievement(
+          "Perfect Game",
+          "Got every question right in a game!",
+          "💎",
+        );
       }
-      
-      onGameComplete(score, totalQuestions)
+
+      onGameComplete(score, totalQuestions);
     } else {
-      setQuestionNumber(prev => prev + 1)
-      setGameState('playing')
+      setQuestionNumber((prev) => prev + 1);
+      setGameState("playing");
     }
-  }
+  };
 
   // Generate question when needed
   useEffect(() => {
-    if (questionNumber <= totalQuestions && gameState === 'playing' && !showNextButton) {
-      generateQuestion()
+    if (
+      questionNumber <= totalQuestions &&
+      gameState === "playing" &&
+      !showNextButton
+    ) {
+      generateQuestion();
     }
-  }, [questionNumber, gameState, showNextButton, totalQuestions])
+  }, [
+    questionNumber,
+    gameState,
+    showNextButton,
+    totalQuestions,
+    generateQuestion,
+  ]);
 
   // Countdown timer
   useEffect(() => {
     if (timeLeft > 0 && showObjects) {
-      const timer = setTimeout(() => setTimeLeft(prev => prev - 100), 100)
-      return () => clearTimeout(timer)
+      const timer = setTimeout(() => setTimeLeft((prev) => prev - 100), 100);
+      return () => clearTimeout(timer);
     }
-  }, [timeLeft, showObjects])
+  }, [timeLeft, showObjects]);
 
   const resetGame = () => {
-    setQuestionNumber(1)
-    setScore(0)
-    setSelectedAnswer(null)
-    setIsCorrect(null)
-    setGameState('playing')
-    setShowObjects(true)
-    setShowNextButton(false)
-  }
+    setQuestionNumber(1);
+    setScore(0);
+    setSelectedAnswer(null);
+    setIsCorrect(null);
+    setGameState("playing");
+    setShowObjects(true);
+    setShowNextButton(false);
+  };
 
-  const renderShape = (obj: { x: number; y: number; color: string; shape: string; size?: 'small' | 'medium' | 'large' }, index: number) => {
+  const renderShape = (
+    obj: {
+      x: number;
+      y: number;
+      color: string;
+      shape: string;
+      size?: "small" | "medium" | "large";
+    },
+    index: number,
+  ) => {
     const sizeMap = {
-      small: '1.5rem',
-      medium: '3rem',
-      large: '4.5rem'
-    }
-    
+      small: "1.5rem",
+      medium: "3rem",
+      large: "4.5rem",
+    };
+
     const style = {
-      position: 'absolute' as const,
+      position: "absolute" as const,
       left: `${obj.x}%`,
       top: `${obj.y}%`,
       color: obj.color,
-      fontSize: sizeMap[obj.size || 'medium'],
-      transform: 'translate(-50%, -50%)',
-      transition: 'all 0.3s ease',
-      opacity: showObjects ? 1 : 0
-    }
+      fontSize: sizeMap[obj.size || "medium"],
+      transform: "translate(-50%, -50%)",
+      transition: "all 0.3s ease",
+      opacity: showObjects ? 1 : 0,
+    };
 
     const shapeMap = {
-      circle: '●',
-      square: '■',
-      triangle: '▲',
-      star: '★',
-      heart: '♥'
-    }
+      circle: "●",
+      square: "■",
+      triangle: "▲",
+      star: "★",
+      heart: "♥",
+    };
 
     return (
       <span key={index} style={style}>
         {shapeMap[obj.shape as keyof typeof shapeMap]}
       </span>
-    )
-  }
+    );
+  };
 
-  const progress = (questionNumber / totalQuestions) * 100
+  const progress = (questionNumber / totalQuestions) * 100;
 
   // Game complete state
-  if (gameState === 'complete') {
-    const percentage = Math.round((score / (totalQuestions * 2)) * 100)
-    
+  if (gameState === "complete") {
+    const percentage = Math.round((score / (totalQuestions * 2)) * 100);
+
     return (
       <div className="max-w-2xl mx-auto p-6">
         <Card>
@@ -315,27 +399,26 @@ export default function SubitizingGame({ userId, gameId, userAge, onGameComplete
           </CardHeader>
           <CardContent className="text-center space-y-4">
             <div className="text-6xl mb-4">
-              {percentage >= 80 ? '🌟' : percentage >= 60 ? '🎉' : '👍'}
+              {percentage >= 80 ? "🌟" : percentage >= 60 ? "🎉" : "👍"}
             </div>
             <div className="space-y-2">
-              <p className="text-xl font-semibold">Final Score: {score} points</p>
+              <p className="text-xl font-semibold">
+                Final Score: {score} points
+              </p>
               <p className="text-lg text-gray-600">{percentage}% correct</p>
               <p className="text-sm text-gray-500">
-                You answered {Math.round((score / 2))} questions correctly out of {totalQuestions}
+                You answered {Math.round(score / 2)} questions correctly out of{" "}
+                {totalQuestions}
               </p>
             </div>
-            <Button 
-              onClick={resetGame}
-              className="mt-6"
-              size="lg"
-            >
+            <Button onClick={resetGame} className="mt-6" size="lg">
               <RotateCcw className="w-5 h-5 mr-2" />
               Play Again
             </Button>
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   // Loading state
@@ -351,7 +434,7 @@ export default function SubitizingGame({ userId, gameId, userAge, onGameComplete
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
@@ -366,19 +449,23 @@ export default function SubitizingGame({ userId, gameId, userAge, onGameComplete
               How many objects do you see?
             </h2>
             <p className="text-sm text-gray-600">
-              {showObjects ? 'Look quickly!' : 'Now choose your answer!'}
+              {showObjects ? "Look quickly!" : "Now choose your answer!"}
             </p>
           </div>
 
           {/* Objects Display Area */}
           <div className="relative w-full h-64 mb-6 rounded-lg border-2 border-dashed border-gray-300 bg-gradient-to-br from-blue-50 to-purple-50">
-            {currentQuestion.objects.map((obj, index) => renderShape(obj, index))}
-            
+            {currentQuestion.objects.map((obj, index) =>
+              renderShape(obj, index),
+            )}
+
             {!showObjects && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center">
                   <div className="text-4xl mb-2">🤔</div>
-                  <p className="text-lg font-medium text-gray-700">How many were there?</p>
+                  <p className="text-lg font-medium text-gray-700">
+                    How many were there?
+                  </p>
                 </div>
               </div>
             )}
@@ -388,9 +475,11 @@ export default function SubitizingGame({ userId, gameId, userAge, onGameComplete
           {showObjects && (
             <div className="mb-4">
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
+                <div
                   className="bg-blue-500 h-2 rounded-full transition-all duration-100"
-                  style={{ width: `${(timeLeft / currentQuestion.timeLimit) * 100}%` }}
+                  style={{
+                    width: `${(timeLeft / currentQuestion.timeLimit) * 100}%`,
+                  }}
                 />
               </div>
               <p className="text-xs text-center mt-1 text-gray-500">
@@ -434,8 +523,12 @@ export default function SubitizingGame({ userId, gameId, userAge, onGameComplete
           {/* Feedback */}
           {selectedAnswer !== null && (
             <div className="text-center space-y-2">
-              <p className={`text-lg font-semibold ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
-                {isCorrect ? '🎉 Correct!' : `❌ The answer was ${currentQuestion.correctAnswer}`}
+              <p
+                className={`text-lg font-semibold ${isCorrect ? "text-green-600" : "text-red-600"}`}
+              >
+                {isCorrect
+                  ? "🎉 Correct!"
+                  : `❌ The answer was ${currentQuestion.correctAnswer}`}
               </p>
 
               {/* AI-generated encouragement */}
@@ -450,24 +543,28 @@ export default function SubitizingGame({ userId, gameId, userAge, onGameComplete
           {/* Next Button */}
           {showNextButton && (
             <div className="text-center mt-4">
-              <Button 
+              <Button
                 onClick={handleNext}
                 className="px-8 py-2 text-lg font-semibold"
               >
-                {questionNumber >= totalQuestions ? 'Finish Game' : 'Next Question'}
+                {questionNumber >= totalQuestions
+                  ? "Finish Game"
+                  : "Next Question"}
               </Button>
             </div>
           )}
 
           {/* Educational Tip */}
-          {currentQuestion.educationalTip && !selectedAnswer && !showObjects && (
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-sm text-blue-800">
-                <span className="font-semibold">💡 Tip: </span>
-                {currentQuestion.educationalTip}
-              </p>
-            </div>
-          )}
+          {currentQuestion.educationalTip &&
+            !selectedAnswer &&
+            !showObjects && (
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-sm text-blue-800">
+                  <span className="font-semibold">💡 Tip: </span>
+                  {currentQuestion.educationalTip}
+                </p>
+              </div>
+            )}
         </CardContent>
       </Card>
 
@@ -485,7 +582,7 @@ export default function SubitizingGame({ userId, gameId, userAge, onGameComplete
 
         {/* Progress Bar */}
         <div className="w-full bg-gray-200 rounded-full h-2">
-          <div 
+          <div
             className="bg-blue-500 h-2 rounded-full transition-all duration-300"
             style={{ width: `${progress}%` }}
           />
@@ -499,5 +596,5 @@ export default function SubitizingGame({ userId, gameId, userAge, onGameComplete
         </Badge>
       </div>
     </div>
-  )
+  );
 }

@@ -126,7 +126,7 @@ Respond only with valid JSON.`
       console.log('  - Distribution so far:', numberCounter)
       
       console.log('Final AI data:', aiData)
-    } catch (error) {
+    } catch {
       console.error('Failed to parse AI response:', aiResponse)
       // Fallback to default pattern with 5-12 range
       const minObjects = 5
@@ -195,7 +195,7 @@ function generatePattern(aiData: AIData): SubitizingPattern {
   
   // Generate positions based on arrangement type
   switch (arrangement) {
-    case 'line':
+    case 'line': {
       for (let i = 0; i < numObjects; i++) {
         objects.push({
           x: 20 + (i * 60 / Math.max(1, numObjects - 1)),
@@ -206,8 +206,9 @@ function generatePattern(aiData: AIData): SubitizingPattern {
         })
       }
       break
-      
-    case 'circle':
+    }
+
+    case 'circle': {
       const radius = 25
       const centerX = 50
       const centerY = 50
@@ -222,8 +223,9 @@ function generatePattern(aiData: AIData): SubitizingPattern {
         })
       }
       break
-      
-    case 'dice_pattern':
+    }
+
+    case 'dice_pattern': {
       const dicePatterns: { [key: number]: Array<{x: number, y: number}> } = {
         1: [{x: 50, y: 50}],
         2: [{x: 30, y: 30}, {x: 70, y: 70}],
@@ -280,8 +282,9 @@ function generatePattern(aiData: AIData): SubitizingPattern {
         })
       }
       break
-      
-    default: // random
+    }
+
+    default: { // random
       const usedPositions = new Set()
       for (let i = 0; i < numObjects; i++) {
         let x, y, posKey
@@ -305,6 +308,8 @@ function generatePattern(aiData: AIData): SubitizingPattern {
           })
         }
       }
+      break
+    }
   }
 
   return {

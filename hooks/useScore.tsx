@@ -1,12 +1,6 @@
 "use client";
 
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  ReactNode,
-} from "react";
+import { createContext, useContext, useState, ReactNode } from "react";
 import type { GameProgress } from "@/types";
 
 interface ScoreContextType {
@@ -44,7 +38,7 @@ export function ScoreProvider({ children }: ScoreProviderProps) {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        await response.json();
         // Reload the user's total score to get the updated total across all games
         await loadUserScore(currentUserId);
       }

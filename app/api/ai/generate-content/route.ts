@@ -1,5 +1,24 @@
 import { NextResponse } from 'next/server'
 
+const parseQuestionData = (content: string) => {
+  let cleaned = content.trim()
+  if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim()
+  }
+
+  try {
+    return JSON.parse(cleaned)
+  } catch {
+    const match = cleaned.match(/\{[\s\S]*\}/)
+    if (!match) return null
+    try {
+      return JSON.parse(match[0])
+    } catch {
+      return null
+    }
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const { age, questionNumber, timestamp, usedQuestions = [], trueFalseHistory = [] } = await request.json()
@@ -102,12 +121,8 @@ Return ONLY a JSON object with:
       throw new Error('No question content received')
     }
 
-    // Parse the JSON response
-    let questionData
-    try {
-      questionData = JSON.parse(questionContent)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (error) {
+    const questionData = parseQuestionData(questionContent)
+    if (!questionData) {
       throw new Error('Invalid question format received')
     }
 

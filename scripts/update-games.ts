@@ -57,6 +57,21 @@ async function updateGames() {
     } else {
       console.log('Puzzle game already exists')
     }
+
+    const shapesGame = existingGames.find(game => game.title === 'Shapes')
+    if (!shapesGame) {
+      await DatabaseService.createGame({
+        title: 'Shapes',
+        description: 'Tap shapes to hear their names with friendly audio',
+        icon: '🔷',
+        category: 'shapes',
+        difficulty: 1,
+        isActive: true
+      })
+      console.log('Added new Shapes game')
+    } else {
+      console.log('Shapes game already exists')
+    }
     
     console.log('Games update completed successfully!')
     

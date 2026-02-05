@@ -1,11 +1,21 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { useState, useEffect, useRef, useCallback } from "react";
+import type { ReactNode } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
-import { Volume2, VolumeX, Play, Pause, RotateCcw, Star, Music, Heart } from 'lucide-react';
+import {
+  Volume2,
+  VolumeX,
+  Play,
+  Pause,
+  RotateCcw,
+  Star,
+  Music,
+  Heart,
+} from "lucide-react";
 
 interface Note {
   name: string;
@@ -25,7 +35,7 @@ interface GameMode {
   id: string;
   name: string;
   description: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
 }
 
 interface RhythmPattern {
@@ -35,88 +45,105 @@ interface RhythmPattern {
 }
 
 const NOTES: Note[] = [
-  { name: 'C', frequency: 261.63, color: '#FF6B6B' },
-  { name: 'C#', frequency: 277.18, color: '#4ECDC4', isBlack: true },
-  { name: 'D', frequency: 293.66, color: '#45B7D1' },
-  { name: 'D#', frequency: 311.13, color: '#96CEB4', isBlack: true },
-  { name: 'E', frequency: 329.63, color: '#FFEAA7' },
-  { name: 'F', frequency: 349.23, color: '#DDA0DD' },
-  { name: 'F#', frequency: 369.99, color: '#98D8C8', isBlack: true },
-  { name: 'G', frequency: 392.00, color: '#F7DC6F' },
-  { name: 'G#', frequency: 415.30, color: '#BB8FCE', isBlack: true },
-  { name: 'A', frequency: 440.00, color: '#85C1E9' },
-  { name: 'A#', frequency: 466.16, color: '#F8C471', isBlack: true },
-  { name: 'B', frequency: 493.88, color: '#82E0AA' },
+  { name: "C", frequency: 261.63, color: "#FF6B6B" },
+  { name: "C#", frequency: 277.18, color: "#4ECDC4", isBlack: true },
+  { name: "D", frequency: 293.66, color: "#45B7D1" },
+  { name: "D#", frequency: 311.13, color: "#96CEB4", isBlack: true },
+  { name: "E", frequency: 329.63, color: "#FFEAA7" },
+  { name: "F", frequency: 349.23, color: "#DDA0DD" },
+  { name: "F#", frequency: 369.99, color: "#98D8C8", isBlack: true },
+  { name: "G", frequency: 392.0, color: "#F7DC6F" },
+  { name: "G#", frequency: 415.3, color: "#BB8FCE", isBlack: true },
+  { name: "A", frequency: 440.0, color: "#85C1E9" },
+  { name: "A#", frequency: 466.16, color: "#F8C471", isBlack: true },
+  { name: "B", frequency: 493.88, color: "#82E0AA" },
 ];
 
 const GAME_MODES: GameMode[] = [
   {
-    id: 'free-play',
-    name: 'Free Play',
-    description: 'Play the piano freely and explore sounds!',
-    icon: <Music className="w-6 h-6" />
+    id: "free-play",
+    name: "Free Play",
+    description: "Play the piano freely and explore sounds!",
+    icon: <Music className="w-6 h-6" />,
   },
   {
-    id: 'note-recognition',
-    name: 'Note Recognition',
-    description: 'Listen and identify the correct note!',
-    icon: <Volume2 className="w-6 h-6" />
+    id: "note-recognition",
+    name: "Note Recognition",
+    description: "Listen and identify the correct note!",
+    icon: <Volume2 className="w-6 h-6" />,
   },
   {
-    id: 'rhythm-game',
-    name: 'Rhythm Game',
-    description: 'Follow the rhythm pattern!',
-    icon: <Heart className="w-6 h-6" />
+    id: "rhythm-game",
+    name: "Rhythm Game",
+    description: "Follow the rhythm pattern!",
+    icon: <Heart className="w-6 h-6" />,
   },
   {
-    id: 'melody-maker',
-    name: 'Melody Maker',
-    description: 'Create your own beautiful melodies!',
-    icon: <Star className="w-6 h-6" />
-  }
+    id: "melody-maker",
+    name: "Melody Maker",
+    description: "Create your own beautiful melodies!",
+    icon: <Star className="w-6 h-6" />,
+  },
 ];
 
 const RHYTHM_PATTERNS: RhythmPattern[] = [
-  { beats: [true, false, true, false], name: 'Simple Beat', tempo: 120 },
-  { beats: [true, true, false, true], name: 'Fun Pattern', tempo: 100 },
-  { beats: [true, false, false, true, true, false], name: 'Advanced', tempo: 140 },
+  { beats: [true, false, true, false], name: "Simple Beat", tempo: 120 },
+  { beats: [true, true, false, true], name: "Fun Pattern", tempo: 100 },
+  {
+    beats: [true, false, false, true, true, false],
+    name: "Advanced",
+    tempo: 140,
+  },
 ];
 
-export default function MusicLearningGame({ userId, gameId, userAge, onGameComplete }: MusicLearningGameProps) {
-  const [currentMode, setCurrentMode] = useState<string>('free-play');
+export default function MusicLearningGame({
+  userId,
+  gameId,
+  userAge,
+  onGameComplete,
+}: MusicLearningGameProps) {
+  void userId;
+  void gameId;
+  void userAge;
+  void onGameComplete;
+  const [currentMode, setCurrentMode] = useState<string>("free-play");
   const [score, setScore] = useState(0);
-  const [level, setLevel] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  
+
   // Note Recognition Game State
   const [targetNote, setTargetNote] = useState<Note | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
-  const [feedbackMessage, setFeedbackMessage] = useState('');
+  const [feedbackMessage, setFeedbackMessage] = useState("");
   const [correctAnswers, setCorrectAnswers] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(0);
-  
+
   // Rhythm Game State
-  const [currentPattern, setCurrentPattern] = useState<RhythmPattern | null>(null);
+  const [currentPattern, setCurrentPattern] = useState<RhythmPattern | null>(
+    null,
+  );
   const [currentBeat, setCurrentBeat] = useState(0);
   const [playerPattern, setPlayerPattern] = useState<boolean[]>([]);
   const [rhythmPlaying, setRhythmPlaying] = useState(false);
-  
+
   // Melody Maker State
   const [recordedMelody, setRecordedMelody] = useState<Note[]>([]);
   const [isRecording, setIsRecording] = useState(false);
-  
+
   // Audio Context
   const audioContextRef = useRef<AudioContext | null>(null);
-  const rhythmIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const rhythmIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     // Initialize Web Audio API
-    if (typeof window !== 'undefined') {
-      const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (typeof window !== "undefined") {
+      const AudioContextClass =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext })
+          .webkitAudioContext;
       audioContextRef.current = new AudioContextClass();
     }
-    
+
     return () => {
       if (rhythmIntervalRef.current) {
         clearInterval(rhythmIntervalRef.current);
@@ -124,71 +151,83 @@ export default function MusicLearningGame({ userId, gameId, userAge, onGameCompl
     };
   }, []);
 
-  const playNote = useCallback((note: Note, duration: number = 0.5) => {
-    if (isMuted || !audioContextRef.current) return;
+  const playNote = useCallback(
+    (note: Note, duration: number = 0.5) => {
+      if (isMuted || !audioContextRef.current) return;
 
-    const context = audioContextRef.current;
-    const oscillator = context.createOscillator();
-    const gainNode = context.createGain();
+      const context = audioContextRef.current;
+      const oscillator = context.createOscillator();
+      const gainNode = context.createGain();
 
-    oscillator.connect(gainNode);
-    gainNode.connect(context.destination);
+      oscillator.connect(gainNode);
+      gainNode.connect(context.destination);
 
-    oscillator.frequency.setValueAtTime(note.frequency, context.currentTime);
-    oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(note.frequency, context.currentTime);
+      oscillator.type = "sine";
 
-    gainNode.gain.setValueAtTime(0.3, context.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + duration);
+      gainNode.gain.setValueAtTime(0.3, context.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(
+        0.01,
+        context.currentTime + duration,
+      );
 
-    oscillator.start(context.currentTime);
-    oscillator.stop(context.currentTime + duration);
+      oscillator.start(context.currentTime);
+      oscillator.stop(context.currentTime + duration);
 
-    // Add to recorded melody if recording
-    if (isRecording && currentMode === 'melody-maker') {
-      setRecordedMelody(prev => [...prev, note]);
-    }
-  }, [isMuted, isRecording, currentMode]);
+      // Add to recorded melody if recording
+      if (isRecording && currentMode === "melody-maker") {
+        setRecordedMelody((prev) => [...prev, note]);
+      }
+    },
+    [isMuted, isRecording, currentMode],
+  );
 
   const startNoteRecognitionGame = useCallback(() => {
     const randomNote = NOTES[Math.floor(Math.random() * NOTES.length)];
     setTargetNote(randomNote);
     setShowFeedback(false);
-    
+
     // Play the note automatically
     setTimeout(() => {
       playNote(randomNote, 1);
     }, 500);
   }, [playNote]);
 
-  const handleNoteGuess = useCallback((guessedNote: Note) => {
-    if (!targetNote) return;
-    
-    const isCorrect = guessedNote.name === targetNote.name;
-    setTotalQuestions(prev => prev + 1);
-    
-    if (isCorrect) {
-      setCorrectAnswers(prev => prev + 1);
-      setScore(prev => prev + 10);
-      setFeedbackMessage('🎉 Correct! Great job!');
-    } else {
-      setFeedbackMessage(`❌ That was ${guessedNote.name}. The correct answer was ${targetNote.name}. Try again!`);
-    }
-    
-    setShowFeedback(true);
-    
-    // Start next question after delay
-    setTimeout(() => {
-      startNoteRecognitionGame();
-    }, 2000);
-  }, [targetNote, startNoteRecognitionGame]);
+  const handleNoteGuess = useCallback(
+    (guessedNote: Note) => {
+      if (!targetNote) return;
+
+      const isCorrect = guessedNote.name === targetNote.name;
+      setTotalQuestions((prev) => prev + 1);
+
+      if (isCorrect) {
+        setCorrectAnswers((prev) => prev + 1);
+        setScore((prev) => prev + 10);
+        setFeedbackMessage("🎉 Correct! Great job!");
+      } else {
+        setFeedbackMessage(
+          `❌ That was ${guessedNote.name}. The correct answer was ${targetNote.name}. Try again!`,
+        );
+      }
+
+      setShowFeedback(true);
+
+      // Start next question after delay
+      setTimeout(() => {
+        startNoteRecognitionGame();
+      }, 2000);
+    },
+    [targetNote, startNoteRecognitionGame],
+  );
 
   const startRhythmGame = useCallback(() => {
-    const pattern = RHYTHM_PATTERNS[Math.floor(Math.random() * RHYTHM_PATTERNS.length)];
+    const pattern =
+      RHYTHM_PATTERNS[Math.floor(Math.random() * RHYTHM_PATTERNS.length)];
     setCurrentPattern(pattern);
     setCurrentBeat(0);
     setPlayerPattern([]);
     setRhythmPlaying(true);
-    
+
     // Play the pattern
     let beatIndex = 0;
     rhythmIntervalRef.current = setInterval(() => {
@@ -198,11 +237,11 @@ export default function MusicLearningGame({ userId, gameId, userAge, onGameCompl
         setCurrentBeat(0);
         return;
       }
-      
+
       setCurrentBeat(beatIndex);
       if (pattern.beats[beatIndex] && !isMuted) {
         // Play a drum sound (using a low frequency note)
-        playNote({ name: 'C', frequency: 130.81, color: '#FF6B6B' }, 0.2);
+        playNote({ name: "C", frequency: 130.81, color: "#FF6B6B" }, 0.2);
       }
       beatIndex++;
     }, 60000 / pattern.tempo);
@@ -210,17 +249,17 @@ export default function MusicLearningGame({ userId, gameId, userAge, onGameCompl
 
   const handleRhythmTap = useCallback(() => {
     if (!currentPattern || rhythmPlaying) return;
-    
+
     const newPattern = [...playerPattern, true];
     setPlayerPattern(newPattern);
-    
+
     // Play tap sound
-    playNote({ name: 'C', frequency: 523.25, color: '#FF6B6B' }, 0.1);
-    
+    playNote({ name: "C", frequency: 523.25, color: "#FF6B6B" }, 0.1);
+
     // Check if pattern is complete
     if (newPattern.length === currentPattern.beats.length) {
       // Simple scoring - give points for any attempt
-      setScore(prev => prev + 5);
+      setScore((prev) => prev + 5);
       setTimeout(() => {
         startRhythmGame();
       }, 1000);
@@ -229,7 +268,7 @@ export default function MusicLearningGame({ userId, gameId, userAge, onGameCompl
 
   const playRecordedMelody = useCallback(() => {
     if (recordedMelody.length === 0) return;
-    
+
     setIsPlaying(true);
     recordedMelody.forEach((note, index) => {
       setTimeout(() => {
@@ -247,30 +286,30 @@ export default function MusicLearningGame({ userId, gameId, userAge, onGameCompl
   }, []);
 
   useEffect(() => {
-    if (currentMode === 'note-recognition' && !targetNote) {
+    if (currentMode === "note-recognition" && !targetNote) {
       startNoteRecognitionGame();
     }
   }, [currentMode, targetNote, startNoteRecognitionGame]);
 
   const renderPiano = () => {
-    const whiteKeys = NOTES.filter(note => !note.isBlack);
-    const blackKeys = NOTES.filter(note => note.isBlack);
+    const whiteKeys = NOTES.filter((note) => !note.isBlack);
+    const blackKeys = NOTES.filter((note) => note.isBlack);
 
     return (
-      <div className="relative mx-auto" style={{ width: 'fit-content' }}>
+      <div className="relative mx-auto" style={{ width: "fit-content" }}>
         {/* White Keys */}
         <div className="flex">
-          {whiteKeys.map((note, index) => (
+          {whiteKeys.map((note) => (
             <button
               key={note.name}
               className="w-12 h-32 bg-white border-2 border-gray-300 hover:bg-gray-100 active:bg-gray-200 transition-colors duration-150 flex items-end justify-center pb-2 text-sm font-semibold"
-              style={{ 
+              style={{
                 borderColor: note.color,
-                boxShadow: `0 4px 8px ${note.color}40`
+                boxShadow: `0 4px 8px ${note.color}40`,
               }}
               onClick={() => {
                 playNote(note);
-                if (currentMode === 'note-recognition') {
+                if (currentMode === "note-recognition") {
                   handleNoteGuess(note);
                 }
               }}
@@ -279,36 +318,36 @@ export default function MusicLearningGame({ userId, gameId, userAge, onGameCompl
             </button>
           ))}
         </div>
-        
+
         {/* Black Keys */}
         <div className="absolute top-0 flex">
           {whiteKeys.map((_, index) => {
-            const blackKey = blackKeys.find(black => {
+            const blackKey = blackKeys.find((black) => {
               const whiteNote = whiteKeys[index].name;
               return (
-                (whiteNote === 'C' && black.name === 'C#') ||
-                (whiteNote === 'D' && black.name === 'D#') ||
-                (whiteNote === 'F' && black.name === 'F#') ||
-                (whiteNote === 'G' && black.name === 'G#') ||
-                (whiteNote === 'A' && black.name === 'A#')
+                (whiteNote === "C" && black.name === "C#") ||
+                (whiteNote === "D" && black.name === "D#") ||
+                (whiteNote === "F" && black.name === "F#") ||
+                (whiteNote === "G" && black.name === "G#") ||
+                (whiteNote === "A" && black.name === "A#")
               );
             });
-            
+
             if (!blackKey) {
               return <div key={index} className="w-12" />;
             }
-            
+
             return (
               <div key={index} className="w-12 flex justify-end">
                 <button
                   className="w-8 h-20 bg-gray-800 hover:bg-gray-700 active:bg-gray-600 text-white text-xs font-semibold flex items-end justify-center pb-1 transition-colors duration-150"
-                  style={{ 
+                  style={{
                     backgroundColor: blackKey.color,
-                    boxShadow: `0 2px 4px ${blackKey.color}60`
+                    boxShadow: `0 2px 4px ${blackKey.color}60`,
                   }}
                   onClick={() => {
                     playNote(blackKey);
-                    if (currentMode === 'note-recognition') {
+                    if (currentMode === "note-recognition") {
                       handleNoteGuess(blackKey);
                     }
                   }}
@@ -325,11 +364,15 @@ export default function MusicLearningGame({ userId, gameId, userAge, onGameCompl
 
   const renderGameContent = () => {
     switch (currentMode) {
-      case 'free-play':
+      case "free-play":
         return (
           <div className="text-center space-y-4">
-            <h3 className="text-xl font-bold text-purple-700">🎹 Free Play Mode</h3>
-            <p className="text-gray-600">Click on the piano keys to make beautiful music!</p>
+            <h3 className="text-xl font-bold text-purple-700">
+              🎹 Free Play Mode
+            </h3>
+            <p className="text-gray-600">
+              Click on the piano keys to make beautiful music!
+            </p>
             {renderPiano()}
             <div className="text-sm text-gray-500 mt-4">
               Try playing different combinations of notes to create melodies!
@@ -337,12 +380,16 @@ export default function MusicLearningGame({ userId, gameId, userAge, onGameCompl
           </div>
         );
 
-      case 'note-recognition':
+      case "note-recognition":
         return (
           <div className="text-center space-y-4">
-            <h3 className="text-xl font-bold text-purple-700">🎵 Note Recognition</h3>
+            <h3 className="text-xl font-bold text-purple-700">
+              🎵 Note Recognition
+            </h3>
             <div className="bg-blue-50 p-4 rounded-lg">
-              <p className="text-gray-700 mb-2">Listen to the note and click the correct key!</p>
+              <p className="text-gray-700 mb-2">
+                Listen to the note and click the correct key!
+              </p>
               {targetNote && (
                 <div className="text-lg font-semibold text-blue-600">
                   🎵 Listen carefully and find the note!
@@ -372,39 +419,43 @@ export default function MusicLearningGame({ userId, gameId, userAge, onGameCompl
           </div>
         );
 
-      case 'rhythm-game':
+      case "rhythm-game":
         return (
           <div className="text-center space-y-4">
-            <h3 className="text-xl font-bold text-purple-700">🥁 Rhythm Game</h3>
+            <h3 className="text-xl font-bold text-purple-700">
+              🥁 Rhythm Game
+            </h3>
             <div className="bg-green-50 p-4 rounded-lg">
-              <p className="text-gray-700 mb-4">Listen to the rhythm, then tap the button to copy it!</p>
-              
+              <p className="text-gray-700 mb-4">
+                Listen to the rhythm, then tap the button to copy it!
+              </p>
+
               {currentPattern && (
                 <div className="space-y-4">
                   <div className="text-lg font-semibold">
                     Pattern: {currentPattern.name}
                   </div>
-                  
+
                   {/* Visual rhythm display */}
                   <div className="flex justify-center gap-2">
                     {currentPattern.beats.map((beat, index) => (
                       <div
                         key={index}
                         className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${
-                          beat 
-                            ? 'bg-green-500 border-green-600' 
-                            : 'bg-gray-200 border-gray-300'
+                          beat
+                            ? "bg-green-500 border-green-600"
+                            : "bg-gray-200 border-gray-300"
                         } ${
-                          rhythmPlaying && index === currentBeat 
-                            ? 'ring-4 ring-yellow-400' 
-                            : ''
+                          rhythmPlaying && index === currentBeat
+                            ? "ring-4 ring-yellow-400"
+                            : ""
                         }`}
                       >
-                        {beat ? '♪' : '○'}
+                        {beat ? "♪" : "○"}
                       </div>
                     ))}
                   </div>
-                  
+
                   {!rhythmPlaying && (
                     <div className="space-y-2">
                       <Button
@@ -415,13 +466,14 @@ export default function MusicLearningGame({ userId, gameId, userAge, onGameCompl
                         🥁 TAP!
                       </Button>
                       <div className="text-sm text-gray-600">
-                        Tapped: {playerPattern.length}/{currentPattern.beats.length}
+                        Tapped: {playerPattern.length}/
+                        {currentPattern.beats.length}
                       </div>
                     </div>
                   )}
                 </div>
               )}
-              
+
               <Button
                 onClick={startRhythmGame}
                 variant="outline"
@@ -433,13 +485,17 @@ export default function MusicLearningGame({ userId, gameId, userAge, onGameCompl
           </div>
         );
 
-      case 'melody-maker':
+      case "melody-maker":
         return (
           <div className="text-center space-y-4">
-            <h3 className="text-xl font-bold text-purple-700">🎼 Melody Maker</h3>
+            <h3 className="text-xl font-bold text-purple-700">
+              🎼 Melody Maker
+            </h3>
             <div className="bg-purple-50 p-4 rounded-lg">
-              <p className="text-gray-700 mb-4">Create your own melody by playing the piano!</p>
-              
+              <p className="text-gray-700 mb-4">
+                Create your own melody by playing the piano!
+              </p>
+
               <div className="flex justify-center gap-2 mb-4">
                 <Button
                   onClick={() => setIsRecording(!isRecording)}
@@ -458,7 +514,7 @@ export default function MusicLearningGame({ userId, gameId, userAge, onGameCompl
                     </>
                   )}
                 </Button>
-                
+
                 {recordedMelody.length > 0 && (
                   <>
                     <Button
@@ -470,7 +526,7 @@ export default function MusicLearningGame({ userId, gameId, userAge, onGameCompl
                       <Volume2 className="w-4 h-4" />
                       Play Melody
                     </Button>
-                    
+
                     <Button
                       onClick={clearMelody}
                       variant="outline"
@@ -482,7 +538,7 @@ export default function MusicLearningGame({ userId, gameId, userAge, onGameCompl
                   </>
                 )}
               </div>
-              
+
               {recordedMelody.length > 0 && (
                 <div className="mb-4">
                   <div className="text-sm font-semibold mb-2">Your Melody:</div>
@@ -499,14 +555,14 @@ export default function MusicLearningGame({ userId, gameId, userAge, onGameCompl
                   </div>
                 </div>
               )}
-              
+
               {isRecording && (
                 <div className="text-red-600 font-semibold animate-pulse">
                   🔴 Recording... Play some notes!
                 </div>
               )}
             </div>
-            
+
             {renderPiano()}
           </div>
         );
@@ -531,7 +587,11 @@ export default function MusicLearningGame({ userId, gameId, userAge, onGameCompl
                 size="sm"
                 onClick={() => setIsMuted(!isMuted)}
               >
-                {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                {isMuted ? (
+                  <VolumeX className="w-4 h-4" />
+                ) : (
+                  <Volume2 className="w-4 h-4" />
+                )}
               </Button>
               <Badge variant="secondary" className="text-lg px-3 py-1">
                 Score: {score}
@@ -553,7 +613,9 @@ export default function MusicLearningGame({ userId, gameId, userAge, onGameCompl
                 key={mode.id}
                 variant={currentMode === mode.id ? "default" : "outline"}
                 className={`h-auto p-4 flex flex-col items-center gap-2 ${
-                  currentMode === mode.id ? 'bg-purple-600 hover:bg-purple-700' : ''
+                  currentMode === mode.id
+                    ? "bg-purple-600 hover:bg-purple-700"
+                    : ""
                 }`}
                 onClick={() => setCurrentMode(mode.id)}
               >
@@ -570,21 +632,21 @@ export default function MusicLearningGame({ userId, gameId, userAge, onGameCompl
 
       {/* Game Content */}
       <Card>
-        <CardContent className="p-6">
-          {renderGameContent()}
-        </CardContent>
+        <CardContent className="p-6">{renderGameContent()}</CardContent>
       </Card>
 
       {/* Progress */}
-      {(currentMode === 'note-recognition' && totalQuestions > 0) && (
+      {currentMode === "note-recognition" && totalQuestions > 0 && (
         <Card>
           <CardContent className="p-4">
             <div className="text-center">
               <div className="text-sm font-semibold mb-2">Progress</div>
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
+                <div
                   className="bg-purple-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${(correctAnswers / totalQuestions) * 100}%` }}
+                  style={{
+                    width: `${(correctAnswers / totalQuestions) * 100}%`,
+                  }}
                 />
               </div>
               <div className="text-xs text-gray-600 mt-1">

@@ -1,110 +1,117 @@
-'use client'
+"use client";
 
-import { useState, useEffect, useCallback } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-import TrueFalseGame from '@/components/game/TrueFalseGame'
-import SubitizingGame from '@/components/game/SubitizingGame'
-import PuzzleGame from '@/components/game/PuzzleGame'
-import MemoryMatchGame from '@/components/game/MemoryMatchGame'
-import MemoryMatchConfig from '@/components/game/MemoryMatchConfig'
-import NumberFunGame from '@/components/game/NumberFunGame'
-import MusicLearningGame from '@/components/game/MusicLearningGame'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Header } from '@/components/layout/Header'
-import { ArrowLeft } from 'lucide-react'
-import type { User, Game } from '@/types'
+import { useState, useEffect, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
+import TrueFalseGame from "@/components/game/TrueFalseGame";
+import SubitizingGame from "@/components/game/SubitizingGame";
+import PuzzleGame from "@/components/game/PuzzleGame";
+import MemoryMatchGame from "@/components/game/MemoryMatchGame";
+import MemoryMatchConfig from "@/components/game/MemoryMatchConfig";
+import NumberFunGame from "@/components/game/NumberFunGame";
+import MusicLearningGame from "@/components/game/MusicLearningGame";
+import ShapesGame from "@/components/game/ShapesGame";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Header } from "@/components/layout/Header";
+import { ArrowLeft } from "lucide-react";
+import type { User, Game } from "@/types";
 
 export default function GamePage() {
-  const params = useParams()
-  const router = useRouter()
-  const gameId = params.gameId as string
-  
-  const [game, setGame] = useState<Game | null>(null)
-  const [currentUser, setCurrentUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [memoryMatchConfig, setMemoryMatchConfig] = useState<{ rows: number; cols: number; pairs: number } | null>(null)
+  const params = useParams();
+  const router = useRouter();
+  const gameId = params.gameId as string;
+
+  const [game, setGame] = useState<Game | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [memoryMatchConfig, setMemoryMatchConfig] = useState<{
+    rows: number;
+    cols: number;
+    pairs: number;
+  } | null>(null);
 
   const loadGameData = useCallback(async () => {
     try {
-      const response = await fetch('/api/games')
-      const games = await response.json()
-      const currentGame = games.find((g: Game) => g.id === gameId)
-      setGame(currentGame || null)
+      const response = await fetch("/api/games");
+      const games = await response.json();
+      const currentGame = games.find((g: Game) => g.id === gameId);
+      setGame(currentGame || null);
     } catch (error) {
-      console.error('Failed to load game:', error)
+      console.error("Failed to load game:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [gameId])
+  }, [gameId]);
 
   const loadCurrentUser = useCallback(async () => {
     try {
       // Get user ID from localStorage
-      const savedUserId = localStorage.getItem('selectedUserId')
+      const savedUserId = localStorage.getItem("selectedUserId");
       if (!savedUserId) {
         // No user selected, redirect to homepage
-        router.push('/')
-        return
+        router.push("/");
+        return;
       }
 
       // Fetch user data
-      const response = await fetch('/api/users')
-      const users = await response.json()
-      const user = users.find((u: User) => u.id === savedUserId)
-      
+      const response = await fetch("/api/users");
+      const users = await response.json();
+      const user = users.find((u: User) => u.id === savedUserId);
+
       if (!user) {
         // User not found, redirect to homepage
-        router.push('/')
-        return
+        router.push("/");
+        return;
       }
 
-      setCurrentUser(user)
+      setCurrentUser(user);
     } catch (error) {
-      console.error('Failed to load user:', error)
-      router.push('/')
+      console.error("Failed to load user:", error);
+      router.push("/");
     }
-  }, [router])
+  }, [router]);
 
   useEffect(() => {
-    loadGameData()
-    loadCurrentUser()
-  }, [gameId, loadGameData, loadCurrentUser])
+    loadGameData();
+    loadCurrentUser();
+  }, [gameId, loadGameData, loadCurrentUser]);
 
   const handleGameComplete = async (score: number, _totalQuestions: number) => {
-    if (!currentUser || !game) return
-    
+    if (!currentUser || !game) return;
+
     try {
       // Save game progress to database
-      const response = await fetch('/api/game-progress', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/game-progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: currentUser.id,
           gameId: game.id,
           score: 1, // Always add 1 point per completed game
-          level: 1
-        })
-      })
-      
+          level: 1,
+        }),
+      });
+
       if (!response.ok) {
-        throw new Error('Failed to save game progress')
+        throw new Error("Failed to save game progress");
       }
-      
-      console.log(`Game completed with score: ${score}/${_totalQuestions}`)
+
+      console.log(`Game completed with score: ${score}/${_totalQuestions}`);
     } catch (error) {
-      console.error('Error saving game progress:', error)
+      console.error("Error saving game progress:", error);
     }
-  }
+  };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-xl font-semibold text-gray-600">Loading game...</div>
+          <div className="text-xl font-semibold text-gray-600">
+            Loading game...
+          </div>
         </div>
       </div>
-    )
+    );
   }
 
   if (!game) {
@@ -113,131 +120,143 @@ export default function GamePage() {
         <Card className="w-full max-w-md mx-auto">
           <CardContent className="text-center p-6">
             <h1 className="text-xl font-semibold mb-4">Game not found</h1>
-            <Button onClick={() => router.push('/')}>
+            <Button onClick={() => router.push("/")}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Home
             </Button>
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   if (!currentUser) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-xl font-semibold text-gray-600">Redirecting to homepage...</div>
+          <div className="text-xl font-semibold text-gray-600">
+            Redirecting to homepage...
+          </div>
         </div>
       </div>
-    )
+    );
   }
 
   const renderGame = () => {
-    if (game.title === 'Subitizing') {
+    if (game.title === "Subitizing") {
       return (
-        <SubitizingGame 
+        <SubitizingGame
           userId={currentUser.id}
           gameId={game.id}
           userAge={currentUser.age || 6}
           onGameComplete={handleGameComplete}
         />
-      )
+      );
     }
 
-    if (game.title === 'Puzzle') {
+    if (game.title === "Puzzle") {
       return (
-        <PuzzleGame 
+        <PuzzleGame
           userId={currentUser.id}
           gameId={game.id}
           userAge={currentUser.age || 6}
           onGameComplete={handleGameComplete}
         />
-      )
+      );
     }
 
-    if (game.title === 'Memory Match') {
+    if (game.title === "Memory Match") {
       if (!memoryMatchConfig) {
         return (
           <MemoryMatchConfig
             onConfigSelect={setMemoryMatchConfig}
-            onCancel={() => router.push('/')}
+            onCancel={() => router.push("/")}
           />
-        )
+        );
       }
-      
+
       return (
-        <MemoryMatchGame 
+        <MemoryMatchGame
           userId={currentUser.id}
           gameId={game.id}
           userAge={currentUser.age || 6}
           gridConfig={memoryMatchConfig}
           onGameComplete={handleGameComplete}
         />
-      )
+      );
     }
 
-    if (game.title === 'Number Fun') {
+    if (game.title === "Number Fun") {
       return (
-        <NumberFunGame 
+        <NumberFunGame
           userId={currentUser.id}
           gameId={game.id}
           userAge={currentUser.age || 6}
           onGameComplete={handleGameComplete}
         />
-      )
+      );
     }
 
-    if (game.title === 'Music Maker') {
+    if (game.title === "Music Maker") {
       return (
-        <MusicLearningGame 
+        <MusicLearningGame
           userId={currentUser.id}
           gameId={game.id}
           userAge={currentUser.age || 6}
           onGameComplete={handleGameComplete}
         />
-      )
+      );
+    }
+
+    if (game.title === "Shapes") {
+      return (
+        <ShapesGame
+          userId={currentUser.id}
+          gameId={game.id}
+          userAge={currentUser.age || 6}
+          onGameComplete={handleGameComplete}
+        />
+      );
     }
 
     return (
-      <TrueFalseGame 
+      <TrueFalseGame
         userId={currentUser.id}
         gameId={game.id}
         userAge={currentUser.age || 6}
         onGameComplete={handleGameComplete}
       />
-    )
-  }
+    );
+  };
 
   const handleNavigate = (page: string) => {
     switch (page) {
-      case 'home':
-        router.push('/')
-        break
-      case 'achievements':
-        router.push('/achievements')
-        break
-      case 'profile':
-        router.push('/')
-        break
-      case 'settings':
-        router.push('/')
-        break
+      case "home":
+        router.push("/");
+        break;
+      case "achievements":
+        router.push("/achievements");
+        break;
+      case "profile":
+        router.push("/");
+        break;
+      case "settings":
+        router.push("/");
+        break;
       default:
-        router.push('/')
+        router.push("/");
     }
-  }
+  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      <Header 
-        currentUser={currentUser} 
-        onNavigate={handleNavigate}
-      />
-      
+      <Header currentUser={currentUser} onNavigate={handleNavigate} />
+
       <div className="max-w-4xl mx-auto p-4">
         {/* Game Title Section */}
         <div className="mb-0 text-center">
-          <h1 className="text-3xl font-bold text-gray-800 mb-0">{game.title}</h1>
+          <h1 className="text-3xl font-bold text-gray-800 mb-0">
+            {game.title}
+          </h1>
           {/* <p className="text-gray-600 text-lg">{game.description}</p> */}
         </div>
 
@@ -245,5 +264,5 @@ export default function GamePage() {
         {renderGame()}
       </div>
     </div>
-  )
+  );
 }

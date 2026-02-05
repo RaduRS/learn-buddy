@@ -30,7 +30,6 @@ interface AIContent {
   difficulty: number
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export default function TrueFalseGame({ userId, gameId, userAge, onGameComplete }: TrueFalseGameProps) {
   const { incrementScore } = useScore()
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null)

@@ -1,9 +1,17 @@
+import type { NextConfig } from "next";
 import withPWA from "next-pwa";
 
-const nextConfig = {
-  /* config options here */
+const nextConfig: NextConfig = {
+  turbopack: {},
+  webpack: (config, { dev, isServer }) => {
+    if (dev && !isServer) {
+      config.devtool = "eval-source-map";
+    }
+    return config;
+  },
+  productionBrowserSourceMaps: false,
   experimental: {
-    optimizePackageImports: ['lucide-react'],
+    optimizePackageImports: ["lucide-react"],
   },
 };
 
