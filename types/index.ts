@@ -1,3 +1,5 @@
+declare module "next-pwa";
+
 // Database types (extending Prisma types)
 export type User = {
   id: string
