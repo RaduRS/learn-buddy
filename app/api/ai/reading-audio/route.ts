@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
+const MAX_TTS_CHARS = 2000;
+
 export async function POST(request: NextRequest) {
   try {
     const { text } = await request.json();
 
     if (!text || typeof text !== "string") {
-      return NextResponse.json(
-        { error: "Text is required" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Text is required" }, { status: 400 });
     }
 
     const cleanedText = text.trim();
@@ -19,12 +18,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (cleanedText.length > 2000) {
-      return NextResponse.json(
-        { error: "Text exceeds 2000 characters" },
-        { status: 400 },
-      );
-    }
+    const textForSpeech =
+      cleanedText.length > MAX_TTS_CHARS
+        ? cleanedText.slice(0, MAX_TTS_CHARS)
+        : cleanedText;
 
     const deepgramApiKey = process.env.DEEPGRAM_API_KEY;
     if (!deepgramApiKey) {
@@ -43,7 +40,7 @@ export async function POST(request: NextRequest) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          text: cleanedText,
+          text: textForSpeech,
         }),
       },
     );
@@ -53,7 +50,10 @@ export async function POST(request: NextRequest) {
       console.error("Deepgram TTS error:", deepgramResponse.status, errorText);
       return NextResponse.json(
         { error: "Failed to generate speech" },
-        { status: deepgramResponse.status >= 500 ? 502 : deepgramResponse.status },
+        {
+          status:
+            deepgramResponse.status >= 500 ? 502 : deepgramResponse.status,
+        },
       );
     }
 
@@ -66,6 +66,7 @@ export async function POST(request: NextRequest) {
       headers: {
         "Content-Type": contentType,
         "Cache-Control": "no-store",
+        "X-Text-Truncated": String(cleanedText.length > MAX_TTS_CHARS),
       },
     });
   } catch (error) {
