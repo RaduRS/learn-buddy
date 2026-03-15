@@ -13,7 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Camera, Loader2, Volume2, Sparkles, ScanText } from "lucide-react";
+import { Camera, Loader2, Play, Sparkles, ScanText } from "lucide-react";
 
 interface ReadingHelperGameProps {
   userId: string;
@@ -35,6 +35,7 @@ export default function ReadingHelperGame({
   void userAge;
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const audioElementRef = useRef<HTMLAudioElement | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [extractedText, setExtractedText] = useState("");
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -52,6 +53,11 @@ export default function ReadingHelperGame({
 
   useEffect(() => {
     return () => {
+      if (audioElementRef.current) {
+        audioElementRef.current.pause();
+        audioElementRef.current.src = "";
+        audioElementRef.current = null;
+      }
       if (imagePreviewUrl) {
         URL.revokeObjectURL(imagePreviewUrl);
       }
@@ -81,10 +87,14 @@ export default function ReadingHelperGame({
     }
   };
 
-  const buildImageDataUrl = async (file: File) => {
+  const buildImageDataUrl = async (file: File, provider: OcrProvider) => {
     const image = await loadImageElement(file);
     const longestSide = Math.max(image.width, image.height);
-    const targetLongest = Math.min(1800, Math.max(1200, longestSide));
+    const targetLongest =
+      provider === "openai-nano"
+        ? Math.min(1280, Math.max(960, longestSide))
+        : Math.min(1800, Math.max(1200, longestSide));
+    const quality = provider === "openai-nano" ? 0.8 : 0.92;
     const scale = targetLongest / longestSide;
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(image.width * scale));
@@ -96,7 +106,7 @@ export default function ReadingHelperGame({
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL("image/jpeg", 0.92);
+    return canvas.toDataURL("image/jpeg", quality);
   };
 
   const normalizeText = (text: string) =>
@@ -106,9 +116,20 @@ export default function ReadingHelperGame({
       .replace(/\n{3,}/g, "\n\n")
       .trim();
 
+  const playAudioFromUrl = async (url: string) => {
+    if (!audioElementRef.current) {
+      audioElementRef.current = new Audio();
+    }
+    const player = audioElementRef.current;
+    player.pause();
+    player.src = url;
+    player.currentTime = 0;
+    await player.play();
+  };
+
   const extractTextFromImage = async (file: File) => {
     const OCR_TIMEOUT_MS = 90000;
-    const imageDataUrl = await buildImageDataUrl(file);
+    const imageDataUrl = await buildImageDataUrl(file, ocrProvider);
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), OCR_TIMEOUT_MS);
 
@@ -146,6 +167,10 @@ export default function ReadingHelperGame({
   const generateAudio = async (text: string) => {
     setIsGeneratingAudio(true);
     setError(null);
+    if (audioElementRef.current) {
+      audioElementRef.current.pause();
+      audioElementRef.current.currentTime = 0;
+    }
     setAudioUrl((prev) => {
       if (prev) {
         URL.revokeObjectURL(prev);
@@ -170,8 +195,7 @@ export default function ReadingHelperGame({
       const audioBlob = await response.blob();
       const url = URL.createObjectURL(audioBlob);
       setAudioUrl(url);
-      const audio = new Audio(url);
-      void audio.play();
+      await playAudioFromUrl(url);
 
       if (!hasScored) {
         setHasScored(true);
@@ -301,15 +325,11 @@ export default function ReadingHelperGame({
             </Button>
             {audioUrl && (
               <Button
-                variant="outline"
-                onClick={() => {
-                  const audio = new Audio(audioUrl);
-                  void audio.play();
-                }}
-                className="ml-auto w-auto"
+                onClick={() => void playAudioFromUrl(audioUrl)}
+                className="ml-auto w-auto bg-indigo-500 hover:bg-indigo-600 text-white"
               >
-                <Volume2 className="w-4 h-4 mr-2" />
-                Play Again
+                <Play className="w-4 h-4 mr-2" />
+                Play
               </Button>
             )}
           </div>

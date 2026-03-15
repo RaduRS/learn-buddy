@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const NEBIUS_API_URL =
   "https://api.tokenfactory.nebius.com/v1/chat/completions";
-const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+const OPENAI_RESPONSES_API_URL = "https://api.openai.com/v1/responses";
 const OCR_MODELS = [
   "deepseek-ai/DeepSeek-VL2",
   "deepseek-ai/DeepSeek-VL2-Tiny",
@@ -19,6 +19,49 @@ const sanitizeOcrText = (text: string) => {
     .replace(/^```(?:markdown|md|text)?\s*/i, "")
     .replace(/\s*```$/i, "");
   return withoutCodeFences.trim();
+};
+
+const extractOpenAIResponsesText = (payload: unknown) => {
+  if (
+    payload &&
+    typeof payload === "object" &&
+    "output_text" in payload &&
+    typeof payload.output_text === "string"
+  ) {
+    return payload.output_text;
+  }
+
+  if (
+    payload &&
+    typeof payload === "object" &&
+    "output" in payload &&
+    Array.isArray(payload.output)
+  ) {
+    return payload.output
+      .flatMap((item) => {
+        if (
+          item &&
+          typeof item === "object" &&
+          "content" in item &&
+          Array.isArray(item.content)
+        ) {
+          return item.content
+            .map((part: unknown) =>
+              part &&
+              typeof part === "object" &&
+              "text" in part &&
+              typeof part.text === "string"
+                ? part.text
+                : "",
+            )
+            .filter(Boolean);
+        }
+        return [];
+      })
+      .join("\n");
+  }
+
+  return "";
 };
 
 const extractMessageContent = (content: unknown) => {
@@ -74,7 +117,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const openaiResponse = await fetch(OPENAI_API_URL, {
+      const openaiResponse = await fetch(OPENAI_RESPONSES_API_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -82,29 +125,32 @@ export async function POST(request: NextRequest) {
         },
         body: JSON.stringify({
           model: OPENAI_OCR_MODEL,
-          messages: [
+          input: [
             {
               role: "system",
-              content: OCR_SYSTEM_PROMPT,
+              content: [
+                {
+                  type: "input_text",
+                  text: OCR_SYSTEM_PROMPT,
+                },
+              ],
             },
             {
               role: "user",
               content: [
                 {
-                  type: "text",
+                  type: "input_text",
                   text: OCR_USER_PROMPT,
                 },
                 {
-                  type: "image_url",
-                  image_url: {
-                    url: imageDataUrl,
-                  },
+                  type: "input_image",
+                  image_url: imageDataUrl,
                 },
               ],
             },
           ],
           temperature: 0,
-          max_tokens: 1800,
+          max_output_tokens: 1800,
         }),
       });
 
@@ -120,10 +166,8 @@ export async function POST(request: NextRequest) {
       }
 
       const openaiData = await openaiResponse.json();
-      const rawContent = openaiData?.choices?.[0]?.message?.content;
-      const extractedText = sanitizeOcrText(
-        extractMessageContent(rawContent).trim(),
-      );
+      const rawContent = extractOpenAIResponsesText(openaiData);
+      const extractedText = sanitizeOcrText(rawContent.trim());
       return NextResponse.json({ text: extractedText });
     }
 
