@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const NEBIUS_API_URL = "https://api.tokenfactory.nebius.com/v1/chat/completions";
+const NEBIUS_API_URL =
+  "https://api.tokenfactory.nebius.com/v1/chat/completions";
+const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 const OCR_MODELS = [
   "deepseek-ai/DeepSeek-VL2",
   "deepseek-ai/DeepSeek-VL2-Tiny",
   "Qwen/Qwen2.5-VL-72B-Instruct",
 ];
+const OPENAI_OCR_MODEL = "gpt-4.1-nano";
 
 const extractMessageContent = (content: unknown) => {
   if (typeof content === "string") {
@@ -35,13 +38,10 @@ const extractMessageContent = (content: unknown) => {
 
 export async function POST(request: NextRequest) {
   try {
-    const { imageDataUrl } = await request.json();
+    const { imageDataUrl, provider } = await request.json();
 
     if (!imageDataUrl || typeof imageDataUrl !== "string") {
-      return NextResponse.json(
-        { error: "Image is required" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Image is required" }, { status: 400 });
     }
 
     if (!imageDataUrl.startsWith("data:image/")) {
@@ -49,6 +49,70 @@ export async function POST(request: NextRequest) {
         { error: "Invalid image format" },
         { status: 400 },
       );
+    }
+
+    const selectedProvider =
+      provider === "openai-nano" ? "openai-nano" : "nebius";
+
+    if (selectedProvider === "openai-nano") {
+      const openaiApiKey = process.env.OPENAI_API_KEY;
+      if (!openaiApiKey) {
+        return NextResponse.json(
+          { error: "OpenAI API key not configured for OCR" },
+          { status: 500 },
+        );
+      }
+
+      const openaiResponse = await fetch(OPENAI_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${openaiApiKey}`,
+        },
+        body: JSON.stringify({
+          model: OPENAI_OCR_MODEL,
+          messages: [
+            {
+              role: "system",
+              content:
+                "You extract text from images. Return only plain text in natural reading order. Ignore partial words or cut-off text near image edges and corners. Prioritize complete, fully visible lines. Do not add commentary.",
+            },
+            {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: "Free OCR. Extract only complete, fully visible text. Skip cut-off edge text.",
+                },
+                {
+                  type: "image_url",
+                  image_url: {
+                    url: imageDataUrl,
+                  },
+                },
+              ],
+            },
+          ],
+          temperature: 0,
+          max_tokens: 1800,
+        }),
+      });
+
+      if (!openaiResponse.ok) {
+        const errorText = await openaiResponse.text();
+        console.error("OpenAI OCR error:", openaiResponse.status, errorText);
+        return NextResponse.json(
+          { error: "Failed to extract text from image" },
+          {
+            status: openaiResponse.status >= 500 ? 502 : openaiResponse.status,
+          },
+        );
+      }
+
+      const openaiData = await openaiResponse.json();
+      const rawContent = openaiData?.choices?.[0]?.message?.content;
+      const extractedText = extractMessageContent(rawContent).trim();
+      return NextResponse.json({ text: extractedText });
     }
 
     const nebiusApiKey = process.env.NEBIUS_API_KEY;
@@ -76,14 +140,14 @@ export async function POST(request: NextRequest) {
             {
               role: "system",
               content:
-                "You extract text from images. Return only plain text in natural reading order. Do not add commentary.",
+                "You extract text from images. Return only plain text in natural reading order. Ignore partial words or cut-off text near image edges and corners. Prioritize complete, fully visible lines. Do not add commentary.",
             },
             {
               role: "user",
               content: [
                 {
                   type: "text",
-                  text: "Free OCR. Extract all readable text exactly.",
+                  text: "Free OCR. Extract only complete, fully visible text. Skip cut-off edge text.",
                 },
                 {
                   type: "image_url",

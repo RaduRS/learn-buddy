@@ -6,6 +6,13 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Camera, Loader2, Volume2, Sparkles, ScanText } from "lucide-react";
 
 interface ReadingHelperGameProps {
@@ -14,6 +21,8 @@ interface ReadingHelperGameProps {
   userAge: number;
   onGameComplete: (score: number, totalQuestions: number) => void;
 }
+
+type OcrProvider = "nebius" | "openai-nano";
 
 export default function ReadingHelperGame({
   userId,
@@ -33,6 +42,13 @@ export default function ReadingHelperGame({
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasScored, setHasScored] = useState(false);
+  const [lastSelectedFile, setLastSelectedFile] = useState<File | null>(null);
+  const [ocrProvider, setOcrProvider] = useState<OcrProvider>("nebius");
+  const [pendingProvider, setPendingProvider] = useState<OcrProvider | null>(
+    null,
+  );
+  const [isProviderModalOpen, setIsProviderModalOpen] = useState(false);
+  const [providerPassword, setProviderPassword] = useState("");
 
   useEffect(() => {
     return () => {
@@ -86,9 +102,10 @@ export default function ReadingHelperGame({
   const normalizeText = (text: string) => text.replace(/\s+/g, " ").trim();
 
   const extractTextFromImage = async (file: File) => {
+    const OCR_TIMEOUT_MS = 90000;
     const imageDataUrl = await buildImageDataUrl(file);
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 45000);
+    const timeout = window.setTimeout(() => controller.abort(), OCR_TIMEOUT_MS);
 
     try {
       const response = await fetch("/api/ai/reading-ocr", {
@@ -96,7 +113,7 @@ export default function ReadingHelperGame({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ imageDataUrl }),
+        body: JSON.stringify({ imageDataUrl, provider: ocrProvider }),
         signal: controller.signal,
       });
 
@@ -113,7 +130,7 @@ export default function ReadingHelperGame({
       return cleaned;
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
-        throw new Error("Image processing took too long. Please try again.");
+        throw new Error("Image processing took too long. Please tap Retry.");
       }
       throw error;
     } finally {
@@ -199,28 +216,76 @@ export default function ReadingHelperGame({
     if (!file) {
       return;
     }
+    setLastSelectedFile(file);
     await processImage(file);
+  };
+
+  const retryProcessing = async () => {
+    if (!lastSelectedFile) {
+      openCamera();
+      return;
+    }
+    await processImage(lastSelectedFile);
+  };
+
+  const handleProviderChangeRequest = (value: string) => {
+    const nextProvider = value as OcrProvider;
+    if (nextProvider === ocrProvider) {
+      return;
+    }
+    setPendingProvider(nextProvider);
+    setProviderPassword("");
+    setIsProviderModalOpen(true);
+  };
+
+  const closeProviderModal = () => {
+    setIsProviderModalOpen(false);
+    setProviderPassword("");
+    setPendingProvider(null);
+  };
+
+  const confirmProviderChange = () => {
+    if (providerPassword === "1990" && pendingProvider) {
+      setOcrProvider(pendingProvider);
+    }
+    closeProviderModal();
   };
 
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl font-bold text-indigo-700 flex items-center gap-2">
-            <ScanText className="w-7 h-7" />
-            Read Aloud Camera
-          </CardTitle>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <CardTitle className="text-2xl font-bold text-indigo-700 flex items-center gap-2">
+              <ScanText className="w-7 h-7" />
+              Read Aloud Camera
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">OCR</span>
+              <select
+                value={ocrProvider}
+                onChange={(event) =>
+                  handleProviderChangeRequest(event.target.value)
+                }
+                className="h-9 rounded-md border bg-white px-3 text-sm"
+                disabled={isReadingImage || isGeneratingAudio}
+              >
+                <option value="nebius">Nebius</option>
+                <option value="openai-nano">GPT-4.1 Nano</option>
+              </select>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-gray-700">
             Take a picture of any text and Learn Buddy will read it out loud.
           </p>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex items-center justify-between gap-3">
             <Button
               onClick={openCamera}
               disabled={isReadingImage || isGeneratingAudio}
               size="lg"
-              className="w-full sm:w-auto"
+              className="w-auto"
             >
               {isReadingImage ? (
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
@@ -236,7 +301,7 @@ export default function ReadingHelperGame({
                   const audio = new Audio(audioUrl);
                   void audio.play();
                 }}
-                className="w-full sm:w-auto"
+                className="ml-auto w-auto"
               >
                 <Volume2 className="w-4 h-4 mr-2" />
                 Play Again
@@ -269,8 +334,19 @@ export default function ReadingHelperGame({
 
       {error && (
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-6 space-y-4">
             <p className="text-red-600 font-medium">{error}</p>
+            <Button
+              variant="outline"
+              onClick={retryProcessing}
+              disabled={isReadingImage || isGeneratingAudio}
+              className="w-full sm:w-auto"
+            >
+              {(isReadingImage || isGeneratingAudio) && (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              )}
+              Retry
+            </Button>
           </CardContent>
         </Card>
       )}
@@ -306,6 +382,37 @@ export default function ReadingHelperGame({
           </CardContent>
         </Card>
       )}
+
+      <Dialog
+        open={isProviderModalOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeProviderModal();
+          } else {
+            setIsProviderModalOpen(true);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enter Password</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              type="password"
+              value={providerPassword}
+              onChange={(event) => setProviderPassword(event.target.value)}
+              placeholder="Password"
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={closeProviderModal}>
+                Cancel
+              </Button>
+              <Button onClick={confirmProviderChange}>Confirm</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
