@@ -10,6 +10,7 @@ import MemoryMatchConfig from "@/components/game/MemoryMatchConfig";
 import NumberFunGame from "@/components/game/NumberFunGame";
 import MusicLearningGame from "@/components/game/MusicLearningGame";
 import ShapesGame from "@/components/game/ShapesGame";
+import ReadingHelperGame from "@/components/game/ReadingHelperGame";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Header } from "@/components/layout/Header";
@@ -211,6 +212,17 @@ export default function GamePage() {
     if (game.title === "Shapes") {
       return (
         <ShapesGame
+          userId={currentUser.id}
+          gameId={game.id}
+          userAge={currentUser.age || 6}
+          onGameComplete={handleGameComplete}
+        />
+      );
+    }
+
+    if (game.category.toLowerCase() === "reading") {
+      return (
+        <ReadingHelperGame
           userId={currentUser.id}
           gameId={game.id}
           userAge={currentUser.age || 6}

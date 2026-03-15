@@ -59,6 +59,15 @@ const initialGames = [
     difficulty: 2,
     isActive: true,
   },
+  {
+    title: "Read Aloud Camera",
+    description:
+      "Take a photo of text and listen while Learn Buddy reads it out loud.",
+    icon: "📖",
+    category: "reading",
+    difficulty: 1,
+    isActive: true,
+  },
 ];
 
 async function seedDatabase() {

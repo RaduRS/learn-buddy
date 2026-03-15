@@ -72,6 +72,21 @@ async function updateGames() {
     } else {
       console.log('Shapes game already exists')
     }
+
+    const readingHelperGame = existingGames.find(game => game.title === 'Read Aloud Camera')
+    if (!readingHelperGame) {
+      await DatabaseService.createGame({
+        title: 'Read Aloud Camera',
+        description: 'Take a photo of text and listen while Learn Buddy reads it out loud',
+        icon: '📖',
+        category: 'reading',
+        difficulty: 1,
+        isActive: true
+      })
+      console.log('Added new Read Aloud Camera game')
+    } else {
+      console.log('Read Aloud Camera game already exists')
+    }
     
     console.log('Games update completed successfully!')
     

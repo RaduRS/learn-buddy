@@ -1,7 +1,6 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Sheet,
   SheetContent,
@@ -32,15 +31,6 @@ interface HeaderProps {
 
 export function Header({ currentUser, onNavigate, className }: HeaderProps) {
   const { totalScore } = useScore();
-
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((word) => word[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
 
   const menuItems = [
     { id: "home", label: "Home", icon: Home },
@@ -81,15 +71,6 @@ export function Header({ currentUser, onNavigate, className }: HeaderProps) {
         <div className="flex items-center gap-3">
           {currentUser && (
             <div className="hidden sm:flex items-center gap-2">
-              <Avatar className="w-8 h-8">
-                <AvatarImage
-                  src={currentUser.avatar || undefined}
-                  alt={currentUser.name}
-                />
-                <AvatarFallback className="text-sm bg-gradient-to-br from-blue-400 to-purple-500 text-white">
-                  {currentUser.avatar || getInitials(currentUser.name)}
-                </AvatarFallback>
-              </Avatar>
               <div className="text-sm">
                 <div className="font-medium text-gray-800">
                   {currentUser.name}
@@ -120,15 +101,6 @@ export function Header({ currentUser, onNavigate, className }: HeaderProps) {
               <div className="mt-6 space-y-4">
                 {currentUser && (
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <Avatar className="w-12 h-12">
-                      <AvatarImage
-                        src={currentUser.avatar || undefined}
-                        alt={currentUser.name}
-                      />
-                      <AvatarFallback className="bg-gradient-to-br from-blue-400 to-purple-500 text-white">
-                        {currentUser.avatar || getInitials(currentUser.name)}
-                      </AvatarFallback>
-                    </Avatar>
                     <div className="flex-1">
                       <div className="font-medium text-gray-800">
                         {currentUser.name}
