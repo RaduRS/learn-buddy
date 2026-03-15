@@ -1,10 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const MAX_TTS_CHARS = 2000;
+const TTS_MODEL = "aura-2-thalia-en";
+const BASE_TTS_TAGS = ["learn-buddy", "reading-helper", "tts"];
+
+const formatForAuraSpeech = (text: string) => {
+  const withoutCodeFences = text
+    .replace(/^```(?:markdown|md|text)?\s*/i, "")
+    .replace(/\s*```$/i, "");
+
+  return withoutCodeFences
+    .replace(/\r\n/g, "\n")
+    .replace(/\t/g, " ")
+    .replace(/[ ]{2,}/g, " ")
+    .replace(/^#{1,2}\s+/gm, "")
+    .replace(/^[-*]\s+/gm, "")
+    .replace(/^>\s+/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+};
+
+const sanitizeTag = (tag: string) =>
+  tag.trim().replace(/\s+/g, "-").slice(0, 128);
 
 export async function POST(request: NextRequest) {
   try {
-    const { text } = await request.json();
+    const { text, ocrProvider } = await request.json();
 
     if (!text || typeof text !== "string") {
       return NextResponse.json({ error: "Text is required" }, { status: 400 });
@@ -18,10 +39,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const formattedForSpeech = formatForAuraSpeech(cleanedText);
+
     const textForSpeech =
-      cleanedText.length > MAX_TTS_CHARS
-        ? cleanedText.slice(0, MAX_TTS_CHARS)
-        : cleanedText;
+      formattedForSpeech.length > MAX_TTS_CHARS
+        ? formattedForSpeech.slice(0, MAX_TTS_CHARS)
+        : formattedForSpeech;
 
     const deepgramApiKey = process.env.DEEPGRAM_API_KEY;
     if (!deepgramApiKey) {
@@ -31,19 +54,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const deepgramResponse = await fetch(
-      "https://api.deepgram.com/v1/speak?model=aura-2-thalia-en",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Token ${deepgramApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          text: textForSpeech,
-        }),
+    const providerTag =
+      typeof ocrProvider === "string" && ocrProvider.trim()
+        ? sanitizeTag(`ocr-${ocrProvider}`)
+        : null;
+    const tags = [...BASE_TTS_TAGS];
+    if (providerTag) {
+      tags.push(providerTag);
+    }
+    const ttsUrl = new URL("https://api.deepgram.com/v1/speak");
+    ttsUrl.searchParams.set("model", TTS_MODEL);
+    for (const tag of tags) {
+      ttsUrl.searchParams.append("tag", tag);
+    }
+
+    const deepgramResponse = await fetch(ttsUrl.toString(), {
+      method: "POST",
+      headers: {
+        Authorization: `Token ${deepgramApiKey}`,
+        "Content-Type": "application/json",
       },
-    );
+      body: JSON.stringify({
+        text: textForSpeech,
+      }),
+    });
 
     if (!deepgramResponse.ok) {
       const errorText = await deepgramResponse.text();
@@ -66,7 +100,8 @@ export async function POST(request: NextRequest) {
       headers: {
         "Content-Type": contentType,
         "Cache-Control": "no-store",
-        "X-Text-Truncated": String(cleanedText.length > MAX_TTS_CHARS),
+        "X-Text-Truncated": String(formattedForSpeech.length > MAX_TTS_CHARS),
+        "X-TTS-Tag-Count": String(tags.length),
       },
     });
   } catch (error) {

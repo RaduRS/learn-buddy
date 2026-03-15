@@ -9,6 +9,17 @@ const OCR_MODELS = [
   "Qwen/Qwen2.5-VL-72B-Instruct",
 ];
 const OPENAI_OCR_MODEL = "gpt-4.1-nano";
+const OCR_SYSTEM_PROMPT =
+  "You extract text from images for reading practice. Return only markdown text in natural reading order. Ignore partial words or cut-off text near image edges and corners. Prioritize complete, fully visible lines. Use markdown structure only when visually clear: # for main title, ## for subtitle, plain paragraphs with a blank line between paragraphs. Do not add commentary.";
+const OCR_USER_PROMPT =
+  "Free OCR. Extract only complete, fully visible text. Skip cut-off edge text. Output only markdown text.";
+
+const sanitizeOcrText = (text: string) => {
+  const withoutCodeFences = text
+    .replace(/^```(?:markdown|md|text)?\s*/i, "")
+    .replace(/\s*```$/i, "");
+  return withoutCodeFences.trim();
+};
 
 const extractMessageContent = (content: unknown) => {
   if (typeof content === "string") {
@@ -74,15 +85,14 @@ export async function POST(request: NextRequest) {
           messages: [
             {
               role: "system",
-              content:
-                "You extract text from images. Return only plain text in natural reading order. Ignore partial words or cut-off text near image edges and corners. Prioritize complete, fully visible lines. Do not add commentary.",
+              content: OCR_SYSTEM_PROMPT,
             },
             {
               role: "user",
               content: [
                 {
                   type: "text",
-                  text: "Free OCR. Extract only complete, fully visible text. Skip cut-off edge text.",
+                  text: OCR_USER_PROMPT,
                 },
                 {
                   type: "image_url",
@@ -111,7 +121,9 @@ export async function POST(request: NextRequest) {
 
       const openaiData = await openaiResponse.json();
       const rawContent = openaiData?.choices?.[0]?.message?.content;
-      const extractedText = extractMessageContent(rawContent).trim();
+      const extractedText = sanitizeOcrText(
+        extractMessageContent(rawContent).trim(),
+      );
       return NextResponse.json({ text: extractedText });
     }
 
@@ -139,15 +151,14 @@ export async function POST(request: NextRequest) {
           messages: [
             {
               role: "system",
-              content:
-                "You extract text from images. Return only plain text in natural reading order. Ignore partial words or cut-off text near image edges and corners. Prioritize complete, fully visible lines. Do not add commentary.",
+              content: OCR_SYSTEM_PROMPT,
             },
             {
               role: "user",
               content: [
                 {
                   type: "text",
-                  text: "Free OCR. Extract only complete, fully visible text. Skip cut-off edge text.",
+                  text: OCR_USER_PROMPT,
                 },
                 {
                   type: "image_url",
@@ -172,7 +183,9 @@ export async function POST(request: NextRequest) {
 
       const modelData = await ocrResponse.json();
       const rawContent = modelData?.choices?.[0]?.message?.content;
-      modelResponseContent = extractMessageContent(rawContent).trim();
+      modelResponseContent = sanitizeOcrText(
+        extractMessageContent(rawContent).trim(),
+      );
       if (modelResponseContent) {
         break;
       }

@@ -99,7 +99,12 @@ export default function ReadingHelperGame({
     return canvas.toDataURL("image/jpeg", 0.92);
   };
 
-  const normalizeText = (text: string) => text.replace(/\s+/g, " ").trim();
+  const normalizeText = (text: string) =>
+    text
+      .replace(/\r\n/g, "\n")
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
 
   const extractTextFromImage = async (file: File) => {
     const OCR_TIMEOUT_MS = 90000;
@@ -154,7 +159,7 @@ export default function ReadingHelperGame({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, ocrProvider }),
       });
 
       if (!response.ok) {
@@ -374,7 +379,7 @@ export default function ReadingHelperGame({
                 <Badge variant="secondary" className="text-xs">
                   OCR Result
                 </Badge>
-                <p className="text-gray-800 leading-relaxed bg-gray-50 rounded-md p-3">
+                <p className="text-gray-800 leading-relaxed bg-gray-50 rounded-md p-3 whitespace-pre-wrap">
                   {extractedText}
                 </p>
               </div>
