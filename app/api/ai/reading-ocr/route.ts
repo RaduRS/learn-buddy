@@ -105,8 +105,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const selectedProvider =
-      provider === "openai-nano" ? "openai-nano" : "nebius";
+    const selectedProvider = provider === "nebius" ? "nebius" : "openai-nano";
 
     if (selectedProvider === "openai-nano") {
       const openaiApiKey = process.env.OPENAI_API_KEY;

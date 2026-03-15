@@ -13,7 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Camera, Loader2, Play, Sparkles, ScanText } from "lucide-react";
+import { Camera, Loader2, Pause, Play, Sparkles, ScanText } from "lucide-react";
 
 interface ReadingHelperGameProps {
   userId: string;
@@ -41,10 +41,11 @@ export default function ReadingHelperGame({
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isReadingImage, setIsReadingImage] = useState(false);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasScored, setHasScored] = useState(false);
   const [lastSelectedFile, setLastSelectedFile] = useState<File | null>(null);
-  const [ocrProvider, setOcrProvider] = useState<OcrProvider>("nebius");
+  const [ocrProvider, setOcrProvider] = useState<OcrProvider>("openai-nano");
   const [pendingProvider, setPendingProvider] = useState<OcrProvider | null>(
     null,
   );
@@ -55,6 +56,9 @@ export default function ReadingHelperGame({
     return () => {
       if (audioElementRef.current) {
         audioElementRef.current.pause();
+        audioElementRef.current.onplay = null;
+        audioElementRef.current.onpause = null;
+        audioElementRef.current.onended = null;
         audioElementRef.current.src = "";
         audioElementRef.current = null;
       }
@@ -87,14 +91,21 @@ export default function ReadingHelperGame({
     }
   };
 
-  const buildImageDataUrl = async (file: File, provider: OcrProvider) => {
+  const buildImageDataUrl = async (
+    file: File,
+    provider: OcrProvider,
+    mode: "balanced" | "high_quality" = "balanced",
+  ) => {
     const image = await loadImageElement(file);
     const longestSide = Math.max(image.width, image.height);
     const targetLongest =
       provider === "openai-nano"
-        ? Math.min(1280, Math.max(960, longestSide))
+        ? mode === "high_quality"
+          ? Math.min(1680, Math.max(1200, longestSide))
+          : Math.min(1280, Math.max(960, longestSide))
         : Math.min(1800, Math.max(1200, longestSide));
-    const quality = provider === "openai-nano" ? 0.8 : 0.92;
+    const quality =
+      provider === "openai-nano" ? (mode === "high_quality" ? 0.9 : 0.8) : 0.92;
     const scale = targetLongest / longestSide;
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(image.width * scale));
@@ -116,30 +127,77 @@ export default function ReadingHelperGame({
       .replace(/\n{3,}/g, "\n\n")
       .trim();
 
-  const playAudioFromUrl = async (url: string) => {
+  const getAudioPlayer = () => {
     if (!audioElementRef.current) {
       audioElementRef.current = new Audio();
+      audioElementRef.current.onplay = () => setIsAudioPlaying(true);
+      audioElementRef.current.onpause = () => setIsAudioPlaying(false);
+      audioElementRef.current.onended = () => setIsAudioPlaying(false);
     }
-    const player = audioElementRef.current;
+    return audioElementRef.current;
+  };
+
+  const playAudioFromUrl = async (
+    url: string,
+    options?: { restart?: boolean; suppressPermissionError?: boolean },
+  ) => {
+    const player = getAudioPlayer();
     player.pause();
-    player.src = url;
-    player.currentTime = 0;
-    await player.play();
+    if (player.src !== url) {
+      player.src = url;
+    }
+    if (options?.restart ?? true) {
+      player.currentTime = 0;
+    }
+    try {
+      await player.play();
+    } catch (error) {
+      if (
+        options?.suppressPermissionError &&
+        error instanceof Error &&
+        /(NotAllowedError|request is not allowed|denied permission)/i.test(
+          error.message,
+        )
+      ) {
+        setIsAudioPlaying(false);
+        return;
+      }
+      throw error;
+    }
+  };
+
+  const toggleAudioPlayback = async () => {
+    if (!audioUrl) {
+      return;
+    }
+    const player = getAudioPlayer();
+    if (isAudioPlaying) {
+      player.pause();
+      return;
+    }
+    await playAudioFromUrl(audioUrl, { restart: false });
   };
 
   const extractTextFromImage = async (file: File) => {
     const OCR_TIMEOUT_MS = 90000;
-    const imageDataUrl = await buildImageDataUrl(file, ocrProvider);
+    const imageDataUrl = await buildImageDataUrl(file, ocrProvider, "balanced");
+    const highQualityImageDataUrl =
+      ocrProvider === "openai-nano"
+        ? await buildImageDataUrl(file, ocrProvider, "high_quality")
+        : null;
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), OCR_TIMEOUT_MS);
 
-    try {
+    const requestOcr = async (payloadImage: string) => {
       const response = await fetch("/api/ai/reading-ocr", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ imageDataUrl, provider: ocrProvider }),
+        body: JSON.stringify({
+          imageDataUrl: payloadImage,
+          provider: ocrProvider,
+        }),
         signal: controller.signal,
       });
 
@@ -154,6 +212,17 @@ export default function ReadingHelperGame({
         throw new Error("No readable text found in the photo");
       }
       return cleaned;
+    };
+
+    try {
+      try {
+        return await requestOcr(imageDataUrl);
+      } catch (firstAttemptError) {
+        if (highQualityImageDataUrl) {
+          return await requestOcr(highQualityImageDataUrl);
+        }
+        throw firstAttemptError;
+      }
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
         throw new Error("Image processing took too long. Please tap Retry.");
@@ -171,6 +240,7 @@ export default function ReadingHelperGame({
       audioElementRef.current.pause();
       audioElementRef.current.currentTime = 0;
     }
+    setIsAudioPlaying(false);
     setAudioUrl((prev) => {
       if (prev) {
         URL.revokeObjectURL(prev);
@@ -195,7 +265,7 @@ export default function ReadingHelperGame({
       const audioBlob = await response.blob();
       const url = URL.createObjectURL(audioBlob);
       setAudioUrl(url);
-      await playAudioFromUrl(url);
+      await playAudioFromUrl(url, { suppressPermissionError: true });
 
       if (!hasScored) {
         setHasScored(true);
@@ -299,8 +369,8 @@ export default function ReadingHelperGame({
                 className="h-9 rounded-md border bg-white px-3 text-sm"
                 disabled={isReadingImage || isGeneratingAudio}
               >
-                <option value="nebius">Nebius</option>
                 <option value="openai-nano">GPT-4.1 Nano</option>
+                <option value="nebius">Nebius</option>
               </select>
             </div>
           </div>
@@ -325,11 +395,15 @@ export default function ReadingHelperGame({
             </Button>
             {audioUrl && (
               <Button
-                onClick={() => void playAudioFromUrl(audioUrl)}
+                onClick={() => void toggleAudioPlayback()}
                 className="ml-auto w-auto bg-indigo-500 hover:bg-indigo-600 text-white"
               >
-                <Play className="w-4 h-4 mr-2" />
-                Play
+                {isAudioPlaying ? (
+                  <Pause className="w-4 h-4 mr-2" />
+                ) : (
+                  <Play className="w-4 h-4 mr-2" />
+                )}
+                {isAudioPlaying ? "Pause" : "Play"}
               </Button>
             )}
           </div>
