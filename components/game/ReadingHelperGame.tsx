@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
-import Tesseract from "tesseract.js";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,11 +14,6 @@ interface ReadingHelperGameProps {
   userAge: number;
   onGameComplete: (score: number, totalQuestions: number) => void;
 }
-
-type OcrCandidate = {
-  text: string;
-  confidence: number;
-};
 
 export default function ReadingHelperGame({
   userId,
@@ -71,124 +65,60 @@ export default function ReadingHelperGame({
     }
   };
 
-  const createCanvasFromImage = (
-    image: HTMLImageElement,
-    scaleMultiplier: number,
-  ) => {
+  const buildImageDataUrl = async (file: File) => {
+    const image = await loadImageElement(file);
     const longestSide = Math.max(image.width, image.height);
-    const scaleBoost = longestSide < 1400 ? 1400 / longestSide : 1;
-    const scale = scaleBoost * scaleMultiplier;
+    const targetLongest = Math.min(1800, Math.max(1200, longestSide));
+    const scale = targetLongest / longestSide;
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(image.width * scale));
     canvas.height = Math.max(1, Math.round(image.height * scale));
     const ctx = canvas.getContext("2d");
     if (!ctx) {
-      throw new Error("Canvas processing is not available");
+      throw new Error("Could not process image");
     }
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-    return { canvas, ctx };
+    return canvas.toDataURL("image/jpeg", 0.92);
   };
 
-  const enhanceToGrayscale = (
-    ctx: CanvasRenderingContext2D,
-    canvas: HTMLCanvasElement,
-  ) => {
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
-    let min = 255;
-    let max = 0;
+  const normalizeText = (text: string) => text.replace(/\s+/g, " ").trim();
 
-    for (let i = 0; i < data.length; i += 4) {
-      const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-      if (gray < min) min = gray;
-      if (gray > max) max = gray;
+  const extractTextFromImage = async (file: File) => {
+    const imageDataUrl = await buildImageDataUrl(file);
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 45000);
+
+    try {
+      const response = await fetch("/api/ai/reading-ocr", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ imageDataUrl }),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || "Could not extract text from image");
+      }
+
+      const payload = (await response.json()) as { text?: string };
+      const cleaned = normalizeText(payload.text || "");
+      if (!cleaned) {
+        throw new Error("No readable text found in the photo");
+      }
+      return cleaned;
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error("Image processing took too long. Please try again.");
+      }
+      throw error;
+    } finally {
+      window.clearTimeout(timeout);
     }
-
-    const range = Math.max(1, max - min);
-    for (let i = 0; i < data.length; i += 4) {
-      const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-      const normalized = ((gray - min) * 255) / range;
-      const boosted = Math.min(
-        255,
-        Math.max(0, (normalized - 128) * 1.4 + 128),
-      );
-      data[i] = boosted;
-      data[i + 1] = boosted;
-      data[i + 2] = boosted;
-    }
-
-    ctx.putImageData(imageData, 0, 0);
-  };
-
-  const enhanceToBinary = (
-    ctx: CanvasRenderingContext2D,
-    canvas: HTMLCanvasElement,
-  ) => {
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
-    for (let i = 0; i < data.length; i += 4) {
-      const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-      const value = gray > 165 ? 255 : 0;
-      data[i] = value;
-      data[i + 1] = value;
-      data[i + 2] = value;
-    }
-    ctx.putImageData(imageData, 0, 0);
-  };
-
-  const normalizeText = (rawText: string) =>
-    rawText.replace(/\s+/g, " ").trim();
-
-  const scoreTextQuality = (text: string) => {
-    if (!text) return 0;
-    const letters = (text.match(/[A-Za-z]/g) || []).length;
-    const digits = (text.match(/[0-9]/g) || []).length;
-    const words = text.split(" ").filter((word) => word.length > 0);
-    const longWords = words.filter((word) => word.length >= 3).length;
-    const validChars =
-      letters +
-      digits +
-      (text.match(/[.,!?'"():;-]/g) || []).length +
-      (text.match(/\s/g) || []).length;
-    const ratio = validChars / text.length;
-    return ratio * 60 + Math.min(40, longWords * 2 + words.length);
-  };
-
-  const runOcr = async (
-    source: HTMLCanvasElement | File,
-  ): Promise<OcrCandidate> => {
-    const result = await Tesseract.recognize(source, "eng");
-    return {
-      text: normalizeText(result.data.text),
-      confidence: result.data.confidence || 0,
-    };
-  };
-
-  const extractTextWithFallbacks = async (
-    file: File,
-  ): Promise<OcrCandidate> => {
-    const image = await loadImageElement(file);
-    const enhanced = createCanvasFromImage(image, 1.1);
-    enhanceToGrayscale(enhanced.ctx, enhanced.canvas);
-
-    const binary = createCanvasFromImage(image, 1.4);
-    enhanceToGrayscale(binary.ctx, binary.canvas);
-    enhanceToBinary(binary.ctx, binary.canvas);
-
-    const [originalResult, enhancedResult, binaryResult] = await Promise.all([
-      runOcr(file),
-      runOcr(enhanced.canvas),
-      runOcr(binary.canvas),
-    ]);
-
-    const candidates = [originalResult, enhancedResult, binaryResult];
-    candidates.sort((a, b) => {
-      const aScore = a.confidence + scoreTextQuality(a.text);
-      const bScore = b.confidence + scoreTextQuality(b.text);
-      return bScore - aScore;
-    });
-
-    return candidates[0];
   };
 
   const generateAudio = async (text: string) => {
@@ -250,26 +180,13 @@ export default function ReadingHelperGame({
         return previewUrl;
       });
 
-      const bestResult = await extractTextWithFallbacks(file);
-      const cleaned = bestResult.text;
-      const textQuality = scoreTextQuality(cleaned);
-
-      if (
-        !cleaned ||
-        cleaned.length < 3 ||
-        bestResult.confidence < 35 ||
-        textQuality < 40
-      ) {
-        throw new Error(
-          "OCR could not confidently read this image. Try getting closer and filling the frame with text.",
-        );
-      }
+      const cleaned = await extractTextFromImage(file);
 
       setExtractedText(cleaned);
       await generateAudio(cleaned);
     } catch (ocrError) {
       const message =
-        ocrError instanceof Error ? ocrError.message : "OCR failed";
+        ocrError instanceof Error ? ocrError.message : "Text extraction failed";
       setError(message);
     } finally {
       setIsReadingImage(false);
