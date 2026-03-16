@@ -139,19 +139,39 @@ export default function ReadingHelperGame({
 
   const playAudioFromUrl = async (
     url: string,
-    options?: { restart?: boolean; suppressPermissionError?: boolean },
+    options?: {
+      restart?: boolean;
+      suppressPermissionError?: boolean;
+      suppressInterruptedError?: boolean;
+    },
   ) => {
     const player = getAudioPlayer();
-    player.pause();
-    if (player.src !== url) {
+    const shouldRestart = options?.restart ?? true;
+    const isSameSource = player.src === url;
+
+    if (!isSameSource && !player.paused) {
+      player.pause();
+    }
+    if (!isSameSource) {
       player.src = url;
     }
-    if (options?.restart ?? true) {
+    if (shouldRestart) {
+      if (isSameSource && !player.paused) {
+        player.pause();
+      }
       player.currentTime = 0;
     }
     try {
       await player.play();
     } catch (error) {
+      if (
+        options?.suppressInterruptedError &&
+        error instanceof Error &&
+        /(interrupted by a call to pause\(\)|AbortError)/i.test(error.message)
+      ) {
+        setIsAudioPlaying(false);
+        return;
+      }
       if (
         options?.suppressPermissionError &&
         error instanceof Error &&
@@ -175,7 +195,11 @@ export default function ReadingHelperGame({
       player.pause();
       return;
     }
-    await playAudioFromUrl(audioUrl, { restart: false });
+    await playAudioFromUrl(audioUrl, {
+      restart: false,
+      suppressPermissionError: true,
+      suppressInterruptedError: true,
+    });
   };
 
   const extractTextFromImage = async (file: File) => {
@@ -265,7 +289,10 @@ export default function ReadingHelperGame({
       const audioBlob = await response.blob();
       const url = URL.createObjectURL(audioBlob);
       setAudioUrl(url);
-      await playAudioFromUrl(url, { suppressPermissionError: true });
+      await playAudioFromUrl(url, {
+        suppressPermissionError: true,
+        suppressInterruptedError: true,
+      });
 
       if (!hasScored) {
         setHasScored(true);
@@ -396,14 +423,21 @@ export default function ReadingHelperGame({
             {audioUrl && (
               <Button
                 onClick={() => void toggleAudioPlayback()}
+                disabled={isReadingImage || isGeneratingAudio}
                 className="ml-auto w-auto bg-indigo-500 hover:bg-indigo-600 text-white"
               >
-                {isAudioPlaying ? (
+                {isReadingImage || isGeneratingAudio ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : isAudioPlaying ? (
                   <Pause className="w-4 h-4 mr-2" />
                 ) : (
                   <Play className="w-4 h-4 mr-2" />
                 )}
-                {isAudioPlaying ? "Pause" : "Play"}
+                {isReadingImage || isGeneratingAudio
+                  ? "Please wait..."
+                  : isAudioPlaying
+                    ? "Pause"
+                    : "Play"}
               </Button>
             )}
           </div>
