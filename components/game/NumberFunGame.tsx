@@ -32,13 +32,12 @@ function createProblem(questionNumber: number): MathProblem {
   let correctAnswer: number;
 
   if (operation === "+") {
-    firstNumber = Math.floor(Math.random() * 15) + 1;
-    const maxSecond = 20 - firstNumber;
-    secondNumber = Math.floor(Math.random() * maxSecond) + 1;
-    correctAnswer = firstNumber + secondNumber;
+    correctAnswer = Math.floor(Math.random() * 81) + 20;
+    firstNumber = Math.floor(Math.random() * (correctAnswer - 19)) + 10;
+    secondNumber = correctAnswer - firstNumber;
   } else {
-    firstNumber = Math.floor(Math.random() * 20) + 1;
-    secondNumber = Math.floor(Math.random() * firstNumber) + 1;
+    firstNumber = Math.floor(Math.random() * 71) + 30;
+    secondNumber = Math.floor(Math.random() * (firstNumber - 19)) + 10;
     correctAnswer = firstNumber - secondNumber;
   }
 
@@ -55,16 +54,15 @@ function createAnswerChoices(correctAnswer: number): number[] {
   const choices = [correctAnswer];
 
   while (choices.length < 4) {
-    let wrongAnswer: number;
-    if (correctAnswer <= 5) {
-      wrongAnswer = Math.floor(Math.random() * 10) + 1;
-    } else if (correctAnswer <= 10) {
-      wrongAnswer = Math.floor(Math.random() * 15) + 1;
-    } else {
-      wrongAnswer = Math.floor(Math.random() * 25) + 1;
+    const offset = Math.floor(Math.random() * 20) + 1;
+    const direction = Math.random() < 0.5 ? -1 : 1;
+    let wrongAnswer = correctAnswer + direction * offset;
+
+    if (wrongAnswer < 1 || wrongAnswer > 100) {
+      wrongAnswer = Math.floor(Math.random() * 100) + 1;
     }
 
-    if (!choices.includes(wrongAnswer) && wrongAnswer > 0) {
+    if (!choices.includes(wrongAnswer)) {
       choices.push(wrongAnswer);
     }
   }
