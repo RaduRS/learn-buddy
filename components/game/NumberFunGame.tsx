@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,60 @@ interface MathProblem {
   isCorrect?: boolean;
 }
 
+type DifficultyLevel = 1 | 2 | 3 | 4 | 5;
+
+interface DifficultySettings {
+  minAnswer: number;
+  maxAnswer: number;
+  minFirstNumber: number;
+  maxFirstNumber: number;
+  label: string;
+  color: string;
+}
+
+const DIFFICULTY_SETTINGS: Record<DifficultyLevel, DifficultySettings> = {
+  1: {
+    minAnswer: 10,
+    maxAnswer: 30,
+    minFirstNumber: 5,
+    maxFirstNumber: 15,
+    label: "Easy",
+    color: "bg-green-500",
+  },
+  2: {
+    minAnswer: 20,
+    maxAnswer: 50,
+    minFirstNumber: 10,
+    maxFirstNumber: 30,
+    label: "Medium",
+    color: "bg-blue-500",
+  },
+  3: {
+    minAnswer: 30,
+    maxAnswer: 70,
+    minFirstNumber: 15,
+    maxFirstNumber: 45,
+    label: "Hard",
+    color: "bg-orange-500",
+  },
+  4: {
+    minAnswer: 40,
+    maxAnswer: 85,
+    minFirstNumber: 20,
+    maxFirstNumber: 60,
+    label: "Expert",
+    color: "bg-purple-500",
+  },
+  5: {
+    minAnswer: 50,
+    maxAnswer: 100,
+    minFirstNumber: 25,
+    maxFirstNumber: 75,
+    label: "Master",
+    color: "bg-red-500",
+  },
+};
+
 interface NumberFunGameProps {
   userId?: string;
   gameId?: string;
@@ -25,19 +79,32 @@ interface NumberFunGameProps {
   onGameComplete: (score: number, totalQuestions: number) => void;
 }
 
-function createProblem(questionNumber: number): MathProblem {
+function createProblem(
+  questionNumber: number,
+  difficulty: DifficultyLevel = 1,
+): MathProblem {
+  const settings = DIFFICULTY_SETTINGS[difficulty];
   const operation = Math.random() < 0.5 ? "+" : "-";
   let firstNumber: number;
   let secondNumber: number;
   let correctAnswer: number;
 
   if (operation === "+") {
-    correctAnswer = Math.floor(Math.random() * 81) + 20;
-    firstNumber = Math.floor(Math.random() * (correctAnswer - 19)) + 10;
+    correctAnswer =
+      Math.floor(
+        Math.random() * (settings.maxAnswer - settings.minAnswer + 1),
+      ) + settings.minAnswer;
+    firstNumber = Math.floor(
+      Math.random() * (correctAnswer - 5) +
+        Math.max(5, settings.minFirstNumber),
+    );
     secondNumber = correctAnswer - firstNumber;
   } else {
-    firstNumber = Math.floor(Math.random() * 71) + 30;
-    secondNumber = Math.floor(Math.random() * (firstNumber - 19)) + 10;
+    firstNumber =
+      Math.floor(
+        Math.random() * (settings.maxFirstNumber - settings.minFirstNumber + 1),
+      ) + settings.minFirstNumber;
+    secondNumber = Math.floor(Math.random() * (firstNumber - 5) + 5);
     correctAnswer = firstNumber - secondNumber;
   }
 
@@ -87,9 +154,37 @@ export default function NumberFunGame({
   const [error, setError] = useState<string | null>(null);
   const [showNextButton, setShowNextButton] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+  const [difficulty, setDifficulty] = useState<DifficultyLevel>(1);
+  const [recentAnswers, setRecentAnswers] = useState<boolean[]>([]);
 
   const totalQuestions = 10;
   const progress = ((currentQuestionIndex + 1) / totalQuestions) * 100;
+  const difficultySettings = DIFFICULTY_SETTINGS[difficulty];
+
+  void recentAnswers;
+
+  const updateDifficulty = useCallback(
+    (correct: boolean) => {
+      setRecentAnswers((prev) => {
+        const newAnswers = [...prev, correct].slice(-5);
+
+        const consecutiveCorrect = newAnswers.filter(Boolean).length;
+
+        if (newAnswers.length >= 3) {
+          if (consecutiveCorrect >= 4 && difficulty < 5) {
+            setDifficulty((prev) => (prev + 1) as DifficultyLevel);
+            return [];
+          } else if (consecutiveCorrect <= 1 && difficulty > 1) {
+            setDifficulty((prev) => (prev - 1) as DifficultyLevel);
+            return [];
+          }
+        }
+
+        return newAnswers;
+      });
+    },
+    [difficulty],
+  );
 
   // Handle answer selection
   const handleAnswer = async (answer: number) => {
@@ -110,6 +205,9 @@ export default function NumberFunGame({
       if (gameId) incrementScore(gameId, 1);
     }
 
+    // Update difficulty based on performance
+    updateDifficulty(correct);
+
     setShowResult(true);
     setShowNextButton(true);
   };
@@ -126,7 +224,7 @@ export default function NumberFunGame({
       onGameComplete(score, totalQuestions);
     } else {
       setCurrentQuestionIndex((prev) => prev + 1);
-      const nextProblem = createProblem(currentQuestionIndex + 2);
+      const nextProblem = createProblem(currentQuestionIndex + 2, difficulty);
       setCurrentProblem(nextProblem);
     }
   };
@@ -139,10 +237,12 @@ export default function NumberFunGame({
     setShowResult(false);
     setGameCompleted(false);
     setSelectedAnswer(null);
-    setCurrentProblem(createProblem(1));
+    setCurrentProblem(createProblem(1, 1));
     setShowNextButton(false);
     setIsCorrect(null);
     setError(null);
+    setDifficulty(1);
+    setRecentAnswers([]);
   };
 
   // Speak the problem (text-to-speech)
@@ -218,6 +318,9 @@ export default function NumberFunGame({
             Question {currentQuestionIndex + 1} of {totalQuestions}
           </Badge>
           <Badge variant="outline">Score: {score}</Badge>
+          <Badge className={difficultySettings.color}>
+            {difficultySettings.label}
+          </Badge>
         </div>
 
         {/* Progress bar */}

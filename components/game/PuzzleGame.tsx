@@ -5,8 +5,10 @@ import type { DragEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Trophy, RotateCcw } from "lucide-react";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { Trophy, RotateCcw } from "lucide-react";
 import { useScore } from "@/hooks/useScore";
+import { useApiCall } from "@/hooks/useApiCall";
 
 interface PuzzlePiece {
   id: string;
@@ -34,14 +36,15 @@ export default function PuzzleGame({
   onGameComplete,
 }: PuzzleGameProps) {
   const [config, setConfig] = useState<PuzzleConfig | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [placed, setPlaced] = useState<Record<string, boolean>>({});
   const [bank, setBank] = useState<PuzzlePiece[]>([]);
   const [selectedPieceId, setSelectedPieceId] = useState<string | null>(null);
   const [score, setScore] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
   const { incrementScore } = useScore();
+  const { execute, loading, error } = useApiCall<PuzzleConfig>({
+    timeout: 30000,
+  });
 
   const gridPx = 320; // board size in pixels
 
@@ -61,36 +64,36 @@ export default function PuzzleGame({
   );
 
   const loadPuzzle = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      setConfig(null);
-      setPlaced({});
-      setSelectedPieceId(null);
-      setIsCompleted(false);
+    setConfig(null);
+    setPlaced({});
+    setSelectedPieceId(null);
+    setIsCompleted(false);
 
-      const response = await fetch("/api/ai/generate-puzzle", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userAge, difficulty: 2 }),
-      });
+    const result = await execute(
+      async () => {
+        const response = await fetch("/api/ai/generate-puzzle", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userAge, difficulty: 2 }),
+        });
 
-      if (!response.ok) {
-        throw new Error("Failed to generate puzzle");
-      }
+        if (!response.ok) {
+          throw new Error("Failed to generate puzzle");
+        }
 
-      const cfg: PuzzleConfig = await response.json();
-      // Shuffle bank pieces
-      const shuffled = [...cfg.pieces].sort(() => Math.random() - 0.5);
-      setConfig(cfg);
-      setBank(shuffled);
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Error loading puzzle";
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  }, [userAge]);
+        const cfg: PuzzleConfig = await response.json();
+        // Shuffle bank pieces
+        const shuffled = [...cfg.pieces].sort(() => Math.random() - 0.5);
+        setBank(shuffled);
+        return cfg;
+      },
+      (data) => {
+        setConfig(data);
+      },
+    );
+
+    void result;
+  }, [userAge, execute]);
 
   // Load puzzle only once on mount
   useEffect(() => {
@@ -157,14 +160,18 @@ export default function PuzzleGame({
   ]);
 
   if (loading || !config) {
-    return (
-      <div className="min-h-[400px] flex items-center justify-center">
-        {loading ? (
-          <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
-        ) : error ? (
+    if (error) {
+      return (
+        <div className="min-h-[400px] flex items-center justify-center">
           <div className="text-red-600">{error}</div>
-        ) : null}
-      </div>
+        </div>
+      );
+    }
+    return (
+      <LoadingSkeleton
+        message="Creating your puzzle..."
+        subMessage="Please wait while we generate a new puzzle for you"
+      />
     );
   }
 

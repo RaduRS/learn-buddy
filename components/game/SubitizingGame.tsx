@@ -4,15 +4,10 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  CheckCircle,
-  XCircle,
-  RotateCcw,
-  Trophy,
-  Loader2,
-  Eye,
-} from "lucide-react";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { CheckCircle, XCircle, RotateCcw, Trophy, Eye } from "lucide-react";
 import { useScore } from "@/hooks/useScore";
+import { useApiCall } from "@/hooks/useApiCall";
 
 interface SubitizingGameProps {
   userId: string;
@@ -65,9 +60,15 @@ export default function SubitizingGame({
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [timeLeft, setTimeLeft] = useState(0);
   const [showObjects, setShowObjects] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
   const [showNextButton, setShowNextButton] = useState(false);
   const { incrementScore } = useScore();
+  const {
+    execute,
+    loading: isLoading,
+    error: apiError,
+  } = useApiCall<SubitizingQuestion>({ timeout: 20000 });
+
+  void apiError;
   const generatingRef = useRef(false);
 
   // Achievement unlocking function
@@ -100,52 +101,57 @@ export default function SubitizingGame({
   const generateQuestion = useCallback(async () => {
     if (generatingRef.current) return; // Prevent duplicate calls
     generatingRef.current = true;
-    setIsLoading(true);
 
-    try {
-      // Call the AI API to generate an enhanced subitizing pattern
-      const response = await fetch("/api/ai/generate-subitizing", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Cache-Control": "no-cache",
-        },
-        body: JSON.stringify({
-          userAge,
-          difficulty: Math.ceil(questionNumber / 3),
-          questionNumber,
-          previousCorrect: isCorrect,
-          timestamp: Date.now(), // Cache busting
-        }),
-      });
+    const result = await execute(
+      async () => {
+        const response = await fetch("/api/ai/generate-subitizing", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-cache",
+          },
+          body: JSON.stringify({
+            userAge,
+            difficulty: Math.ceil(questionNumber / 3),
+            questionNumber,
+            previousCorrect: isCorrect,
+            timestamp: Date.now(), // Cache busting
+          }),
+        });
 
-      if (!response.ok) {
-        throw new Error("Failed to generate AI pattern");
-      }
+        if (!response.ok) {
+          throw new Error("Failed to generate AI pattern");
+        }
 
-      const aiPattern = await response.json();
+        return await response.json();
+      },
+      (aiPattern) => {
+        const question: SubitizingQuestion = {
+          id: questionNumber,
+          objects: aiPattern.objects,
+          correctAnswer: aiPattern.correctAnswer,
+          difficulty: aiPattern.difficulty,
+          timeLimit: aiPattern.timeLimit,
+          educationalTip: aiPattern.educationalTip,
+          encouragement: aiPattern.encouragement,
+        };
 
-      const question: SubitizingQuestion = {
-        id: questionNumber,
-        objects: aiPattern.objects,
-        correctAnswer: aiPattern.correctAnswer,
-        difficulty: aiPattern.difficulty,
-        timeLimit: aiPattern.timeLimit,
-        educationalTip: aiPattern.educationalTip,
-        encouragement: aiPattern.encouragement,
-      };
+        setCurrentQuestion(question);
+        setTimeLeft(aiPattern.timeLimit);
+        setShowObjects(true);
 
-      setCurrentQuestion(question);
-      setTimeLeft(aiPattern.timeLimit);
-      setShowObjects(true);
-      setIsLoading(false);
+        // Hide objects after time limit for subitizing practice
+        setTimeout(() => {
+          setShowObjects(false);
+        }, aiPattern.timeLimit);
+      },
+    );
 
-      // Hide objects after time limit for subitizing practice
-      setTimeout(() => {
-        setShowObjects(false);
-      }, aiPattern.timeLimit);
-    } catch (error) {
-      console.error("Error generating AI pattern, using fallback:", error);
+    if (result.error) {
+      console.error(
+        "Error generating AI pattern, using fallback:",
+        result.error,
+      );
 
       // Fallback to original logic if AI fails
       let maxObjects = 3;
@@ -198,7 +204,6 @@ export default function SubitizingGame({
       setCurrentQuestion(question);
       setTimeLeft(timeLimit);
       setShowObjects(true);
-      setIsLoading(false);
 
       setTimeout(() => {
         setShowObjects(false);
@@ -206,7 +211,7 @@ export default function SubitizingGame({
     }
 
     generatingRef.current = false; // Reset the flag
-  }, [questionNumber, userAge, isCorrect]);
+  }, [questionNumber, userAge, isCorrect, execute]);
 
   // Handle answer selection
   const handleAnswer = useCallback(
@@ -426,11 +431,12 @@ export default function SubitizingGame({
     return (
       <div className="max-w-2xl mx-auto p-6">
         <Card>
-          <CardContent className="p-8">
-            <div className="text-center">
-              <Loader2 className="w-8 h-8 animate-spin mx-auto text-blue-500" />
-              <p className="mt-2">Preparing your subitizing challenge...</p>
-            </div>
+          <CardContent>
+            <LoadingSkeleton
+              variant="card"
+              message="Preparing your subitizing challenge..."
+              subMessage="Get ready to test your quick counting skills!"
+            />
           </CardContent>
         </Card>
       </div>

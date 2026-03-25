@@ -1,230 +1,234 @@
-'use client'
+"use client";
 
-import { useState, useEffect, useRef, useCallback } from 'react'
-import Image from 'next/image'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { CheckCircle, XCircle, RotateCcw, Trophy, Loader2 } from 'lucide-react'
-import { useScore } from '@/hooks/useScore'
+import { useState, useEffect, useRef, useCallback } from "react";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { CheckCircle, XCircle, RotateCcw, Trophy } from "lucide-react";
+import { useScore } from "@/hooks/useScore";
+import { useApiCall } from "@/hooks/useApiCall";
 
 interface Question {
-  id: number
-  statement: string
-  imageUrl: string
-  correctAnswer: boolean
-  difficulty: number
+  id: number;
+  statement: string;
+  imageUrl: string;
+  correctAnswer: boolean;
+  difficulty: number;
 }
 
 interface TrueFalseGameProps {
-  userId: string
-  gameId: string
-  userAge: number
-  onGameComplete: (score: number, totalQuestions: number) => void
+  userId: string;
+  gameId: string;
+  userAge: number;
+  onGameComplete: (score: number, totalQuestions: number) => void;
 }
 
 interface AIContent {
-  statement: string
-  isTrue: boolean
-  imageUrl: string
-  difficulty: number
+  statement: string;
+  isTrue: boolean;
+  imageUrl: string;
+  difficulty: number;
 }
 
-export default function TrueFalseGame({ userId, gameId, userAge, onGameComplete }: TrueFalseGameProps) {
-  const { incrementScore } = useScore()
-  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null)
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
-  const [score, setScore] = useState(0)
-  const [answers, setAnswers] = useState<boolean[]>([])
-  const [showResult, setShowResult] = useState(false)
-  const [gameCompleted, setGameCompleted] = useState(false)
-  const [selectedAnswer, setSelectedAnswer] = useState<boolean | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [usedQuestions, setUsedQuestions] = useState<Set<string>>(new Set())
-  const [showNextButton, setShowNextButton] = useState(false)
-  const [trueFalseHistory, setTrueFalseHistory] = useState<boolean[]>([])
-  const [hasInitialized, setHasInitialized] = useState(false)
-  const isGeneratingRef = useRef(false)
+export default function TrueFalseGame({
+  userId,
+  gameId,
+  userAge,
+  onGameComplete,
+}: TrueFalseGameProps) {
+  const { incrementScore } = useScore();
+  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [score, setScore] = useState(0);
+  const [answers, setAnswers] = useState<boolean[]>([]);
+  const [showResult, setShowResult] = useState(false);
+  const [gameCompleted, setGameCompleted] = useState(false);
+  const [selectedAnswer, setSelectedAnswer] = useState<boolean | null>(null);
+  const [usedQuestions, setUsedQuestions] = useState<Set<string>>(new Set());
+  const [showNextButton, setShowNextButton] = useState(false);
+  const [trueFalseHistory, setTrueFalseHistory] = useState<boolean[]>([]);
+  const [hasInitialized, setHasInitialized] = useState(false);
+  const isGeneratingRef = useRef(false);
+  const { execute, loading, error } = useApiCall<AIContent>({ timeout: 30000 });
 
-  const totalQuestions = 5
-  const progress = ((currentQuestionIndex + 1) / totalQuestions) * 100
+  const totalQuestions = 5;
+  const progress = ((currentQuestionIndex + 1) / totalQuestions) * 100;
 
   // Function to load initial total score
   const loadInitialTotalScore = useCallback(async () => {
     try {
-      const response = await fetch(`/api/game-progress?userId=${userId}&gameId=${gameId}`)
+      const response = await fetch(
+        `/api/game-progress?userId=${userId}&gameId=${gameId}`,
+      );
       if (response.ok) {
         // Score is now handled by the useScore context
       }
     } catch (error) {
-      console.error('Error loading initial total score:', error)
+      console.error("Error loading initial total score:", error);
     }
-  }, [userId, gameId])
+  }, [userId, gameId]);
 
   // Function to save progress after each correct answer
   const saveProgressAfterCorrectAnswer = async () => {
     // Use the score context to increment score by 1 point
-    incrementScore(gameId, 1)
-  }
+    incrementScore(gameId, 1);
+  };
 
   // Generate a single question with duplicate prevention
-  const generateQuestion = useCallback(async (questionNumber: number, retryCount = 0) => {
-    // Prevent duplicate calls
-    if (isGeneratingRef.current) {
-      console.log('Question generation already in progress, skipping...')
-      return
-    }
-    
-    try {
-      isGeneratingRef.current = true
-      setLoading(true)
-      setError(null)
-      
-      const response = await fetch('/api/ai/generate-content', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          age: userAge,
-          questionNumber: questionNumber,
-          timestamp: Date.now() + retryCount, // Add retry count for more uniqueness
-          usedQuestions: Array.from(usedQuestions), // Send used questions to API
-          trueFalseHistory: trueFalseHistory
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to generate question ${questionNumber}`)
+  const generateQuestion = useCallback(
+    async (questionNumber: number, retryCount = 0) => {
+      // Prevent duplicate calls
+      if (isGeneratingRef.current) {
+        console.log("Question generation already in progress, skipping...");
+        return;
       }
 
-      const content: AIContent = await response.json()
-      
-      // Check if this question was already used
-      if (usedQuestions.has(content.statement) && retryCount < 3) {
-        console.log('Duplicate question detected, retrying...', content.statement)
-        return generateQuestion(questionNumber, retryCount + 1)
-      }
-      
-      const newQuestion: Question = {
-        id: questionNumber,
-        statement: content.statement,
-        imageUrl: content.imageUrl,
-        correctAnswer: content.isTrue,
-        difficulty: content.difficulty,
-      }
+      isGeneratingRef.current = true;
 
-      // Add to used questions
-      setUsedQuestions(prev => new Set([...prev, content.statement]))
-      setCurrentQuestion(newQuestion)
-      setLoading(false)
-      isGeneratingRef.current = false
-    } catch (error) {
-      console.error('Error generating question:', error)
-      setError('Failed to generate question. Please try again.')
-      setLoading(false)
-      isGeneratingRef.current = false
-    }
-  }, [userAge, usedQuestions, trueFalseHistory])
+      try {
+        const result = await execute(
+          async () => {
+            const response = await fetch("/api/ai/generate-content", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                age: userAge,
+                questionNumber: questionNumber,
+                timestamp: Date.now() + retryCount,
+                usedQuestions: Array.from(usedQuestions),
+                trueFalseHistory: trueFalseHistory,
+              }),
+            });
+
+            if (!response.ok) {
+              throw new Error(`Failed to generate question ${questionNumber}`);
+            }
+
+            return await response.json();
+          },
+          (content: AIContent) => {
+            // Check if this question was already used - throw error to trigger retry
+            if (usedQuestions.has(content.statement)) {
+              throw new Error("DUPLICATE_QUESTION");
+            }
+
+            const newQuestion: Question = {
+              id: questionNumber,
+              statement: content.statement,
+              imageUrl: content.imageUrl,
+              correctAnswer: content.isTrue,
+              difficulty: content.difficulty,
+            };
+
+            // Add to used questions
+            setUsedQuestions((prev) => new Set([...prev, content.statement]));
+            setCurrentQuestion(newQuestion);
+          },
+        );
+
+        if (result.error === "DUPLICATE_QUESTION" && retryCount < 3) {
+          console.log("Duplicate question detected, retrying...");
+          isGeneratingRef.current = false;
+          await generateQuestion(questionNumber, retryCount + 1);
+        }
+      } finally {
+        isGeneratingRef.current = false;
+      }
+    },
+    [userAge, usedQuestions, trueFalseHistory, execute],
+  );
 
   // Generate first question on component mount
   useEffect(() => {
     if (!hasInitialized && !currentQuestion && !loading) {
-      setHasInitialized(true)
-      generateQuestion(1)
+      setHasInitialized(true);
+      generateQuestion(1);
     }
-  }, [hasInitialized, currentQuestion, loading, generateQuestion])
+  }, [hasInitialized, currentQuestion, loading, generateQuestion]);
 
   // Load initial total score on component mount
   useEffect(() => {
-    loadInitialTotalScore()
-  }, [userId, gameId, loadInitialTotalScore])
+    loadInitialTotalScore();
+  }, [userId, gameId, loadInitialTotalScore]);
 
   const handleAnswer = async (answer: boolean) => {
-    if (!currentQuestion) return
+    if (!currentQuestion) return;
 
-    setSelectedAnswer(answer)
-    const isCorrect = answer === currentQuestion.correctAnswer
-    
+    setSelectedAnswer(answer);
+    const isCorrect = answer === currentQuestion.correctAnswer;
+
     // Update answers array
-    const newAnswers = [...answers, answer]
-    setAnswers(newAnswers)
-    
+    const newAnswers = [...answers, answer];
+    setAnswers(newAnswers);
+
     // Update score if correct
     if (isCorrect) {
-      setScore(score + 1)
+      setScore(score + 1);
       // Save progress immediately after correct answer
-      await saveProgressAfterCorrectAnswer()
+      await saveProgressAfterCorrectAnswer();
     }
-    
-    setShowResult(true)
-    
+
+    setShowResult(true);
+
     // Show Next button instead of auto-advancing
-    setShowNextButton(true)
-  }
+    setShowNextButton(true);
+  };
 
   const handleNext = () => {
     // Record the current question's true/false value in history
     if (currentQuestion) {
-      setTrueFalseHistory(prev => [...prev, currentQuestion.correctAnswer])
+      setTrueFalseHistory((prev) => [...prev, currentQuestion.correctAnswer]);
     }
-    
-    setShowResult(false)
-    setSelectedAnswer(null)
-    setShowNextButton(false)
-    
+
+    setShowResult(false);
+    setSelectedAnswer(null);
+    setShowNextButton(false);
+
     if (currentQuestionIndex >= totalQuestions - 1) {
-      setGameCompleted(true)
-      onGameComplete(score, totalQuestions)
+      setGameCompleted(true);
+      onGameComplete(score, totalQuestions);
     } else {
-      setCurrentQuestionIndex(currentQuestionIndex + 1)
-      generateQuestion(currentQuestionIndex + 2)
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+      generateQuestion(currentQuestionIndex + 2);
     }
-  }
+  };
 
   const restartGame = () => {
-    setCurrentQuestionIndex(0)
-    setScore(0)
-    setAnswers([])
-    setShowResult(false)
-    setGameCompleted(false)
-    setSelectedAnswer(null)
-    setCurrentQuestion(null)
-    setShowNextButton(false)
-    setUsedQuestions(new Set()) // Clear used questions
-    setTrueFalseHistory([]) // Clear true/false history for new game
-    setHasInitialized(false) // Reset initialization flag
-    isGeneratingRef.current = false // Reset generation flag
+    setCurrentQuestionIndex(0);
+    setScore(0);
+    setAnswers([]);
+    setShowResult(false);
+    setGameCompleted(false);
+    setSelectedAnswer(null);
+    setCurrentQuestion(null);
+    setShowNextButton(false);
+    setUsedQuestions(new Set()); // Clear used questions
+    setTrueFalseHistory([]); // Clear true/false history for new game
+    setHasInitialized(false); // Reset initialization flag
+    isGeneratingRef.current = false; // Reset generation flag
     // Don't call generateQuestion here - let useEffect handle it
-  }
+  };
 
   // Loading state
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto p-6">
         <Card>
-          <CardContent className="p-8">
-            <div className="text-center space-y-4">
-              <Loader2 className="w-12 h-12 animate-spin mx-auto text-blue-500" />
-              <h3 className="text-xl font-semibold">Creating Your Question</h3>
-              <p className="text-gray-600">
-                Generating question {currentQuestionIndex + 1} of {totalQuestions}...
-              </p>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-              <p className="text-sm text-gray-500">
-                We&apos;re creating a personalized question just for you!
-              </p>
-            </div>
+          <CardContent>
+            <LoadingSkeleton
+              variant="card"
+              message="Creating Your Question"
+              subMessage={`Generating question ${currentQuestionIndex + 1} of ${totalQuestions}...`}
+              progress={progress}
+            />
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   // Error state
@@ -237,19 +241,22 @@ export default function TrueFalseGame({ userId, gameId, userAge, onGameComplete 
               <XCircle className="w-12 h-12 mx-auto text-red-500" />
               <h3 className="text-xl font-semibold text-red-600">Oops!</h3>
               <p className="text-gray-600">{error}</p>
-              <Button onClick={() => generateQuestion(currentQuestionIndex + 1)} className="mt-4">
+              <Button
+                onClick={() => generateQuestion(currentQuestionIndex + 1)}
+                className="mt-4"
+              >
                 Try Again
               </Button>
             </div>
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   // Game completed state
   if (gameCompleted) {
-    const percentage = Math.round((score / totalQuestions) * 100)
+    const percentage = Math.round((score / totalQuestions) * 100);
     return (
       <div className="max-w-2xl mx-auto p-6">
         <Card>
@@ -266,31 +273,32 @@ export default function TrueFalseGame({ userId, gameId, userAge, onGameComplete 
             <div className="text-lg text-gray-600">
               You got {percentage}% correct!
             </div>
-            
+
             {percentage >= 80 && (
               <div className="text-green-600 font-semibold">
                 🎉 Excellent work!
               </div>
             )}
             {percentage >= 60 && percentage < 80 && (
-              <div className="text-blue-600 font-semibold">
-                👍 Good job!
-              </div>
+              <div className="text-blue-600 font-semibold">👍 Good job!</div>
             )}
             {percentage < 60 && (
               <div className="text-orange-600 font-semibold">
                 💪 Keep practicing!
               </div>
             )}
-            
-            <Button onClick={restartGame} className="mt-6 flex items-center gap-2">
+
+            <Button
+              onClick={restartGame}
+              className="mt-6 flex items-center gap-2"
+            >
               <RotateCcw className="w-4 h-4" />
               Play Again
             </Button>
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   // Game playing state
@@ -298,15 +306,12 @@ export default function TrueFalseGame({ userId, gameId, userAge, onGameComplete 
     return (
       <div className="max-w-2xl mx-auto p-6">
         <Card>
-          <CardContent className="p-8">
-            <div className="text-center">
-              <Loader2 className="w-8 h-8 animate-spin mx-auto text-blue-500" />
-              <p className="mt-2">Loading question...</p>
-            </div>
+          <CardContent>
+            <LoadingSkeleton variant="card" message="Loading question..." />
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
@@ -317,23 +322,24 @@ export default function TrueFalseGame({ userId, gameId, userAge, onGameComplete 
           {/* Image */}
           <div className="relative w-full h-64 mb-6 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
             {currentQuestion.imageUrl ? (
-               <Image
-                 src={currentQuestion.imageUrl}
-                 alt="Question image"
-                 fill
-                 className="object-contain"
-               />
-             ) : (
+              <Image
+                src={currentQuestion.imageUrl}
+                alt="Question image"
+                fill
+                className="object-contain"
+              />
+            ) : (
               <div className="flex flex-col items-center space-y-2">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-                <span className="text-sm text-gray-500">Loading image...</span>
+                <LoadingSkeleton variant="minimal" message="Loading image..." />
               </div>
             )}
           </div>
 
           {/* Question Text */}
           <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold mb-2">{currentQuestion.statement}</h2>
+            <h2 className="text-2xl font-bold mb-2">
+              {currentQuestion.statement}
+            </h2>
           </div>
 
           {/* Answer Buttons */}
@@ -360,21 +366,32 @@ export default function TrueFalseGame({ userId, gameId, userAge, onGameComplete 
             </div>
           ) : (
             <div className="text-center">
-              <div className={`text-2xl font-bold mb-2 ${
-                selectedAnswer === currentQuestion.correctAnswer ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {selectedAnswer === currentQuestion.correctAnswer ? '✅ Correct!' : '❌ Incorrect!'}
+              <div
+                className={`text-2xl font-bold mb-2 ${
+                  selectedAnswer === currentQuestion.correctAnswer
+                    ? "text-green-600"
+                    : "text-red-600"
+                }`}
+              >
+                {selectedAnswer === currentQuestion.correctAnswer
+                  ? "✅ Correct!"
+                  : "❌ Incorrect!"}
               </div>
               <div className="text-gray-600">
-                The correct answer is: <strong>{currentQuestion.correctAnswer ? 'True' : 'False'}</strong>
+                The correct answer is:{" "}
+                <strong>
+                  {currentQuestion.correctAnswer ? "True" : "False"}
+                </strong>
               </div>
               {showNextButton && (
                 <div className="mt-4">
-                  <Button 
+                  <Button
                     onClick={handleNext}
                     className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 text-lg font-semibold rounded-lg"
                   >
-                    {currentQuestionIndex >= totalQuestions - 1 ? 'Finish Game' : 'Next Question'}
+                    {currentQuestionIndex >= totalQuestions - 1
+                      ? "Finish Game"
+                      : "Next Question"}
                   </Button>
                 </div>
               )}
@@ -383,13 +400,15 @@ export default function TrueFalseGame({ userId, gameId, userAge, onGameComplete 
         </CardContent>
       </Card>
 
-            {/* Progress Bar */}
+      {/* Progress Bar */}
       <div className="mb-6">
         <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-medium">Question {currentQuestionIndex + 1} of {totalQuestions}</span>
+          <span className="text-sm font-medium">
+            Question {currentQuestionIndex + 1} of {totalQuestions}
+          </span>
         </div>
         <div className="w-full bg-gray-200 rounded-full h-2">
-          <div 
+          <div
             className="bg-blue-500 h-2 rounded-full transition-all duration-300"
             style={{ width: `${progress}%` }}
           />
@@ -403,5 +422,5 @@ export default function TrueFalseGame({ userId, gameId, userAge, onGameComplete 
         </Badge>
       </div>
     </div>
-  )
+  );
 }
