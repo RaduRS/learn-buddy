@@ -100,12 +100,15 @@ function createProblem(
     );
     secondNumber = correctAnswer - firstNumber;
   } else {
+    correctAnswer =
+      Math.floor(
+        Math.random() * (settings.maxAnswer - settings.minAnswer + 1),
+      ) + settings.minAnswer;
     firstNumber =
       Math.floor(
         Math.random() * (settings.maxFirstNumber - settings.minFirstNumber + 1),
       ) + settings.minFirstNumber;
-    secondNumber = Math.floor(Math.random() * (firstNumber - 5) + 5);
-    correctAnswer = firstNumber - secondNumber;
+    secondNumber = firstNumber - correctAnswer;
   }
 
   return {
