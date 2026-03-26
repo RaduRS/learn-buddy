@@ -68,6 +68,14 @@ const initialGames = [
     difficulty: 1,
     isActive: true,
   },
+  {
+    title: "MathSpark",
+    description: "10 math problems: add, subtract, multiply & more!",
+    icon: "⚡",
+    category: "Math",
+    difficulty: 3,
+    isActive: true,
+  },
 ];
 
 async function seedDatabase() {
