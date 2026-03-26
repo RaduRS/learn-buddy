@@ -11,6 +11,7 @@ import NumberFunGame from "@/components/game/NumberFunGame";
 import MusicLearningGame from "@/components/game/MusicLearningGame";
 import ShapesGame from "@/components/game/ShapesGame";
 import ReadingHelperGame from "@/components/game/ReadingHelperGame";
+import MathSparkGame from "@/components/game/MathSparkGame";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Header } from "@/components/layout/Header";
@@ -144,6 +145,7 @@ export default function GamePage() {
   }
 
   const renderGame = () => {
+    const normalizedTitle = game.title.toLowerCase().replace(/\s+/g, "");
     if (game.title === "Subitizing") {
       return (
         <SubitizingGame
@@ -228,6 +230,12 @@ export default function GamePage() {
           userAge={currentUser.age || 6}
           onGameComplete={handleGameComplete}
         />
+      );
+    }
+
+    if (normalizedTitle === "mathspark") {
+      return (
+        <MathSparkGame gameId={game.id} onGameComplete={handleGameComplete} />
       );
     }
 

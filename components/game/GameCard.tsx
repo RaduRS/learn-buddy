@@ -35,6 +35,7 @@ export function GameCard({ game, progress, onPlay, className }: GameCardProps) {
       'group hover:shadow-lg transition-all duration-300 cursor-pointer',
       'hover:scale-105 active:scale-95',
       !game.isActive && 'opacity-60',
+      'flex flex-col h-full',
       className
     )}>
       <CardHeader className="pb-3">
@@ -62,7 +63,7 @@ export function GameCard({ game, progress, onPlay, className }: GameCardProps) {
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="pt-0">
+      <CardContent className="pt-0 flex flex-col flex-grow">
         {progress && (
           <div className="mb-4 space-y-2">
             <div className="flex items-center justify-between text-sm">
@@ -81,15 +82,17 @@ export function GameCard({ game, progress, onPlay, className }: GameCardProps) {
           </div>
         )}
 
-        <Button 
-          onClick={() => onPlay(game.id)}
-          disabled={!game.isActive}
-          className="w-full"
-          size="sm"
-        >
-          <Play className="w-4 h-4 mr-2" />
-          {game.isActive ? 'Play Now' : 'Coming Soon!'}
-        </Button>
+        <div className="mt-auto">
+          <Button 
+            onClick={() => onPlay(game.id)}
+            disabled={!game.isActive}
+            className="w-full"
+            size="sm"
+          >
+            <Play className="w-4 h-4 mr-2" />
+            {game.isActive ? 'Play Now' : 'Coming Soon!'}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   )
