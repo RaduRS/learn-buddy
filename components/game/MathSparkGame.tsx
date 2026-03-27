@@ -37,21 +37,23 @@ function generateRandomNumber(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+const MAX_RESULT = 100;
+
 function generateProblem(type: ProblemType): MathProblem | null {
   let question: string;
   let answer: number;
 
   switch (type) {
     case "add": {
-      const a = generateRandomNumber(10, 499);
-      const b = generateRandomNumber(10, Math.min(1000 - a, 499));
+      const a = generateRandomNumber(10, 90);
+      const b = generateRandomNumber(1, MAX_RESULT - a);
       question = `${a} + ${b} = ?`;
       answer = a + b;
       break;
     }
 
     case "sub": {
-      const a = generateRandomNumber(10, 499);
+      const a = generateRandomNumber(10, MAX_RESULT);
       const b = generateRandomNumber(1, a);
       question = `${a} - ${b} = ?`;
       answer = a - b;
@@ -70,23 +72,25 @@ function generateProblem(type: ProblemType): MathProblem | null {
       const mulA = generateRandomNumber(2, 5);
       const mulB = generateRandomNumber(2, 5);
       const mulResult = mulA * mulB;
-      const addC = generateRandomNumber(10, Math.min(1000 - mulResult, 200));
+      const addC = generateRandomNumber(1, MAX_RESULT - mulResult);
       question = `${mulA} × ${mulB} + ${addC} = ?`;
       answer = mulResult + addC;
       break;
     }
 
     case "chain_mul_add": {
-      const addA = generateRandomNumber(10, 200);
+      const addA = generateRandomNumber(10, 90);
       const mulB = generateRandomNumber(2, 5);
-      const mulC = generateRandomNumber(2, Math.min(5, Math.floor((1000 - addA) / mulB)));
+      const maxMulC = Math.min(5, Math.floor((MAX_RESULT - addA) / mulB));
+      if (maxMulC < 2) return null;
+      const mulC = generateRandomNumber(2, maxMulC);
       question = `${addA} + ${mulB} × ${mulC} = ?`;
       answer = addA + mulB * mulC;
       break;
     }
 
     case "blank_add": {
-      const total = generateRandomNumber(20, 1000);
+      const total = generateRandomNumber(20, MAX_RESULT);
       const a = generateRandomNumber(10, total - 10);
       const b = total - a;
       question = `${a} + _ = ${total}`;
@@ -95,7 +99,7 @@ function generateProblem(type: ProblemType): MathProblem | null {
     }
 
     case "blank_sub": {
-      const a = generateRandomNumber(20, 500);
+      const a = generateRandomNumber(20, MAX_RESULT);
       const result = generateRandomNumber(1, a - 10);
       const b = a - result;
       question = `${a} - _ = ${result}`;
@@ -105,7 +109,7 @@ function generateProblem(type: ProblemType): MathProblem | null {
 
     case "blank_mul": {
       const a = generateRandomNumber(2, 5);
-      const result = a * generateRandomNumber(2, Math.min(5, Math.floor(1000 / a)));
+      const result = a * generateRandomNumber(2, Math.min(5, Math.floor(MAX_RESULT / a)));
       const b = result / a;
       question = `${a} × _ = ${result}`;
       answer = b;
@@ -172,23 +176,18 @@ export default function MathSparkGame({
     const evaluatedProblems = problems.map((p) => ({
       ...p,
       isCorrect: p.userAnswer ? parseInt(p.userAnswer) === p.answer : false,
+      isRevealed: false,
     }));
 
-    let correctCount = 0;
-    const revealedProblems: MathProblem[] = [];
+    const correctCount = evaluatedProblems.filter((p) => p.isCorrect).length;
+    setProblems(evaluatedProblems);
 
     for (let i = 0; i < evaluatedProblems.length; i++) {
-      const problem = {
-        ...evaluatedProblems[i],
-        isRevealed: true,
-      };
-      revealedProblems.push(problem);
-
-      if (problem.isCorrect) {
-        correctCount++;
-      }
-
-      setProblems(revealedProblems);
+      setProblems((prev) =>
+        prev.map((problem, index) =>
+          index === i ? { ...problem, isRevealed: true } : problem,
+        ),
+      );
 
       if (i < evaluatedProblems.length - 1) {
         await new Promise((resolve) => setTimeout(resolve, 500));
@@ -211,39 +210,6 @@ export default function MathSparkGame({
   };
 
   const allAnswered = problems.every((p) => p.userAnswer && p.userAnswer.trim() !== "");
-
-  if (gameCompleted) {
-    return (
-      <div className="text-center p-8 space-y-6">
-        <div className="space-y-4">
-          <Trophy className="h-16 w-16 text-yellow-500 mx-auto" />
-          <h2 className="text-3xl font-bold text-green-600">Great Job!</h2>
-          <p className="text-xl">
-            You scored {score} out of 10!
-          </p>
-          <div className="text-lg text-gray-600">
-            {score === 10 && "Perfect! You're a math star! ⭐"}
-            {score >= 8 && score < 10 && "Excellent work! 🎉"}
-            {score >= 6 && score < 8 && "Good job! Keep practicing! 👍"}
-            {score < 6 && "Nice try! Practice makes perfect! 💪"}
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <Button onClick={handleRestart} size="lg" className="mr-4">
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Play Again
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => (window.location.href = "/")}
-          >
-            Back to Games
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
@@ -285,15 +251,20 @@ export default function MathSparkGame({
                 placeholder="?"
               />
 
-              {problem.isRevealed && (
-                <div className="flex items-center justify-center w-8">
+              <div className="flex items-center justify-center w-8">
+                <div
+                  className={cn(
+                    "transition-opacity duration-300",
+                    problem.isRevealed ? "opacity-100" : "opacity-0",
+                  )}
+                >
                   {problem.isCorrect ? (
                     <CheckCircle className="h-6 w-6 text-green-500" />
                   ) : (
                     <XCircle className="h-6 w-6 text-red-500" />
                   )}
                 </div>
-              )}
+              </div>
 
               <div className="w-8">
                 <span className="text-sm text-gray-500">#{index + 1}</span>
@@ -318,6 +289,27 @@ export default function MathSparkGame({
           </p>
         )}
       </div>
+
+      {gameCompleted && (
+        <Card className="p-6">
+          <CardContent className="text-center space-y-4">
+            <Trophy className="h-12 w-12 text-yellow-500 mx-auto" />
+            <h2 className="text-2xl font-bold text-green-600">
+              You scored {score} out of 10!
+            </h2>
+            <div className="text-base text-gray-600">
+              {score === 10 && "Perfect! You're a math star! ⭐"}
+              {score >= 8 && score < 10 && "Excellent work! 🎉"}
+              {score >= 6 && score < 8 && "Good job! Keep practicing! 👍"}
+              {score < 6 && "Nice try! Practice makes perfect! 💪"}
+            </div>
+            <Button onClick={handleRestart} size="lg">
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Play Again
+            </Button>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
