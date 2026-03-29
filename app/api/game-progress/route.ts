@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { DatabaseService } from '@/lib/database'
-import { Prisma } from '@prisma/client'
-
-type GameProgressWithGame = Prisma.GameProgressGetPayload<{ include: { game: true } }>
 
 // POST /api/game-progress - Save or update game progress
 export async function POST(request: NextRequest) {
@@ -17,37 +14,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if progress already exists
-    const existingProgress = await DatabaseService.getUserGameProgress(userId, gameId)
+    // Use Prisma upsert to avoid read-then-write race condition
+    // First get existing to compute derived fields
+    const existing = await DatabaseService.getUserGameProgress(userId, gameId)
     
-    if (existingProgress) {
-      // Update existing progress - explicit type assertion for Vercel
-      const progress = existingProgress as GameProgressWithGame
-      const newBestScore = Math.max(progress.bestScore, score)
-      const newTotalScore = progress.totalScore + score
-      const newTimesPlayed = progress.timesPlayed + 1
-      
-      const updatedProgress = await DatabaseService.updateGameProgress(userId, gameId, {
-        score,
-        level: level || progress.level,
-        bestScore: newBestScore,
-        totalScore: newTotalScore,
-        timesPlayed: newTimesPlayed
-      })
-      
-      return NextResponse.json(updatedProgress)
-    } else {
-      // Create new progress record
-      const newProgress = await DatabaseService.updateGameProgress(userId, gameId, {
-        score,
-        level: level || 1,
-        bestScore: score,
-        totalScore: score,
-        timesPlayed: 1
-      })
-      
-      return NextResponse.json(newProgress, { status: 201 })
-    }
+    const newBestScore = Math.max(existing?.bestScore ?? 0, score ?? 0)
+    const newTotalScore = (existing?.totalScore ?? 0) + (score ?? 0)
+    const newTimesPlayed = (existing?.timesPlayed ?? 0) + 1
+
+    const upsertedProgress = await DatabaseService.upsertGameProgress(userId, gameId, {
+      score: score ?? 0,
+      level: level || existing?.level || 1,
+      bestScore: newBestScore,
+      totalScore: newTotalScore,
+      timesPlayed: newTimesPlayed,
+    })
+    
+    return NextResponse.json(upsertedProgress)
   } catch (error) {
     console.error('Error saving game progress:', error)
     return NextResponse.json(
@@ -71,10 +54,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(allProgress)
     }
 
-    // If only userId provided, return all progress for that user
+    // If only userId provided, return all progress for that user (efficient DB query)
     if (userId && !gameId) {
-      const allProgress = await DatabaseService.getAllGameProgress()
-      const userProgress = allProgress.filter(progress => progress.userId === userId)
+      const userProgress = await DatabaseService.getUserAllGameProgress(userId)
       return NextResponse.json(userProgress)
     }
 

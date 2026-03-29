@@ -15,6 +15,7 @@ import MathSparkGame from "@/components/game/MathSparkGame";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Header } from "@/components/layout/Header";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { ArrowLeft } from "lucide-react";
 import type { User, Game } from "@/types";
 
@@ -82,14 +83,14 @@ export default function GamePage() {
     if (!currentUser || !game) return;
 
     try {
-      // Save game progress to database
+      // Save game progress to database with the actual score from the game
       const response = await fetch("/api/game-progress", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: currentUser.id,
           gameId: game.id,
-          score: 1, // Always add 1 point per completed game
+          score,
           level: 1,
         }),
       });
@@ -107,11 +108,7 @@ export default function GamePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-xl font-semibold text-gray-600">
-            Loading game...
-          </div>
-        </div>
+        <LoadingSkeleton message="Loading game..." subMessage="Getting everything ready" />
       </div>
     );
   }

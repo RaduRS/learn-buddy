@@ -182,6 +182,53 @@ export class DatabaseService {
     })
   }
 
+  static async getUserAllGameProgress(userId: string): Promise<Prisma.GameProgressGetPayload<{ include: { game: true } }>[]> {
+    return await prisma.gameProgress.findMany({
+      where: { userId },
+      include: {
+        game: true,
+      },
+      orderBy: {
+        lastPlayedAt: 'desc',
+      },
+    })
+  }
+
+  static async upsertGameProgress(
+    userId: string,
+    gameId: string,
+    data: {
+      score?: number
+      level?: number
+      bestScore?: number
+      totalScore?: number
+      timesPlayed?: number
+    }
+  ) {
+    return await prisma.gameProgress.upsert({
+      where: {
+        userId_gameId: { userId, gameId },
+      },
+      update: {
+        score: data.score,
+        level: data.level,
+        bestScore: data.bestScore,
+        totalScore: data.totalScore,
+        timesPlayed: data.timesPlayed,
+        lastPlayedAt: new Date(),
+      },
+      create: {
+        userId,
+        gameId,
+        score: data.score ?? 0,
+        level: data.level ?? 1,
+        bestScore: data.bestScore ?? 0,
+        totalScore: data.totalScore ?? 0,
+        timesPlayed: data.timesPlayed ?? 1,
+      },
+    })
+  }
+
   // Achievement system
   static async unlockAchievement(
     userId: string,

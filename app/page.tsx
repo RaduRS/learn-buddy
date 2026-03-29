@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button'
 import { GameCard } from '@/components/game/GameCard'
 import { Header } from '@/components/layout/Header'
 import { UserSelectionDialog } from '@/components/user/UserSelectionDialog'
-import { Logo } from '@/components/ui/logo'
-import { Sparkles, Users, Target } from 'lucide-react'
+import { Sparkles, Users, Target, AlertCircle } from 'lucide-react'
+import { LoadingSkeleton } from '@/components/ui/loading-skeleton'
 import { useScore } from '@/hooks/useScore'
 import type { User, Game, CreateUserForm } from '@/types'
 
@@ -19,6 +19,7 @@ export default function Home() {
   const [games, setGames] = useState<Game[]>([])
   const [showUserDialog, setShowUserDialog] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   // Load initial data
   useEffect(() => {
@@ -57,6 +58,7 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Failed to load data:', error)
+      setErrorMessage('Failed to load games. Please refresh the page.')
     } finally {
       setIsLoading(false)
     }
@@ -82,6 +84,7 @@ export default function Home() {
       localStorage.setItem('selectedUserId', newUser.id)
     } catch (error) {
       console.error('Failed to create user:', error)
+      setErrorMessage('Failed to create profile. Please try again.')
     }
   }
 
@@ -100,8 +103,8 @@ export default function Home() {
     const game = games.find(g => g.id === gameId)
     // Only allow active games
     if (game?.isActive) {
-      // Navigate to the game page
-      window.location.href = `/game/${gameId}`
+      // Use Next.js router for client-side navigation (preserves React state/context)
+      router.push(`/game/${gameId}`)
     } else {
       alert('This game is coming soon!')
     }
@@ -127,10 +130,7 @@ export default function Home() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
-        <div className="text-center">
-          <Logo size="xl" className="mx-auto mb-4" />
-          <div className="text-xl font-semibold text-gray-600">Loading Learn Buddy...</div>
-        </div>
+        <LoadingSkeleton message="Loading Learn Buddy..." subMessage="Preparing your games" />
       </div>
     )
   }
@@ -143,6 +143,20 @@ export default function Home() {
       />
 
       <main className="max-w-7xl mx-auto px-4 py-8">
+        {/* Error Banner */}
+        {errorMessage && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3 text-red-700">
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <span>{errorMessage}</span>
+            <button
+              onClick={() => setErrorMessage(null)}
+              className="ml-auto text-red-500 hover:text-red-700 font-bold"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Welcome Section */}
         <section className="text-center mb-12">
           <h2 className="text-3xl font-bold text-gray-800 mb-4 flex items-center justify-center gap-2">
@@ -187,7 +201,6 @@ export default function Home() {
                     game={game}
                     progress={progress}
                     onPlay={handlePlayGame}
-                    className={!game.isActive ? 'opacity-40 pointer-events-none' : ''}
                   />
                 )
               })}</div>

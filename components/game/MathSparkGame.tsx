@@ -160,6 +160,7 @@ export default function MathSparkGame({
   );
   const [gameCompleted, setGameCompleted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [revealIndex, setRevealIndex] = useState<number | null>(null);
   const [score, setScore] = useState(0);
 
   const handleInputChange = (problemId: number, value: string) => {
@@ -176,19 +177,14 @@ export default function MathSparkGame({
     const evaluatedProblems = problems.map((p) => ({
       ...p,
       isCorrect: p.userAnswer ? parseInt(p.userAnswer) === p.answer : false,
-      isRevealed: false,
     }));
 
     const correctCount = evaluatedProblems.filter((p) => p.isCorrect).length;
     setProblems(evaluatedProblems);
 
+    // Reveal answers sequentially using revealIndex-driven rendering
     for (let i = 0; i < evaluatedProblems.length; i++) {
-      setProblems((prev) =>
-        prev.map((problem, index) =>
-          index === i ? { ...problem, isRevealed: true } : problem,
-        ),
-      );
-
+      setRevealIndex(i);
       if (i < evaluatedProblems.length - 1) {
         await new Promise((resolve) => setTimeout(resolve, 500));
       }
@@ -205,6 +201,7 @@ export default function MathSparkGame({
   const handleRestart = () => {
     setProblems(generateProblems());
     setGameCompleted(false);
+    setRevealIndex(null);
     setScore(0);
     setIsSubmitting(false);
   };
@@ -238,11 +235,11 @@ export default function MathSparkGame({
                 inputMode="numeric"
                 value={problem.userAnswer || ""}
                 onChange={(e) => handleInputChange(problem.id, e.target.value)}
-                disabled={gameCompleted || isSubmitting || problem.isRevealed}
+                disabled={gameCompleted || isSubmitting || (revealIndex !== null && index <= revealIndex)}
                 className={cn(
                   "w-32 px-4 py-2 text-lg font-bold text-center border-2 rounded-lg",
                   "focus:outline-none focus:ring-2 focus:ring-purple-500",
-                  problem.isRevealed
+                  (revealIndex !== null && index <= revealIndex)
                     ? problem.isCorrect
                       ? "bg-green-100 border-green-500 text-green-700"
                       : "bg-red-100 border-red-500 text-red-700"
@@ -255,7 +252,7 @@ export default function MathSparkGame({
                 <div
                   className={cn(
                     "transition-opacity duration-300",
-                    problem.isRevealed ? "opacity-100" : "opacity-0",
+                    (revealIndex !== null && index <= revealIndex) ? "opacity-100" : "opacity-0",
                   )}
                 >
                   {problem.isCorrect ? (

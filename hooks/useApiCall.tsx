@@ -23,7 +23,7 @@ export function useApiCall<T = unknown>(options: ApiCallOptions = {}) {
 
   const execute = useCallback(
     async (
-      apiFunction: () => Promise<T>,
+      apiFunction: (signal?: AbortSignal) => Promise<T>,
       onSuccess?: (data: T) => void,
       onError?: (error: string) => void,
     ): Promise<ApiCallResult<T>> => {
@@ -39,15 +39,18 @@ export function useApiCall<T = unknown>(options: ApiCallOptions = {}) {
 
         try {
           abortControllerRef.current = new AbortController();
+          const { signal } = abortControllerRef.current;
 
           const timeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => {
+            const timeoutId = setTimeout(() => {
               abortControllerRef.current?.abort();
               reject(new Error(`Request timeout after ${timeout}ms`));
             }, timeout);
+            // Clean up timeout if aborted externally
+            signal.addEventListener("abort", () => clearTimeout(timeoutId));
           });
 
-          const data = await Promise.race([apiFunction(), timeoutPromise]);
+          const data = await Promise.race([apiFunction(signal), timeoutPromise]);
 
           setLoading(false);
           onSuccess?.(data);

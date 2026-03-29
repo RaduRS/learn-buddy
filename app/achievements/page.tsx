@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/Header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { LoadingSkeleton } from '@/components/ui/loading-skeleton'
 import { Trophy, Star, Award, Calendar } from 'lucide-react'
 import type { User, Game, GameProgress, Achievement } from '@/types'
 
@@ -18,6 +19,43 @@ interface GameAchievement {
     silver: { unlocked: boolean; unlockedAt?: Date }
     gold: { unlocked: boolean; unlockedAt?: Date }
   }
+}
+
+function TrophyCup({ level, unlocked, progress }: { level: 'bronze' | 'silver' | 'gold', unlocked: boolean, progress: number }) {
+  const colors = {
+    bronze: unlocked ? 'from-amber-400 to-amber-600' : 'from-gray-300 to-gray-400',
+    silver: unlocked ? 'from-gray-300 to-gray-500' : 'from-gray-200 to-gray-300',
+    gold: unlocked ? 'from-yellow-400 to-yellow-600' : 'from-gray-200 to-gray-300'
+  }
+
+  const fillHeight = Math.min(progress, 100)
+
+  return (
+    <div className="relative w-16 h-20 mx-auto">
+      {/* Trophy Cup Base */}
+      <div className="absolute bottom-0 w-full h-16 rounded-t-full border-4 border-gray-400 bg-gray-100 overflow-hidden">
+        {/* Fill Animation */}
+        <div 
+          className={`absolute bottom-0 w-full bg-gradient-to-t ${colors[level]} transition-all duration-1000 ease-out`}
+          style={{ height: `${fillHeight}%` }}
+        />
+      </div>
+      
+      {/* Trophy Handles */}
+      <div className="absolute top-4 -left-2 w-4 h-8 border-4 border-gray-400 rounded-l-full bg-transparent" />
+      <div className="absolute top-4 -right-2 w-4 h-8 border-4 border-gray-400 rounded-r-full bg-transparent" />
+      
+      {/* Trophy Base */}
+      <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-12 h-4 bg-gray-400 rounded" />
+      
+      {/* Achievement Badge */}
+      {unlocked && (
+        <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+          <Star className="w-3 h-3 text-white fill-current" />
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function AchievementsPage() {
@@ -46,11 +84,11 @@ export default function AchievementsPage() {
       }
       setCurrentUser(user)
 
-      // Load games and progress
+      // Load games and user-specific progress/achievements (filtered server-side)
       const [gamesResponse, progressResponse, achievementsResponse] = await Promise.all([
         fetch('/api/games'),
-        fetch('/api/game-progress'),
-        fetch('/api/achievements')
+        fetch(`/api/game-progress?userId=${savedUserId}`),
+        fetch(`/api/achievements?userId=${savedUserId}`)
       ])
 
       // Check if responses are ok
@@ -59,31 +97,36 @@ export default function AchievementsPage() {
       }
 
       const games = await gamesResponse.json()
-      const allProgress = await progressResponse.json()
-      const allAchievements = await achievementsResponse.json()
+      const userProgress = await progressResponse.json()
+      const userAchievements = await achievementsResponse.json()
 
-      // Ensure data is arrays before filtering
+      // Ensure data is arrays
       const gamesArray = Array.isArray(games) ? games : []
-      const progressArray = Array.isArray(allProgress) ? allProgress : []
-      const achievementsArray = Array.isArray(allAchievements) ? allAchievements : []
+      const progressArray = Array.isArray(userProgress) ? userProgress : []
+      const achievementsArray = Array.isArray(userAchievements) ? userAchievements : []
 
-      // Filter progress for current user
-      const userProgress = progressArray.filter((p: GameProgress) => p.userId === savedUserId)
-      const userAchievements = achievementsArray.filter((a: Achievement) => a.userId === savedUserId)
-
-      // Create game achievements data
+      // Create game achievements data (progress/achievements already filtered server-side by userId)
       const gameAchievementsData: GameAchievement[] = gamesArray
         .filter((game: Game) => game.isActive)
         .map((game: Game) => {
-          const progress = userProgress.find((p: GameProgress) => p.gameId === game.id)
-          const gameSpecificAchievements = userAchievements.filter((a: Achievement) => a.gameId === game.id)
+          const progress = progressArray.find((p: GameProgress) => p.gameId === game.id)
+          const gameSpecificAchievements = achievementsArray.filter((a: Achievement) => a.gameId === game.id)
           
           const totalScore = progress?.totalScore || 0
+
+          // Score-based achievement thresholds (replaces fragile string matching)
+          const ACHIEVEMENT_THRESHOLDS = { bronze: 10, silver: 50, gold: 100 } as const
           
-          // Check achievement levels
-          const bronze = gameSpecificAchievements.find((a: Achievement) => a.title.includes('Bronze') || a.description.includes('10'))
-          const silver = gameSpecificAchievements.find((a: Achievement) => a.title.includes('Silver') || a.description.includes('50'))
-          const gold = gameSpecificAchievements.find((a: Achievement) => a.title.includes('Gold') || a.description.includes('100'))
+          // Look for any existing achievement to preserve the unlockedAt date
+          const findUnlockDate = (level: 'bronze' | 'silver' | 'gold') => {
+            const threshold = ACHIEVEMENT_THRESHOLDS[level]
+            // Check if an achievement record exists for this level (by score threshold in description)
+            const match = gameSpecificAchievements.find((a: Achievement) => {
+              const descNum = parseInt(a.description)
+              return descNum === threshold || a.description.includes(`${threshold}`)
+            })
+            return match?.unlockedAt ? new Date(match.unlockedAt) : undefined
+          }
 
           return {
             game,
@@ -92,16 +135,16 @@ export default function AchievementsPage() {
             lastPlayed: progress?.lastPlayedAt ? new Date(progress.lastPlayedAt) : new Date(),
             achievements: {
               bronze: { 
-                unlocked: !!bronze || totalScore >= 10, 
-                unlockedAt: bronze?.unlockedAt ? new Date(bronze.unlockedAt) : undefined 
+                unlocked: totalScore >= ACHIEVEMENT_THRESHOLDS.bronze, 
+                unlockedAt: findUnlockDate('bronze')
               },
               silver: { 
-                unlocked: !!silver || totalScore >= 50, 
-                unlockedAt: silver?.unlockedAt ? new Date(silver.unlockedAt) : undefined 
+                unlocked: totalScore >= ACHIEVEMENT_THRESHOLDS.silver, 
+                unlockedAt: findUnlockDate('silver')
               },
               gold: { 
-                unlocked: !!gold || totalScore >= 100, 
-                unlockedAt: gold?.unlockedAt ? new Date(gold.unlockedAt) : undefined 
+                unlocked: totalScore >= ACHIEVEMENT_THRESHOLDS.gold, 
+                unlockedAt: findUnlockDate('gold')
               }
             }
           }
@@ -142,52 +185,12 @@ export default function AchievementsPage() {
     }
   }
 
-  const TrophyCup = ({ level, unlocked, progress }: { level: 'bronze' | 'silver' | 'gold', unlocked: boolean, progress: number }) => {
-    const colors = {
-      bronze: unlocked ? 'from-amber-400 to-amber-600' : 'from-gray-300 to-gray-400',
-      silver: unlocked ? 'from-gray-300 to-gray-500' : 'from-gray-200 to-gray-300',
-      gold: unlocked ? 'from-yellow-400 to-yellow-600' : 'from-gray-200 to-gray-300'
-    }
-
-    const fillHeight = Math.min(progress, 100)
-
-    return (
-      <div className="relative w-16 h-20 mx-auto">
-        {/* Trophy Cup Base */}
-        <div className="absolute bottom-0 w-full h-16 rounded-t-full border-4 border-gray-400 bg-gray-100 overflow-hidden">
-          {/* Fill Animation */}
-          <div 
-            className={`absolute bottom-0 w-full bg-gradient-to-t ${colors[level]} transition-all duration-1000 ease-out`}
-            style={{ height: `${fillHeight}%` }}
-          />
-        </div>
-        
-        {/* Trophy Handles */}
-        <div className="absolute top-4 -left-2 w-4 h-8 border-4 border-gray-400 rounded-l-full bg-transparent" />
-        <div className="absolute top-4 -right-2 w-4 h-8 border-4 border-gray-400 rounded-r-full bg-transparent" />
-        
-        {/* Trophy Base */}
-        <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-12 h-4 bg-gray-400 rounded" />
-        
-        {/* Achievement Badge */}
-        {unlocked && (
-          <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-            <Star className="w-3 h-3 text-white fill-current" />
-          </div>
-        )}
-      </div>
-    )
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
         <Header currentUser={currentUser} onNavigate={handleNavigate} />
-        <div className="max-w-6xl mx-auto p-4">
-          <div className="text-center py-12">
-            <Trophy className="w-12 h-12 animate-pulse mx-auto text-yellow-500 mb-4" />
-            <h2 className="text-xl font-semibold text-gray-600">Loading your achievements...</h2>
-          </div>
+        <div className="flex items-center justify-center" style={{ minHeight: '60vh' }}>
+          <LoadingSkeleton message="Loading your achievements..." subMessage="Gathering your accomplishments" />
         </div>
       </div>
     )

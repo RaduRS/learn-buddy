@@ -5,6 +5,7 @@ import type { GameProgress } from "@/types";
 
 interface ScoreContextType {
   totalScore: number;
+  scoreLoaded: boolean;
   incrementScore: (gameId: string, points?: number) => void;
   setTotalScore: (score: number) => void;
   loadUserScore: (userId: string) => Promise<void>;
@@ -18,10 +19,14 @@ interface ScoreProviderProps {
 
 export function ScoreProvider({ children }: ScoreProviderProps) {
   const [totalScore, setTotalScore] = useState<number>(0);
+  const [scoreLoaded, setScoreLoaded] = useState(false);
 
   const incrementScore = async (gameId: string, points: number = 1) => {
     const currentUserId = localStorage.getItem("selectedUserId");
     if (!currentUserId) return;
+
+    // Optimistically update local state immediately
+    setTotalScore((prev) => prev + points);
 
     try {
       // Update score in database
@@ -37,15 +42,13 @@ export function ScoreProvider({ children }: ScoreProviderProps) {
         }),
       });
 
-      if (response.ok) {
-        await response.json();
-        // Reload the user's total score to get the updated total across all games
-        await loadUserScore(currentUserId);
+      if (!response.ok) {
+        // Revert on failure
+        setTotalScore((prev) => prev - points);
       }
     } catch (error) {
       console.error("Failed to increment score:", error);
-      // Fallback: increment locally
-      setTotalScore((prev) => prev + points);
+      // Already optimistically updated, no revert for network errors
     }
   };
 
@@ -60,14 +63,17 @@ export function ScoreProvider({ children }: ScoreProviderProps) {
         );
         setTotalScore(total);
       }
+      setScoreLoaded(true);
     } catch (error) {
       console.error("Failed to load user score:", error);
       setTotalScore(0);
+      setScoreLoaded(true);
     }
   };
 
   const contextValue: ScoreContextType = {
     totalScore,
+    scoreLoaded,
     incrementScore,
     setTotalScore,
     loadUserScore,

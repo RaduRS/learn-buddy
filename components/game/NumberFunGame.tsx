@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -88,6 +88,9 @@ export default function NumberFunGame({
   const [showNextButton, setShowNextButton] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
 
+  // Use a ref to track the canonical score and avoid stale closures
+  const scoreRef = useRef(0);
+
   const totalQuestions = 10;
   const progress = ((currentQuestionIndex + 1) / totalQuestions) * 100;
 
@@ -103,9 +106,11 @@ export default function NumberFunGame({
     const newAnswers = [...answers, answer];
     setAnswers(newAnswers);
 
-    // Update score if correct
+    // Update score if correct — use ref to avoid stale closure issues
     if (correct) {
-      setScore(score + 1);
+      const newScore = scoreRef.current + 1;
+      scoreRef.current = newScore;
+      setScore(newScore);
       // Increment score in the system
       if (gameId) incrementScore(gameId, 1);
     }
@@ -123,7 +128,7 @@ export default function NumberFunGame({
 
     if (currentQuestionIndex + 1 >= totalQuestions) {
       setGameCompleted(true);
-      onGameComplete(score, totalQuestions);
+      onGameComplete(scoreRef.current, totalQuestions);
     } else {
       setCurrentQuestionIndex((prev) => prev + 1);
       const nextProblem = createProblem(currentQuestionIndex + 2);
@@ -133,6 +138,7 @@ export default function NumberFunGame({
 
   // Restart game
   const restartGame = () => {
+    scoreRef.current = 0;
     setCurrentQuestionIndex(0);
     setScore(0);
     setAnswers([]);

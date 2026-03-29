@@ -32,9 +32,10 @@ export function GameCard({ game, progress, onPlay, className }: GameCardProps) {
 
   return (
     <Card className={cn(
-      'group hover:shadow-lg transition-all duration-300 cursor-pointer',
-      'hover:scale-105 active:scale-95',
-      !game.isActive && 'opacity-60',
+      'group transition-all duration-300',
+      game.isActive
+        ? 'hover:shadow-lg cursor-pointer hover:scale-105 active:scale-95'
+        : 'opacity-40',
       'flex flex-col h-full',
       className
     )}>
