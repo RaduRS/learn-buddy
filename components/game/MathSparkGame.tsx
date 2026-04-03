@@ -162,6 +162,7 @@ export default function MathSparkGame({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [revealIndex, setRevealIndex] = useState<number | null>(null);
   const [score, setScore] = useState(0);
+  const [focusedId, setFocusedId] = useState<number | null>(null);
 
   const handleInputChange = (problemId: number, value: string) => {
     setProblems((prev) =>
@@ -224,47 +225,88 @@ export default function MathSparkGame({
               key={problem.id}
               className="flex items-center justify-between gap-4 p-4 bg-gray-50 rounded-lg"
             >
-              <div className="flex-1">
-                <span className="font-mono text-lg">
-                  {problem.question}
-                </span>
-              </div>
+              {/* Inline question with embedded input for blank-type problems */}
+              {problem.type.startsWith("blank_") ? (
+                <div className="flex-1 flex items-center gap-1 font-mono text-lg flex-wrap">
+                  {problem.question.split("_").map((part, i, arr) => (
+                    <span key={i} className="contents">
+                      <span>{part}</span>
+                      {i < arr.length - 1 && (
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          value={problem.userAnswer || ""}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, "");
+                            handleInputChange(problem.id, val);
+                          }}
+                          onFocus={() => setFocusedId(problem.id)}
+                          onBlur={() => setFocusedId(null)}
+                          disabled={gameCompleted || isSubmitting || (revealIndex !== null && index <= revealIndex)}
+                          className={cn(
+                            "w-16 px-2 py-1 text-lg font-bold text-center border-2 rounded-lg inline-block",
+                            "focus:outline-none focus:ring-2 focus:ring-purple-500",
+                            (revealIndex !== null && index <= revealIndex)
+                              ? problem.isCorrect
+                                ? "bg-green-100 border-green-500 text-green-700"
+                                : "bg-red-100 border-red-500 text-red-700"
+                              : "bg-white border-gray-300",
+                          )}
+                          placeholder={focusedId === problem.id ? "" : "?"}
+                        />
+                      )}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex-1 flex items-center gap-1 font-mono text-lg">
+                  <span>{problem.question.replace("= ?", "")}</span>
+                  <span className="mr-1">=</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={problem.userAnswer || ""}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9]/g, "");
+                      handleInputChange(problem.id, val);
+                    }}
+                    onFocus={() => setFocusedId(problem.id)}
+                    onBlur={() => setFocusedId(null)}
+                    disabled={gameCompleted || isSubmitting || (revealIndex !== null && index <= revealIndex)}
+                    className={cn(
+                      "w-20 px-2 py-1 text-lg font-bold text-center border-2 rounded-lg inline-block",
+                      "focus:outline-none focus:ring-2 focus:ring-purple-500",
+                      (revealIndex !== null && index <= revealIndex)
+                        ? problem.isCorrect
+                          ? "bg-green-100 border-green-500 text-green-700"
+                          : "bg-red-100 border-red-500 text-red-700"
+                        : "bg-white border-gray-300",
+                    )}
+                    placeholder={focusedId === problem.id ? "" : "?"}
+                  />
+                </div>
+              )}
 
-              <input
-                type="number"
-                inputMode="numeric"
-                value={problem.userAnswer || ""}
-                onChange={(e) => handleInputChange(problem.id, e.target.value)}
-                disabled={gameCompleted || isSubmitting || (revealIndex !== null && index <= revealIndex)}
-                className={cn(
-                  "w-32 px-4 py-2 text-lg font-bold text-center border-2 rounded-lg",
-                  "focus:outline-none focus:ring-2 focus:ring-purple-500",
-                  (revealIndex !== null && index <= revealIndex)
-                    ? problem.isCorrect
-                      ? "bg-green-100 border-green-500 text-green-700"
-                      : "bg-red-100 border-red-500 text-red-700"
-                    : "bg-white border-gray-300",
-                )}
-                placeholder="?"
-              />
-
-              <div className="flex items-center justify-center w-8">
+              <div className="flex items-center gap-2 min-w-[80px] justify-end">
                 <div
                   className={cn(
-                    "transition-opacity duration-300",
+                    "transition-opacity duration-300 flex items-center gap-1.5",
                     (revealIndex !== null && index <= revealIndex) ? "opacity-100" : "opacity-0",
                   )}
                 >
                   {problem.isCorrect ? (
                     <CheckCircle className="h-6 w-6 text-green-500" />
                   ) : (
-                    <XCircle className="h-6 w-6 text-red-500" />
+                    <>
+                      <XCircle className="h-6 w-6 text-red-500" />
+                      <span className="text-sm font-semibold text-red-600 whitespace-nowrap">
+                        = {problem.answer}
+                      </span>
+                    </>
                   )}
                 </div>
-              </div>
-
-              <div className="w-8">
-                <span className="text-sm text-gray-500">#{index + 1}</span>
               </div>
             </div>
           ))}

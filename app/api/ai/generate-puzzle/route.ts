@@ -20,7 +20,7 @@ interface PuzzleConfig {
 
 export async function POST(request: NextRequest) {
   try {
-    const { theme } = (await request.json()) as PuzzleRequest;
+    const { difficulty = 2, theme } = (await request.json()) as PuzzleRequest;
 
     const nebiusApiKey = process.env.NEBIUS_API_KEY;
     if (!nebiusApiKey) {
@@ -30,9 +30,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Determine grid size by difficulty
-    // const gridSize = Math.min(4, Math.max(2, difficulty + 1)) // 1->2x2, 2->3x3, 3->4x4
-    const gridSize = 5; // fixed to 5x5 as requested
+    // Determine grid size by difficulty: 1→2×2, 2→3×3, 3→4×4, 4→5×5
+    const gridSize = Math.min(5, Math.max(2, difficulty + 1));
 
     // Child-friendly themes
     const defaultThemes = [
