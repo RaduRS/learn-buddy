@@ -44,6 +44,8 @@ interface RhythmPattern {
   tempo: number;
 }
 
+const MAX_MELODY_NOTES = 50;
+
 const NOTES: Note[] = [
   { name: "C", frequency: 261.63, color: "#FF6B6B" },
   { name: "C#", frequency: 277.18, color: "#4ECDC4", isBlack: true },
@@ -129,6 +131,7 @@ export default function MusicLearningGame({
   // Melody Maker State
   const [recordedMelody, setRecordedMelody] = useState<Note[]>([]);
   const [isRecording, setIsRecording] = useState(false);
+  const [maxNotesReached, setMaxNotesReached] = useState(false);
 
   // Audio Context
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -174,9 +177,15 @@ export default function MusicLearningGame({
       oscillator.start(context.currentTime);
       oscillator.stop(context.currentTime + duration);
 
-      // Add to recorded melody if recording
+      // Add to recorded melody if recording (with max notes limit)
       if (isRecording && currentMode === "melody-maker") {
-        setRecordedMelody((prev) => [...prev, note]);
+        setRecordedMelody((prev) => {
+          if (prev.length >= MAX_MELODY_NOTES) {
+            setMaxNotesReached(true);
+            return prev;
+          }
+          return [...prev, note];
+        });
       }
     },
     [isMuted, isRecording, currentMode],
@@ -283,7 +292,15 @@ export default function MusicLearningGame({
   const clearMelody = useCallback(() => {
     setRecordedMelody([]);
     setIsRecording(false);
+    setMaxNotesReached(false);
   }, []);
+
+  // Auto-stop recording when max notes reached
+  useEffect(() => {
+    if (maxNotesReached) {
+      setIsRecording(false);
+    }
+  }, [maxNotesReached]);
 
   useEffect(() => {
     if (currentMode === "note-recognition" && !targetNote) {
@@ -556,9 +573,27 @@ export default function MusicLearningGame({
                 </div>
               )}
 
+              <div className="flex justify-center items-center gap-2 mb-2">
+                <Badge
+                  variant={
+                    recordedMelody.length >= MAX_MELODY_NOTES
+                      ? "destructive"
+                      : "secondary"
+                  }
+                >
+                  🎵 {recordedMelody.length}/{MAX_MELODY_NOTES} notes
+                </Badge>
+              </div>
+
               {isRecording && (
                 <div className="text-red-600 font-semibold animate-pulse">
                   🔴 Recording... Play some notes!
+                </div>
+              )}
+
+              {maxNotesReached && (
+                <div className="mt-2 p-2 bg-amber-100 border border-amber-300 rounded text-amber-800 font-semibold">
+                  🎵 Maximum of {MAX_MELODY_NOTES} notes reached! Play your melody or clear to start over.
                 </div>
               )}
             </div>
