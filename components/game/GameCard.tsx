@@ -84,11 +84,10 @@ export function GameCard({ game, progress, onPlay, className }: GameCardProps) {
         )}
 
         <div className="mt-auto">
-          <Button 
+          <Button
             onClick={() => onPlay(game.id)}
             disabled={!game.isActive}
-            className="w-full"
-            size="sm"
+            className="w-full h-11"
           >
             <Play className="w-4 h-4 mr-2" />
             {game.isActive ? 'Play Now' : 'Coming Soon!'}

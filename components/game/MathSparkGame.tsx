@@ -218,7 +218,7 @@ export default function MathSparkGame({
         </Badge>
       </div>
 
-      <Card className="p-6">
+      <Card className="p-6 shadow-sm">
         <CardContent className="space-y-4">
           {problems.map((problem, index) => (
             <div
@@ -245,7 +245,7 @@ export default function MathSparkGame({
                           onBlur={() => setFocusedId(null)}
                           disabled={gameCompleted || isSubmitting || (revealIndex !== null && index <= revealIndex)}
                           className={cn(
-                            "w-16 px-2 py-1 text-lg font-bold text-center border-2 rounded-lg inline-block",
+                            "w-16 h-11 px-2 py-1 text-lg font-bold text-center border-2 rounded-lg inline-block",
                             "focus:outline-none focus:ring-2 focus:ring-purple-500",
                             (revealIndex !== null && index <= revealIndex)
                               ? problem.isCorrect
@@ -276,7 +276,7 @@ export default function MathSparkGame({
                     onBlur={() => setFocusedId(null)}
                     disabled={gameCompleted || isSubmitting || (revealIndex !== null && index <= revealIndex)}
                     className={cn(
-                      "w-20 px-2 py-1 text-lg font-bold text-center border-2 rounded-lg inline-block",
+                      "w-20 h-11 px-2 py-1 text-lg font-bold text-center border-2 rounded-lg inline-block",
                       "focus:outline-none focus:ring-2 focus:ring-purple-500",
                       (revealIndex !== null && index <= revealIndex)
                         ? problem.isCorrect
@@ -330,8 +330,8 @@ export default function MathSparkGame({
       </div>
 
       {gameCompleted && (
-        <Card className="p-6">
-          <CardContent className="text-center space-y-4">
+        <Card className="border-green-200 bg-gradient-to-b from-green-50 to-white">
+          <CardContent className="text-center space-y-4 p-8">
             <Trophy className="h-12 w-12 text-yellow-500 mx-auto" />
             <h2 className="text-2xl font-bold text-green-600">
               You scored {score} out of 10!

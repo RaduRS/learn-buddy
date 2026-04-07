@@ -100,9 +100,9 @@ export default function PuzzleGame({
   }, [dragInfo]);
 
   /* ─── responsive board size ─── */
-  const [boardSize, setBoardSize] = useState(320);
+  const [boardSize, setBoardSize] = useState(400);
   useEffect(() => {
-    const update = () => setBoardSize(Math.min(320, window.innerWidth - 48));
+    const update = () => setBoardSize(Math.min(400, window.innerWidth - 64));
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
@@ -600,7 +600,7 @@ export default function PuzzleGame({
               width: dragInfo.ghostWidth,
               height: dragInfo.ghostHeight,
               opacity: 0.88,
-              zIndex: 99999,
+              zIndex: 50,
               pointerEvents: "none",
               borderRadius: 6,
               boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
@@ -633,7 +633,7 @@ export default function PuzzleGame({
               width: returnAnim.width,
               height: returnAnim.height,
               opacity: returnAnim.animating ? 0.25 : 0.8,
-              zIndex: 99999,
+              zIndex: 50,
               pointerEvents: "none",
               borderRadius: 6,
               boxShadow: "0 4px 15px rgba(0,0,0,0.2)",

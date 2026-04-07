@@ -261,9 +261,9 @@ export default function MemoryMatchGame({
   if (gameStatus === "loading") {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-        <p className="text-lg font-medium">Generating your memory cards...</p>
-        <p className="text-sm text-muted-foreground">
+        <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
+        <p className="text-xl font-semibold text-gray-700">Generating your memory cards...</p>
+        <p className="text-sm text-gray-500">
           Creating beautiful images just for you!
         </p>
       </div>
@@ -292,7 +292,7 @@ export default function MemoryMatchGame({
           )}
         </div>
 
-        <Button onClick={loadGame} variant="outline" size="sm">
+        <Button onClick={loadGame} variant="outline">
           <RotateCcw className="w-4 h-4 mr-2" />
           New Game
         </Button>
@@ -302,7 +302,7 @@ export default function MemoryMatchGame({
       {config && (
         <div
           className={cn(
-            "grid gap-3 mx-auto max-w-2xl",
+            "grid gap-3 mx-auto max-w-3xl",
             getGridCols(config.gridCols),
           )}
         >
@@ -317,7 +317,7 @@ export default function MemoryMatchGame({
                   isEmpty
                     ? "bg-gray-100 border-gray-200"
                     : cn(
-                        "cursor-pointer hover:scale-105",
+                        "cursor-pointer hover:scale-105 active:scale-95",
                         card.isMatched &&
                           "ring-2 ring-green-500 ring-opacity-50",
                         card.isFlipped || card.isMatched
@@ -366,37 +366,42 @@ export default function MemoryMatchGame({
 
       {/* Game Status Messages */}
       {gameStatus === "won" && (
-        <div className="text-center space-y-4 p-6 bg-green-50 rounded-lg border border-green-200">
-          <div className="flex justify-center">
-            <Trophy className="h-12 w-12 text-yellow-500" />
-          </div>
-          <h3 className="text-2xl font-bold text-green-800">
-            Congratulations!
-          </h3>
-          <p className="text-green-700">
-            You matched all pairs in {moves} moves!
-            {timeLeft && ` With ${formatTime(timeLeft)} remaining!`}
-          </p>
-          <Button
-            onClick={loadGame}
-            className="bg-green-600 hover:bg-green-700"
-          >
-            Play Again
-          </Button>
-        </div>
+        <Card className="border-green-200 bg-gradient-to-b from-green-50 to-white">
+          <CardContent className="text-center space-y-4 p-8">
+            <div className="flex justify-center">
+              <Trophy className="h-14 w-14 text-yellow-500" />
+            </div>
+            <h3 className="text-2xl font-bold text-green-800">
+              Congratulations!
+            </h3>
+            <p className="text-green-700 text-lg">
+              You matched all pairs in {moves} moves!
+              {timeLeft && ` With ${formatTime(timeLeft)} remaining!`}
+            </p>
+            <Button
+              onClick={loadGame}
+              size="lg"
+              className="bg-green-600 hover:bg-green-700"
+            >
+              Play Again
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
       {gameStatus === "lost" && (
-        <div className="text-center space-y-4 p-6 bg-red-50 rounded-lg border border-red-200">
-          <h3 className="text-2xl font-bold text-red-800">Time&apos;s Up!</h3>
-          <p className="text-red-700">
-            You matched {matchedPairs.length} out of{" "}
-            {config ? config.cards.length / 2 : 0} pairs.
-          </p>
-          <Button onClick={loadGame} className="bg-red-600 hover:bg-red-700">
-            Try Again
-          </Button>
-        </div>
+        <Card className="border-red-200 bg-gradient-to-b from-red-50 to-white">
+          <CardContent className="text-center space-y-4 p-8">
+            <h3 className="text-2xl font-bold text-red-800">Time&apos;s Up!</h3>
+            <p className="text-red-700 text-lg">
+              You matched {matchedPairs.length} out of{" "}
+              {config ? config.cards.length / 2 : 0} pairs.
+            </p>
+            <Button onClick={loadGame} size="lg" className="bg-red-600 hover:bg-red-700">
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

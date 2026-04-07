@@ -493,7 +493,7 @@ export default function ReadingHelperGame({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="relative w-full h-[420px] rounded-lg border overflow-hidden bg-gray-100">
+            <div className="relative w-full h-64 md:h-[420px] rounded-lg border overflow-hidden bg-gray-100">
               <Image
                 src={imagePreviewUrl}
                 alt="Captured text"

@@ -103,7 +103,13 @@ export default function Home() {
     const game = games.find(g => g.id === gameId)
     // Only allow active games
     if (game?.isActive) {
-      // Use Next.js router for client-side navigation (preserves React state/context)
+      // Cache game + user data so the game page renders instantly
+      try {
+        sessionStorage.setItem('pendingGameData', JSON.stringify(game))
+        sessionStorage.setItem('pendingUserData', JSON.stringify(currentUser))
+      } catch {
+        // sessionStorage unavailable — game page will fall back to API fetch
+      }
       router.push(`/game/${gameId}`)
     } else {
       alert('This game is coming soon!')

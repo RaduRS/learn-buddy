@@ -363,13 +363,14 @@ export default function SubitizingGame({
 
     const style = {
       position: "absolute" as const,
-      left: `${obj.x}%`,
-      top: `${obj.y}%`,
+      left: `${Math.max(8, Math.min(92, obj.x))}%`,
+      top: `${Math.max(10, Math.min(90, obj.y))}%`,
       color: obj.color,
       fontSize: sizeMap[obj.size || "medium"],
       transform: "translate(-50%, -50%)",
-      transition: "all 0.3s ease",
+      transition: "opacity 0.3s ease",
       opacity: showObjects ? 1 : 0,
+      pointerEvents: "none" as const,
     };
 
     const shapeMap = {
@@ -391,11 +392,11 @@ export default function SubitizingGame({
 
   // Game complete state
   if (gameState === "complete") {
-    const percentage = Math.round((score / (totalQuestions * 2)) * 100);
+    const percentage = Math.round((score / totalQuestions) * 100);
 
     return (
-      <div className="max-w-2xl mx-auto p-6">
-        <Card>
+      <div className="max-w-3xl mx-auto p-6">
+        <Card className="border-green-200 bg-gradient-to-b from-green-50 to-white">
           <CardHeader className="text-center">
             <CardTitle className="flex items-center justify-center gap-2 text-2xl">
               <Trophy className="w-8 h-8 text-yellow-500" />
@@ -429,7 +430,7 @@ export default function SubitizingGame({
   // Loading state
   if (isLoading || !currentQuestion) {
     return (
-      <div className="max-w-2xl mx-auto p-6">
+      <div className="max-w-3xl mx-auto p-6">
         <Card>
           <CardContent>
             <LoadingSkeleton
@@ -444,7 +445,7 @@ export default function SubitizingGame({
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
+    <div className="max-w-3xl mx-auto p-6">
       {/* Question Card */}
       <Card className="mb-6">
         <CardContent className="p-6">
@@ -509,7 +510,7 @@ export default function SubitizingGame({
                         : "destructive"
                       : "outline"
                   }
-                  className="h-12 text-lg font-bold"
+                  className="h-14 text-lg font-bold"
                 >
                   {selectedAnswer === num && (
                     <>

@@ -133,32 +133,45 @@ export default function MusicLearningGame({
   const [isRecording, setIsRecording] = useState(false);
   const [maxNotesReached, setMaxNotesReached] = useState(false);
 
-  // Audio Context
+  // Audio Context — created lazily on first user gesture to satisfy browser autoplay policy
   const audioContextRef = useRef<AudioContext | null>(null);
   const rhythmIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const melodyTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  useEffect(() => {
-    // Initialize Web Audio API
-    if (typeof window !== "undefined") {
+  const getAudioContext = useCallback(() => {
+    if (typeof window === "undefined") return null;
+    if (!audioContextRef.current) {
       const AudioContextClass =
         window.AudioContext ||
         (window as unknown as { webkitAudioContext: typeof AudioContext })
           .webkitAudioContext;
       audioContextRef.current = new AudioContextClass();
     }
+    if (audioContextRef.current.state === "suspended") {
+      audioContextRef.current.resume();
+    }
+    return audioContextRef.current;
+  }, []);
 
+  useEffect(() => {
     return () => {
       if (rhythmIntervalRef.current) {
         clearInterval(rhythmIntervalRef.current);
+      }
+      melodyTimeoutsRef.current.forEach((t) => clearTimeout(t));
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+        audioContextRef.current = null;
       }
     };
   }, []);
 
   const playNote = useCallback(
     (note: Note, duration: number = 0.5) => {
-      if (isMuted || !audioContextRef.current) return;
+      if (isMuted) return;
+      const context = getAudioContext();
+      if (!context) return;
 
-      const context = audioContextRef.current;
       const oscillator = context.createOscillator();
       const gainNode = context.createGain();
 
@@ -188,7 +201,7 @@ export default function MusicLearningGame({
         });
       }
     },
-    [isMuted, isRecording, currentMode],
+    [isMuted, isRecording, currentMode, getAudioContext],
   );
 
   const startNoteRecognitionGame = useCallback(() => {
@@ -278,14 +291,19 @@ export default function MusicLearningGame({
   const playRecordedMelody = useCallback(() => {
     if (recordedMelody.length === 0) return;
 
+    // Clear any previous playback timeouts
+    melodyTimeoutsRef.current.forEach((t) => clearTimeout(t));
+    melodyTimeoutsRef.current = [];
+
     setIsPlaying(true);
     recordedMelody.forEach((note, index) => {
-      setTimeout(() => {
+      const t = setTimeout(() => {
         playNote(note, 0.5);
         if (index === recordedMelody.length - 1) {
           setIsPlaying(false);
         }
       }, index * 600);
+      melodyTimeoutsRef.current.push(t);
     });
   }, [recordedMelody, playNote]);
 
@@ -313,13 +331,13 @@ export default function MusicLearningGame({
     const blackKeys = NOTES.filter((note) => note.isBlack);
 
     return (
-      <div className="relative mx-auto" style={{ width: "fit-content" }}>
+      <div className="relative mx-auto w-full max-w-lg">
         {/* White Keys */}
-        <div className="flex">
+        <div className="flex w-full">
           {whiteKeys.map((note) => (
             <button
               key={note.name}
-              className="w-12 h-32 bg-white border-2 border-gray-300 hover:bg-gray-100 active:bg-gray-200 transition-colors duration-150 flex items-end justify-center pb-2 text-sm font-semibold"
+              className="flex-1 h-28 md:h-36 bg-white border-2 border-gray-300 hover:bg-gray-100 active:bg-gray-200 transition-colors duration-150 flex items-end justify-center pb-2 text-sm md:text-base font-semibold rounded-b-md"
               style={{
                 borderColor: note.color,
                 boxShadow: `0 4px 8px ${note.color}40`,
@@ -337,7 +355,7 @@ export default function MusicLearningGame({
         </div>
 
         {/* Black Keys */}
-        <div className="absolute top-0 flex">
+        <div className="absolute top-0 left-0 right-0 flex pointer-events-none">
           {whiteKeys.map((_, index) => {
             const blackKey = blackKeys.find((black) => {
               const whiteNote = whiteKeys[index].name;
@@ -351,13 +369,13 @@ export default function MusicLearningGame({
             });
 
             if (!blackKey) {
-              return <div key={index} className="w-12" />;
+              return <div key={index} className="flex-1" />;
             }
 
             return (
-              <div key={index} className="w-12 flex justify-end">
+              <div key={index} className="flex-1 flex justify-center">
                 <button
-                  className="w-8 h-20 bg-gray-800 hover:bg-gray-700 active:bg-gray-600 text-white text-xs font-semibold flex items-end justify-center pb-1 transition-colors duration-150"
+                  className="w-[65%] h-16 md:h-20 bg-gray-800 hover:bg-gray-700 active:bg-gray-600 text-white text-xs font-semibold flex items-end justify-center pb-1 transition-colors duration-150 rounded-b-md pointer-events-auto z-10"
                   style={{
                     backgroundColor: blackKey.color,
                     boxShadow: `0 2px 4px ${blackKey.color}60`,

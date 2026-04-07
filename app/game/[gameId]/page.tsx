@@ -24,9 +24,30 @@ export default function GamePage() {
   const router = useRouter();
   const gameId = params.gameId as string;
 
-  const [game, setGame] = useState<Game | null>(null);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Check sessionStorage synchronously before first render to avoid loading flash
+  const getInitialData = () => {
+    if (typeof window === "undefined") return { game: null, user: null, loading: true };
+    try {
+      const cachedGame = sessionStorage.getItem("pendingGameData");
+      const cachedUser = sessionStorage.getItem("pendingUserData");
+      const game = cachedGame ? (JSON.parse(cachedGame) as Game) : null;
+      const user = cachedUser ? (JSON.parse(cachedUser) as User) : null;
+      // If both are cached and game matches, skip loading entirely
+      const cached = !!(game && game.id === gameId && user);
+      if (cached) {
+        sessionStorage.removeItem("pendingGameData");
+        sessionStorage.removeItem("pendingUserData");
+      }
+      return cached ? { game, user, loading: false } : { game: null, user: null, loading: true };
+    } catch {
+      return { game: null, user: null, loading: true };
+    }
+  };
+
+  const initial = getInitialData();
+  const [game, setGame] = useState<Game | null>(initial.game);
+  const [currentUser, setCurrentUser] = useState<User | null>(initial.user);
+  const [loading, setLoading] = useState(initial.loading);
   const [memoryMatchConfig, setMemoryMatchConfig] = useState<{
     rows: number;
     cols: number;
@@ -35,6 +56,17 @@ export default function GamePage() {
 
   const loadGameData = useCallback(async () => {
     try {
+      // Try sessionStorage cache first (instant, no network)
+      const cachedGame = sessionStorage.getItem("pendingGameData");
+      if (cachedGame) {
+        const parsed = JSON.parse(cachedGame) as Game;
+        if (parsed.id === gameId) {
+          setGame(parsed);
+          sessionStorage.removeItem("pendingGameData");
+          return;
+        }
+      }
+      // Fallback: fetch from API
       const response = await fetch("/api/games");
       const games = await response.json();
       const currentGame = games.find((g: Game) => g.id === gameId);
@@ -48,21 +80,28 @@ export default function GamePage() {
 
   const loadCurrentUser = useCallback(async () => {
     try {
-      // Get user ID from localStorage
+      // Try sessionStorage cache first (instant, no network)
+      const cachedUser = sessionStorage.getItem("pendingUserData");
+      if (cachedUser) {
+        const parsed = JSON.parse(cachedUser) as User;
+        if (parsed) {
+          setCurrentUser(parsed);
+          sessionStorage.removeItem("pendingUserData");
+          return;
+        }
+      }
+      // Fallback: fetch from API
       const savedUserId = localStorage.getItem("selectedUserId");
       if (!savedUserId) {
-        // No user selected, redirect to homepage
         router.push("/");
         return;
       }
 
-      // Fetch user data
       const response = await fetch("/api/users");
       const users = await response.json();
       const user = users.find((u: User) => u.id === savedUserId);
 
       if (!user) {
-        // User not found, redirect to homepage
         router.push("/");
         return;
       }
@@ -269,14 +308,6 @@ export default function GamePage() {
       <Header currentUser={currentUser} onNavigate={handleNavigate} />
 
       <div className="max-w-4xl mx-auto p-4">
-        {/* Game Title Section */}
-        <div className="mb-0 text-center">
-          <h1 className="text-3xl font-bold text-gray-800 mb-0">
-            {game.title}
-          </h1>
-          {/* <p className="text-gray-600 text-lg">{game.description}</p> */}
-        </div>
-
         {/* Game Component */}
         {renderGame()}
       </div>

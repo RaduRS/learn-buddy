@@ -216,7 +216,7 @@ export default function TrueFalseGame({
   // Loading state
   if (loading) {
     return (
-      <div className="max-w-2xl mx-auto p-6">
+      <div className="max-w-3xl mx-auto p-6">
         <Card>
           <CardContent>
             <LoadingSkeleton
@@ -234,7 +234,7 @@ export default function TrueFalseGame({
   // Error state
   if (error) {
     return (
-      <div className="max-w-2xl mx-auto p-6">
+      <div className="max-w-3xl mx-auto p-6">
         <Card>
           <CardContent className="p-8">
             <div className="text-center space-y-4">
@@ -258,8 +258,8 @@ export default function TrueFalseGame({
   if (gameCompleted) {
     const percentage = Math.round((score / totalQuestions) * 100);
     return (
-      <div className="max-w-2xl mx-auto p-6">
-        <Card>
+      <div className="max-w-3xl mx-auto p-6">
+        <Card className="border-green-200 bg-gradient-to-b from-green-50 to-white">
           <CardHeader className="text-center">
             <div className="mx-auto w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mb-4">
               <Trophy className="w-8 h-8 text-yellow-600" />
@@ -290,6 +290,7 @@ export default function TrueFalseGame({
 
             <Button
               onClick={restartGame}
+              size="lg"
               className="mt-6 flex items-center gap-2"
             >
               <RotateCcw className="w-4 h-4" />
@@ -304,7 +305,7 @@ export default function TrueFalseGame({
   // Game playing state
   if (!currentQuestion) {
     return (
-      <div className="max-w-2xl mx-auto p-6">
+      <div className="max-w-3xl mx-auto p-6">
         <Card>
           <CardContent>
             <LoadingSkeleton variant="card" message="Loading question..." />
@@ -315,7 +316,7 @@ export default function TrueFalseGame({
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
+    <div className="max-w-3xl mx-auto p-6">
       {/* Question Card */}
       <Card className="mb-6">
         <CardContent className="p-6">

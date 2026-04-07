@@ -106,8 +106,8 @@ button, [role="button"], .cursor-pointer {
   }
 }
 
-/* Smooth animations for better UX */
-* {
+/* Smooth animations for interactive elements only */
+button, [role="button"], a, .cursor-pointer {
   transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
 }
 

@@ -175,39 +175,35 @@ export default function NumberFunGame({
   }
 
   if (gameCompleted) {
+    const percentage = Math.round((score / totalQuestions) * 100);
     return (
-      <div className="text-center p-8 space-y-6">
-        <div className="space-y-4">
-          <Trophy className="h-16 w-16 text-yellow-500 mx-auto" />
-          <h2 className="text-3xl font-bold text-green-600">Great Job!</h2>
-          <p className="text-xl">
-            You scored {score} out of {totalQuestions}!
-          </p>
-          <div className="text-lg text-gray-600">
-            {score === totalQuestions && "Perfect! You're a math star! ⭐"}
-            {score >= totalQuestions * 0.8 &&
-              score < totalQuestions &&
-              "Excellent work! 🎉"}
-            {score >= totalQuestions * 0.6 &&
-              score < totalQuestions * 0.8 &&
-              "Good job! Keep practicing! 👍"}
-            {score < totalQuestions * 0.6 &&
-              "Nice try! Practice makes perfect! 💪"}
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <Button onClick={restartGame} size="lg" className="mr-4">
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Play Again
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => (window.location.href = "/")}
-          >
-            Back to Games
-          </Button>
-        </div>
+      <div className="max-w-2xl mx-auto p-6">
+        <Card className="border-green-200 bg-gradient-to-b from-green-50 to-white">
+          <CardContent className="text-center space-y-4 p-8">
+            <Trophy className="h-16 w-16 text-yellow-500 mx-auto" />
+            <h2 className="text-3xl font-bold text-green-600">Great Job!</h2>
+            <p className="text-xl">
+              You scored {score} out of {totalQuestions}!
+            </p>
+            <div className="text-lg text-gray-600">
+              {score === totalQuestions && "Perfect! You're a math star! ⭐"}
+              {score >= totalQuestions * 0.8 &&
+                score < totalQuestions &&
+                "Excellent work! 🎉"}
+              {score >= totalQuestions * 0.6 &&
+                score < totalQuestions * 0.8 &&
+                "Good job! Keep practicing! 👍"}
+              {score < totalQuestions * 0.6 &&
+                "Nice try! Practice makes perfect! 💪"}
+            </div>
+            <div className="pt-2">
+              <Button onClick={restartGame} size="lg">
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Play Again
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -264,7 +260,7 @@ export default function NumberFunGame({
 
           {/* Answer Choices */}
           {!showResult && (
-            <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
+            <div className="grid grid-cols-2 gap-4 max-w-lg mx-auto">
               {answerChoices.map((choice, index) => (
                 <Button
                   key={index}

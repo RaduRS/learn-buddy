@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { CSSProperties } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -121,6 +121,15 @@ export default function ShapesGame({ onGameComplete }: ShapesGameProps) {
   const [error, setError] = useState<string | null>(null);
   const [isComplete, setIsComplete] = useState(false);
 
+  // Cancel any speech when leaving the game
+  useEffect(() => {
+    return () => {
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
   const speak = (text: string) => {
     if (typeof window === "undefined") return;
     if (!("speechSynthesis" in window)) {
@@ -161,18 +170,22 @@ export default function ShapesGame({ onGameComplete }: ShapesGameProps) {
 
   if (isComplete) {
     return (
-      <div className="text-center p-8 space-y-6">
-        <div className="space-y-4">
-          <Trophy className="h-16 w-16 text-yellow-500 mx-auto" />
-          <h2 className="text-3xl font-bold text-green-600">Great Job!</h2>
-          <p className="text-xl">
-            You explored {clickCount} shape{clickCount === 1 ? "" : "s"}!
-          </p>
-        </div>
-        <Button onClick={handleReset} size="lg">
-          <RotateCcw className="h-4 w-4 mr-2" />
-          Play Again
-        </Button>
+      <div className="max-w-2xl mx-auto p-6">
+        <Card className="border-green-200 bg-gradient-to-b from-green-50 to-white">
+          <CardContent className="text-center space-y-4 p-8">
+            <Trophy className="h-16 w-16 text-yellow-500 mx-auto" />
+            <h2 className="text-3xl font-bold text-green-600">Great Job!</h2>
+            <p className="text-xl">
+              You explored {clickCount} shape{clickCount === 1 ? "" : "s"}!
+            </p>
+            <div className="pt-2">
+              <Button onClick={handleReset} size="lg">
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Play Again
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -203,13 +216,12 @@ export default function ShapesGame({ onGameComplete }: ShapesGameProps) {
             <Button
               onClick={handleRepeat}
               variant="outline"
-              size="sm"
               disabled={!lastSpoken}
             >
               <Volume2 className="h-4 w-4 mr-2" />
               Repeat
             </Button>
-            <Button onClick={handleFinish} size="sm">
+            <Button onClick={handleFinish}>
               Finish
             </Button>
           </div>
@@ -236,9 +248,9 @@ export default function ShapesGame({ onGameComplete }: ShapesGameProps) {
             >
               <Card
                 className={cn(
-                  "transition hover:shadow-md",
+                  "transition hover:shadow-md active:scale-95",
                   lastSpoken === shape.label
-                    ? "ring-2 ring-indigo-400"
+                    ? "ring-2 ring-indigo-400 shadow-md"
                     : "ring-1 ring-transparent",
                 )}
               >
