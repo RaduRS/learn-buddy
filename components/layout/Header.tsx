@@ -13,7 +13,7 @@ import {
   Home,
   User as UserIcon,
   Trophy,
-  Coins,
+  Star,
   Volume2,
   VolumeX,
 } from "lucide-react";
@@ -31,7 +31,6 @@ interface HeaderProps {
 
 const MENU_ITEMS = [
   { id: "home", label: "Home", icon: Home },
-  { id: "profile", label: "My Profile", icon: UserIcon },
   { id: "achievements", label: "Achievements", icon: Trophy },
 ] as const;
 
@@ -83,10 +82,10 @@ export function Header({ currentUser, onNavigate, className }: HeaderProps) {
 
         <span className="flex-1" />
 
-        {/* Score chip */}
+        {/* Star count */}
         {currentUser && scoreLoaded && (
-          <span className="chip chip-gold" aria-label={`Total score: ${totalScore}`}>
-            <Coins className="w-4 h-4" aria-hidden />
+          <span className="chip chip-gold" aria-label={`Total stars: ${totalScore}`}>
+            <Star className="w-4 h-4" aria-hidden />
             <span className="font-display text-base leading-none">{totalScore}</span>
           </span>
         )}

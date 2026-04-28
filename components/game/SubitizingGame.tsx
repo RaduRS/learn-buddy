@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CheckCircle, Eye, XCircle } from "lucide-react";
+import { CheckCircle, Eye, HelpCircle, XCircle } from "lucide-react";
 import { LoadingScreen } from "@/components/game/LoadingScreen";
 import { ResultsScreen } from "@/components/game/ResultsScreen";
 import { ProgressStrip } from "@/components/game/ProgressStrip";
@@ -300,7 +300,12 @@ export default function SubitizingGame({
           {!showObjects && (
             <div className="absolute inset-0 grid place-items-center">
               <div className="text-center">
-                <div className="text-5xl">🤔</div>
+                <HelpCircle
+                  className="w-14 h-14 mx-auto"
+                  style={{ color: "var(--cat-math)" }}
+                  strokeWidth={1.4}
+                  aria-hidden
+                />
                 <p className="mt-2 text-arcade-mid font-display">
                   How many were there?
                 </p>

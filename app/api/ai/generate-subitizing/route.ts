@@ -1,368 +1,186 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from "next/server";
 
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY
-const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions'
-
-// Debug counter for tracking number distribution
-const numberCounter: { [key: number]: number } = {}
+/**
+ * Subitizing pattern generator.
+ *
+ * NOTE on history: this route used to call the DeepSeek chat API to "design"
+ * each pattern, but every meaningful field (object count, positions, colors,
+ * shapes, sizes) was overridden locally on the response anyway. The only
+ * thing the model contributed were short tip/encouragement strings — at the
+ * cost of a 10-25s upstream request per question, which made the game feel
+ * broken. We now generate everything locally so the round starts
+ * instantly. Tips and encouragements rotate through a curated set so they
+ * still feel varied to the player.
+ */
 
 interface SubitizingRequest {
-  userAge: number
-  difficulty: number
-  questionNumber: number
-  previousCorrect?: boolean
+  userAge: number;
+  difficulty: number;
+  questionNumber: number;
+  previousCorrect?: boolean;
+}
+
+interface SubitizingObject {
+  x: number;
+  y: number;
+  color: string;
+  shape: "circle" | "square" | "triangle" | "star" | "heart";
+  size: "small" | "medium" | "large";
 }
 
 interface SubitizingPattern {
-  objects: Array<{
-    x: number
-    y: number
-    color: string
-    shape: string
-    size: 'small' | 'medium' | 'large'
-  }>
-  correctAnswer: number
-  difficulty: number
-  timeLimit: number
-  educationalTip?: string
-  encouragement?: string
+  objects: SubitizingObject[];
+  correctAnswer: number;
+  difficulty: number;
+  timeLimit: number;
+  educationalTip?: string;
+  encouragement?: string;
+}
+
+const SHAPES: SubitizingObject["shape"][] = [
+  "circle", "square", "triangle", "star", "heart",
+];
+const COLORS = [
+  "#FF6B6B", "#4ECDC4", "#45B7D1",
+  "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8",
+];
+const SIZES: SubitizingObject["size"][] = ["small", "medium", "large"];
+const ARRANGEMENTS = ["random", "line", "circle", "dice_pattern"] as const;
+
+const TIPS = [
+  "Look quickly and trust your first instinct!",
+  "Your brain can spot small groups in a flash.",
+  "Try noticing patterns instead of counting one by one.",
+  "Two and three together can feel like five.",
+  "Take a breath, then look. Your eyes know!",
+];
+
+const ENCOURAGEMENTS = [
+  "You're doing great — keep going!",
+  "Nice eye, Buddy is impressed!",
+  "That's the spirit. One more!",
+  "Look at you go!",
+  "You're getting quicker every round.",
+];
+
+function randInt(min: number, max: number) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function pickRandom<T>(arr: readonly T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+const DICE_LAYOUTS: Record<number, { x: number; y: number }[]> = {
+  1:  [{x:50,y:50}],
+  2:  [{x:30,y:30},{x:70,y:70}],
+  3:  [{x:30,y:30},{x:50,y:50},{x:70,y:70}],
+  4:  [{x:30,y:30},{x:70,y:30},{x:30,y:70},{x:70,y:70}],
+  5:  [{x:30,y:30},{x:70,y:30},{x:50,y:50},{x:30,y:70},{x:70,y:70}],
+  6:  [{x:30,y:25},{x:70,y:25},{x:30,y:50},{x:70,y:50},{x:30,y:75},{x:70,y:75}],
+  7:  [{x:20,y:20},{x:50,y:20},{x:80,y:20},{x:35,y:50},{x:65,y:50},{x:20,y:80},{x:80,y:80}],
+  8:  [{x:25,y:20},{x:50,y:20},{x:75,y:20},{x:25,y:50},{x:75,y:50},{x:25,y:80},{x:50,y:80},{x:75,y:80}],
+  9:  [{x:20,y:15},{x:50,y:15},{x:80,y:15},{x:20,y:45},{x:50,y:45},{x:80,y:45},{x:20,y:75},{x:50,y:75},{x:80,y:75}],
+  10: [{x:15,y:15},{x:35,y:15},{x:55,y:15},{x:75,y:15},{x:25,y:40},{x:65,y:40},{x:15,y:65},{x:35,y:65},{x:55,y:65},{x:75,y:65}],
+  11: [{x:10,y:10},{x:30,y:10},{x:50,y:10},{x:70,y:10},{x:90,y:10},{x:20,y:40},{x:40,y:40},{x:60,y:40},{x:80,y:40},{x:25,y:70},{x:75,y:70}],
+  12: [{x:10,y:10},{x:30,y:10},{x:50,y:10},{x:70,y:10},{x:90,y:10},{x:10,y:40},{x:30,y:40},{x:50,y:40},{x:70,y:40},{x:90,y:40},{x:30,y:70},{x:70,y:70}],
+};
+
+function decorate(): Pick<SubitizingObject, "color" | "shape" | "size"> {
+  return {
+    color: pickRandom(COLORS),
+    shape: pickRandom(SHAPES),
+    size: pickRandom(SIZES),
+  };
+}
+
+function buildObjects(numObjects: number, arrangement: typeof ARRANGEMENTS[number]): SubitizingObject[] {
+  if (arrangement === "line") {
+    return Array.from({ length: numObjects }, (_, i) => ({
+      x: 20 + (i * 60) / Math.max(1, numObjects - 1),
+      y: 50 + (Math.random() - 0.5) * 10,
+      ...decorate(),
+    }));
+  }
+
+  if (arrangement === "circle") {
+    const centerX = 50, centerY = 50, radius = 25;
+    return Array.from({ length: numObjects }, (_, i) => {
+      const angle = (i * 2 * Math.PI) / numObjects;
+      return {
+        x: centerX + radius * Math.cos(angle),
+        y: centerY + radius * Math.sin(angle),
+        ...decorate(),
+      };
+    });
+  }
+
+  if (arrangement === "dice_pattern" && DICE_LAYOUTS[numObjects]) {
+    return DICE_LAYOUTS[numObjects].map((p) => ({
+      x: p.x,
+      y: p.y,
+      ...decorate(),
+    }));
+  }
+
+  // Random scatter — avoid duplicate cells.
+  const used = new Set<string>();
+  const objects: SubitizingObject[] = [];
+  while (objects.length < numObjects) {
+    let attempts = 0;
+    let cellX = 0, cellY = 0, key = "";
+    do {
+      cellX = randInt(1, 8);
+      cellY = randInt(1, 6);
+      key = `${cellX}-${cellY}`;
+      attempts++;
+    } while (used.has(key) && attempts < 25);
+    if (attempts >= 25) break;
+    used.add(key);
+    objects.push({
+      x: cellX * 10 + Math.random() * 5,
+      y: cellY * 10 + Math.random() * 5,
+      ...decorate(),
+    });
+  }
+  return objects;
 }
 
 export async function POST(request: NextRequest) {
-  let userAge: number = 6, difficulty: number = 1, questionNumber: number = 1, previousCorrect: boolean | undefined
-  
   try {
-    const requestData: SubitizingRequest = await request.json()
-    userAge = requestData.userAge
-    difficulty = requestData.difficulty
-    questionNumber = requestData.questionNumber
-    previousCorrect = requestData.previousCorrect
+    const body = (await request.json()) as Partial<SubitizingRequest>;
+    const questionNumber = body.questionNumber ?? 1;
 
-    if (!DEEPSEEK_API_KEY) {
-      console.error('DEEPSEEK_API_KEY is not configured')
-      return NextResponse.json({ error: 'AI service not configured' }, { status: 500 })
-    }
+    // Time limit shrinks slightly as the round progresses, with a floor.
+    const timeLimit = Math.max(2400, 3600 - questionNumber * 90);
 
-    // Create a prompt for DeepSeek to generate subitizing patterns
-    const prompt = `You are an educational AI helping create subitizing exercises for a ${userAge}-year-old child. 
+    // 5-12 inclusive — keeps the answer space within the 12 buttons we render.
+    const numObjects = randInt(5, 12);
+    const arrangement = pickRandom(ARRANGEMENTS);
+    const objects = buildObjects(numObjects, arrangement);
 
-Subitizing is the ability to quickly recognize the number of objects in a small group without counting. This is crucial for developing number sense.
+    const pattern: SubitizingPattern = {
+      objects,
+      correctAnswer: objects.length,
+      difficulty: Math.min(3, Math.ceil(objects.length / 4)),
+      timeLimit,
+      educationalTip: pickRandom(TIPS),
+      encouragement: pickRandom(ENCOURAGEMENTS),
+    };
 
-Current context:
-- Child's age: ${userAge} years
-- Difficulty level: ${difficulty}/3
-- Question number: ${questionNumber}
-- Previous answer was: ${previousCorrect !== undefined ? (previousCorrect ? 'correct' : 'incorrect') : 'first question'}
-
-Generate a JSON response with the following structure:
-{
-  "numObjects": number (any number, will be overridden),
-  "arrangement": "random" | "line" | "circle" | "square" | "triangle" | "dice_pattern",
-  "educationalTip": "brief tip about subitizing or number recognition",
-  "encouragement": "age-appropriate encouraging message",
-  "timeLimit": number (milliseconds, 2500-3500 based on difficulty)
-}
-
-Guidelines:
-- Use TRUE RANDOM between 5-12 objects (equal probability for each number)
-- Time limits should be 2500-3500ms
-- Use varied arrangements for visual interest
-- Objects should have different sizes (small, medium, large) and different shapes for visual variety
-
-Respond only with valid JSON.`
-
-    const response = await fetch(DEEPSEEK_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 500
-      })
-    })
-
-    if (!response.ok) {
-      throw new Error(`DeepSeek API error: ${response.status}`)
-    }
-
-    const data = await response.json()
-    const aiResponse = data.choices[0]?.message?.content
-
-    if (!aiResponse) {
-      throw new Error('No response from DeepSeek API')
-    }
-
-    // Parse the AI response
-    let aiData
-    try {
-      aiData = JSON.parse(aiResponse)
-      
-      // ALWAYS override AI's numObjects with our own random generation for true randomness
-      const randomValue = Math.random()
-      const scaledValue = randomValue * 8
-      const flooredValue = Math.floor(scaledValue)
-      const finalValue = flooredValue + 5
-      
-      aiData.numObjects = finalValue
-      
-      // Track number distribution
-      numberCounter[finalValue] = (numberCounter[finalValue] || 0) + 1
-      
-      console.log('🎲 RANDOM GENERATION DEBUG:')
-      console.log('  - Math.random():', randomValue)
-      console.log('  - * 8:', scaledValue)
-      console.log('  - Math.floor():', flooredValue)
-      console.log('  - + 5 (final):', finalValue)
-      console.log('  - Generated numObjects:', aiData.numObjects)
-      console.log('  - Distribution so far:', numberCounter)
-      
-      console.log('Final AI data:', aiData)
-    } catch {
-      console.error('Failed to parse AI response:', aiResponse)
-      // Fallback to default pattern with 5-12 range
-      const minObjects = 5
-      const maxObjects = 12
-      const randomValue = Math.random()
-      const scaledValue = randomValue * (maxObjects - minObjects + 1)
-      const flooredValue = Math.floor(scaledValue)
-      const numObjects = flooredValue + minObjects
-      
-      // Track number distribution
-      numberCounter[numObjects] = (numberCounter[numObjects] || 0) + 1
-      
-      console.log('🎲 FALLBACK RANDOM GENERATION DEBUG:')
-      console.log('  - Math.random():', randomValue)
-      console.log('  - * 8:', scaledValue)
-      console.log('  - Math.floor():', flooredValue)
-      console.log('  - + 5 (final):', numObjects)
-      console.log('  - Distribution so far:', numberCounter)
-      
-      aiData = {
-        numObjects: numObjects,
-        arrangement: 'random',
-        educationalTip: 'Look at the objects quickly and trust your first instinct!',
-        encouragement: 'You\'re doing great! Keep practicing!',
-        timeLimit: 3000
-      }
-      console.log('Using fallback pattern with', numObjects, 'objects for age', userAge)
-    }
-
-    // Generate the actual pattern based on AI recommendations
-    const pattern = generatePattern(aiData)
-    console.log('Generated pattern with', pattern.objects.length, 'objects using AI data')
-
-    return NextResponse.json({
-      ...pattern,
-      educationalTip: aiData.educationalTip,
-      encouragement: aiData.encouragement
-    })
-
+    return NextResponse.json(pattern);
   } catch (error) {
-    console.error('Error generating subitizing pattern:', error)
-    
-    // Fallback pattern generation
-    const fallbackPattern = generateFallbackPattern(userAge, difficulty, questionNumber)
-    console.log('Using complete fallback pattern with', fallbackPattern.objects.length, 'objects for age', userAge)
-    
-    return NextResponse.json(fallbackPattern)
-  }
-}
-
-interface AIData {
-  numObjects: number
-  arrangement: string
-  timeLimit: number
-  educationalTip: string
-  encouragement: string
-}
-
-function generatePattern(aiData: AIData): SubitizingPattern {
-  const { numObjects, arrangement, timeLimit } = aiData
-  const shapes = ['circle', 'square', 'triangle', 'star', 'heart']
-  const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8']
-  const sizes = ['small', 'medium', 'large'] as const
-  
-  const objects = []
-  
-  // Generate positions based on arrangement type
-  switch (arrangement) {
-    case 'line': {
-      for (let i = 0; i < numObjects; i++) {
-        objects.push({
-          x: 20 + (i * 60 / Math.max(1, numObjects - 1)),
-          y: 50 + (Math.random() - 0.5) * 10,
-          color: colors[Math.floor(Math.random() * colors.length)],
-          shape: shapes[Math.floor(Math.random() * shapes.length)],
-          size: sizes[Math.floor(Math.random() * sizes.length)]
-        })
-      }
-      break
-    }
-
-    case 'circle': {
-      const radius = 25
-      const centerX = 50
-      const centerY = 50
-      for (let i = 0; i < numObjects; i++) {
-        const angle = (i * 2 * Math.PI) / numObjects
-        objects.push({
-          x: centerX + radius * Math.cos(angle),
-          y: centerY + radius * Math.sin(angle),
-          color: colors[Math.floor(Math.random() * colors.length)],
-          shape: shapes[Math.floor(Math.random() * shapes.length)],
-          size: sizes[Math.floor(Math.random() * sizes.length)]
-        })
-      }
-      break
-    }
-
-    case 'dice_pattern': {
-      const dicePatterns: { [key: number]: Array<{x: number, y: number}> } = {
-        1: [{x: 50, y: 50}],
-        2: [{x: 30, y: 30}, {x: 70, y: 70}],
-        3: [{x: 30, y: 30}, {x: 50, y: 50}, {x: 70, y: 70}],
-        4: [{x: 30, y: 30}, {x: 70, y: 30}, {x: 30, y: 70}, {x: 70, y: 70}],
-        5: [{x: 30, y: 30}, {x: 70, y: 30}, {x: 50, y: 50}, {x: 30, y: 70}, {x: 70, y: 70}],
-        6: [{x: 30, y: 25}, {x: 70, y: 25}, {x: 30, y: 50}, {x: 70, y: 50}, {x: 30, y: 75}, {x: 70, y: 75}],
-        7: [{x: 20, y: 20}, {x: 50, y: 20}, {x: 80, y: 20}, {x: 35, y: 50}, {x: 65, y: 50}, {x: 20, y: 80}, {x: 80, y: 80}],
-        8: [{x: 25, y: 20}, {x: 50, y: 20}, {x: 75, y: 20}, {x: 25, y: 50}, {x: 75, y: 50}, {x: 25, y: 80}, {x: 50, y: 80}, {x: 75, y: 80}],
-        9: [{x: 20, y: 15}, {x: 50, y: 15}, {x: 80, y: 15}, {x: 20, y: 45}, {x: 50, y: 45}, {x: 80, y: 45}, {x: 20, y: 75}, {x: 50, y: 75}, {x: 80, y: 75}],
-        10: [{x: 15, y: 15}, {x: 35, y: 15}, {x: 55, y: 15}, {x: 75, y: 15}, {x: 25, y: 40}, {x: 65, y: 40}, {x: 15, y: 65}, {x: 35, y: 65}, {x: 55, y: 65}, {x: 75, y: 65}],
-        11: [{x: 10, y: 10}, {x: 30, y: 10}, {x: 50, y: 10}, {x: 70, y: 10}, {x: 90, y: 10}, {x: 20, y: 40}, {x: 40, y: 40}, {x: 60, y: 40}, {x: 80, y: 40}, {x: 25, y: 70}, {x: 75, y: 70}],
-        12: [{x: 10, y: 10}, {x: 30, y: 10}, {x: 50, y: 10}, {x: 70, y: 10}, {x: 90, y: 10}, {x: 10, y: 40}, {x: 30, y: 40}, {x: 50, y: 40}, {x: 70, y: 40}, {x: 90, y: 40}, {x: 30, y: 70}, {x: 70, y: 70}]
-      }
-      
-      // For numbers > 12, fall back to random arrangement
-      if (numObjects > 12) {
-        // Fall back to random arrangement for very high numbers
-        const usedPositions = new Set()
-        for (let i = 0; i < numObjects; i++) {
-          let x, y, posKey
-          let attempts = 0
-          
-          do {
-            x = Math.floor(Math.random() * 8) + 1
-            y = Math.floor(Math.random() * 6) + 1
-            posKey = `${x}-${y}`
-            attempts++
-          } while (usedPositions.has(posKey) && attempts < 20)
-          
-          if (attempts < 20) {
-            usedPositions.add(posKey)
-            objects.push({
-              x: x * 10 + Math.random() * 5,
-              y: y * 10 + Math.random() * 5,
-              color: colors[Math.floor(Math.random() * colors.length)],
-              shape: shapes[Math.floor(Math.random() * shapes.length)],
-              size: sizes[Math.floor(Math.random() * sizes.length)]
-            })
-          }
-        }
-      } else {
-        const pattern = dicePatterns[numObjects] || dicePatterns[6]
-        pattern.forEach((pos, i) => {
-          if (i < numObjects) {
-            objects.push({
-              x: pos.x,
-              y: pos.y,
-              color: colors[Math.floor(Math.random() * colors.length)],
-              shape: shapes[Math.floor(Math.random() * shapes.length)],
-              size: sizes[Math.floor(Math.random() * sizes.length)]
-            })
-          }
-        })
-      }
-      break
-    }
-
-    default: { // random
-      const usedPositions = new Set()
-      for (let i = 0; i < numObjects; i++) {
-        let x, y, posKey
-        let attempts = 0
-        
-        do {
-          x = Math.floor(Math.random() * 8) + 1
-          y = Math.floor(Math.random() * 6) + 1
-          posKey = `${x}-${y}`
-          attempts++
-        } while (usedPositions.has(posKey) && attempts < 20)
-        
-        if (attempts < 20) {
-          usedPositions.add(posKey)
-          objects.push({
-            x: x * 10 + Math.random() * 5,
-            y: y * 10 + Math.random() * 5,
-            color: colors[Math.floor(Math.random() * colors.length)],
-            shape: shapes[Math.floor(Math.random() * shapes.length)],
-            size: sizes[Math.floor(Math.random() * sizes.length)]
-          })
-        }
-      }
-      break
-    }
-  }
-
-  return {
-    objects,
-    correctAnswer: objects.length,
-    difficulty: Math.ceil(objects.length / 2),
-    timeLimit: timeLimit || 3000
-  }
-}
-
-function generateFallbackPattern(userAge: number, difficulty: number, questionNumber: number): SubitizingPattern {
-  // Always use range 5-12 objects for true randomness
-  const minObjects = 5
-  const maxObjects = 12
-  const numObjects = Math.floor(Math.random() * (maxObjects - minObjects + 1)) + minObjects
-  const timeLimit = Math.max(2500, 4000 - (questionNumber * 100))
-  
-  const shapes = ['circle', 'square', 'triangle', 'star', 'heart']
-  const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8']
-  const sizes = ['small', 'medium', 'large'] as const
-  
-  const objects = []
-  const usedPositions = new Set()
-  
-  for (let i = 0; i < numObjects; i++) {
-    let x, y, posKey
-    let attempts = 0
-    
-    do {
-      x = Math.floor(Math.random() * 8) + 1
-      y = Math.floor(Math.random() * 6) + 1
-      posKey = `${x}-${y}`
-      attempts++
-    } while (usedPositions.has(posKey) && attempts < 20)
-    
-    if (attempts < 20) {
-      usedPositions.add(posKey)
-      objects.push({
-        x: x * 10 + Math.random() * 5,
-        y: y * 10 + Math.random() * 5,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        shape: shapes[Math.floor(Math.random() * shapes.length)],
-        size: sizes[Math.floor(Math.random() * sizes.length)]
-      })
-    }
-  }
-
-  return {
-    objects,
-    correctAnswer: objects.length,
-    difficulty: Math.ceil(objects.length / 2),
-    timeLimit,
-    educationalTip: 'Look quickly and trust your first instinct!',
-    encouragement: 'You\'re doing great! Keep practicing!'
+    console.error("Error generating subitizing pattern:", error);
+    return NextResponse.json(
+      {
+        objects: buildObjects(6, "dice_pattern"),
+        correctAnswer: 6,
+        difficulty: 2,
+        timeLimit: 3000,
+        educationalTip: TIPS[0],
+        encouragement: ENCOURAGEMENTS[0],
+      } satisfies SubitizingPattern,
+      { status: 200 },
+    );
   }
 }

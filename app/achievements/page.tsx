@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Calendar, Coins, Sparkles, Trophy as TrophyIcon } from "lucide-react";
+import { Calendar, Sparkles, Star, Trophy as TrophyIcon } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { LoadingScreen } from "@/components/game/LoadingScreen";
 import { Buddy } from "@/components/mascot/Buddy";
 import { Trophy, type TrophyTier } from "@/components/achievements/Trophy";
 import { CATEGORIES, toCategoryKey } from "@/lib/games/categories";
+import { GameIconFor } from "@/lib/games/icons";
 import { useSfx } from "@/components/sound/SoundProvider";
 import type { Achievement, Game, GameProgress, User } from "@/types";
 
@@ -166,7 +167,7 @@ export default function AchievementsPage() {
                   <span className="text-sm opacity-80">unlocked</span>
                 </span>
                 <span className="chip">
-                  <Coins className="w-4 h-4" style={{ color: "var(--joy-gold)" }} aria-hidden />
+                  <Star className="w-4 h-4" style={{ color: "var(--joy-gold)" }} aria-hidden />
                   <span className="font-display">{totalScore}</span>
                   <span className="text-sm opacity-80">stars</span>
                 </span>
@@ -244,11 +245,16 @@ function GameAchievementCard({ ga }: { ga: GameAchievement }) {
       >
         <span
           aria-hidden
-          className="grid place-items-center text-3xl w-12 h-12 rounded-2xl
+          className="grid place-items-center w-12 h-12 rounded-2xl
                      bg-[oklch(0.20_0.06_285_/_0.6)]
                      border border-[var(--arcade-edge)]"
         >
-          {ga.game.icon}
+          <GameIconFor
+            title={ga.game.title}
+            className="w-6 h-6"
+            strokeWidth={1.7}
+            style={{ color: `var(${cat.cssVar})` }}
+          />
         </span>
         <div className="flex-1 min-w-0">
           <p className="text-[0.7rem] uppercase tracking-[0.18em] font-display"
@@ -260,7 +266,7 @@ function GameAchievementCard({ ga }: { ga: GameAchievement }) {
           </h2>
         </div>
         <span className="chip chip-gold shrink-0">
-          <Coins className="w-4 h-4" aria-hidden />
+          <Star className="w-4 h-4" aria-hidden />
           <span className="font-display">{ga.totalScore}</span>
         </span>
       </div>

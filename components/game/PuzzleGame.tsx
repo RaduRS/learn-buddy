@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, RotateCcw } from "lucide-react";
+import { ChevronDown, Puzzle as PuzzleIcon, RotateCcw } from "lucide-react";
 import { LoadingScreen } from "@/components/game/LoadingScreen";
 import { ResultsScreen } from "@/components/game/ResultsScreen";
 import { useScore } from "@/hooks/useScore";
@@ -358,7 +358,11 @@ export default function PuzzleGame({
     <div className="space-y-5">
       <div className="surface-card cat-spatial p-4 sm:p-5 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2 text-arcade-strong font-display text-lg">
-          <span aria-hidden>🧩</span>
+          <PuzzleIcon
+            className="w-5 h-5"
+            style={{ color: "var(--cat-spatial)" }}
+            aria-hidden
+          />
           <span>Puzzle</span>
         </div>
         <span className="chip">

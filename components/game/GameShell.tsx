@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { ArrowLeft, Coins, Volume2, VolumeX } from "lucide-react";
+import { ArrowLeft, Star, Volume2, VolumeX } from "lucide-react";
 import { useScore } from "@/hooks/useScore";
 import { useSfx } from "@/components/sound/SoundProvider";
 import { Buddy } from "@/components/mascot/Buddy";
@@ -99,8 +99,8 @@ export function GameShell({
             )}
 
             {showScoreChip && scoreLoaded && (
-              <span className="chip chip-gold" aria-label={`Total score: ${totalScore}`}>
-                <Coins className="w-4 h-4" aria-hidden />
+              <span className="chip chip-gold" aria-label={`Total stars: ${totalScore}`}>
+                <Star className="w-4 h-4" aria-hidden />
                 <span className="font-display text-base leading-none">{totalScore}</span>
               </span>
             )}

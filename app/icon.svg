@@ -23,12 +23,15 @@
     </radialGradient>
   </defs>
 
+  <!-- Rounded arcade backdrop -->
   <rect x="0" y="0" width="512" height="512" rx="96" fill="url(#bg)"/>
 
+  <!-- Star antenna -->
   <line x1="256" y1="166" x2="256" y2="86" stroke="#3d8b6c" stroke-width="14" stroke-linecap="round"/>
   <polygon points="256,38 271,82 318,82 282,108 296,154 256,128 216,154 230,108 194,82 241,82"
            fill="url(#star)" stroke="#a26c1f" stroke-width="6" stroke-linejoin="round"/>
 
+  <!-- Body -->
   <path d="M 256 158
            C 380 158 442 248 442 320
            C 442 408 364 462 256 462
@@ -36,18 +39,23 @@
            C 70 248 132 158 256 158 Z"
         fill="url(#body)" stroke="#2c6f51" stroke-width="10"/>
 
+  <!-- Belly -->
   <ellipse cx="256" cy="370" rx="118" ry="84" fill="url(#belly)"/>
 
+  <!-- Top shine -->
   <ellipse cx="200" cy="240" rx="86" ry="36" fill="url(#shine)"/>
 
+  <!-- Cheeks -->
   <ellipse cx="146" cy="338" rx="28" ry="18" fill="#f48a8a" opacity="0.7"/>
   <ellipse cx="366" cy="338" rx="28" ry="18" fill="#f48a8a" opacity="0.7"/>
 
+  <!-- Eyes -->
   <ellipse cx="204" cy="298" rx="24" ry="29" fill="#1a1233"/>
   <circle cx="214" cy="288" r="8" fill="#fafaff"/>
   <ellipse cx="308" cy="298" rx="24" ry="29" fill="#1a1233"/>
   <circle cx="318" cy="288" r="8" fill="#fafaff"/>
 
+  <!-- Smile -->
   <path d="M 214 372 Q 256 408 298 372"
         fill="none" stroke="#1a1233" stroke-width="11" stroke-linecap="round"/>
 </svg>

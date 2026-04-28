@@ -1,17 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Clock, RotateCcw } from "lucide-react";
+import { Clock, RotateCcw, Sparkles } from "lucide-react";
 import { LoadingScreen } from "@/components/game/LoadingScreen";
 import { ResultsScreen } from "@/components/game/ResultsScreen";
 import { useScore } from "@/hooks/useScore";
 import { useAchievementUnlock } from "@/hooks/useAchievementUnlock";
 import { useSfx } from "@/components/sound/SoundProvider";
+import { MEMORY_ICON_MAP } from "@/lib/games/memory-icon-map";
 import { cn } from "@/lib/utils";
 
 interface MemoryCard {
   id: string;
+  /** Lucide icon name (or "" for empty slot). */
   emoji: string;
+  /** CSS color used to tint the icon when revealed. */
+  color?: string;
   pairId: string;
   isFlipped: boolean;
   isMatched: boolean;
@@ -376,12 +380,12 @@ export default function MemoryMatchGame({
               {!empty && (
                 <span
                   className={cn(
-                    "absolute inset-0 grid place-items-center text-4xl sm:text-5xl",
+                    "absolute inset-0 grid place-items-center",
                     "transition-opacity duration-300",
                     revealed ? "opacity-100" : "opacity-0",
                   )}
                 >
-                  {card.emoji}
+                  <CardFace name={card.emoji} color={card.color} />
                 </span>
               )}
             </button>
@@ -389,5 +393,17 @@ export default function MemoryMatchGame({
         })}
       </div>
     </div>
+  );
+}
+
+function CardFace({ name, color }: { name: string; color?: string }) {
+  const Icon = MEMORY_ICON_MAP[name] ?? Sparkles;
+  return (
+    <Icon
+      className="w-9 h-9 sm:w-12 sm:h-12"
+      strokeWidth={1.6}
+      style={{ color: color ?? "var(--cat-memory)" }}
+      aria-hidden
+    />
   );
 }

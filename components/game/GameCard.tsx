@@ -4,6 +4,7 @@ import type { CSSProperties } from "react";
 import { Lock, Play, Star, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CATEGORIES, toCategoryKey } from "@/lib/games/categories";
+import { GameIconFor } from "@/lib/games/icons";
 import { levelFromScore } from "@/lib/games/levels";
 import { useSfx } from "@/components/sound/SoundProvider";
 import type { GameCardProps } from "@/types";
@@ -68,10 +69,10 @@ export function GameCard({ game, progress, onPlay, className }: GameCardProps) {
       </span>
 
       <div className="mt-2 flex items-start gap-4">
-        {/* Game icon — emoji from DB */}
+        {/* Game icon — curated lucide icon, with the DB emoji as fallback */}
         <span
           aria-hidden
-          className="grid place-items-center text-4xl sm:text-5xl shrink-0
+          className="grid place-items-center shrink-0
                      w-16 h-16 sm:w-20 sm:h-20 rounded-2xl
                      bg-[oklch(0.20_0.06_285_/_0.6)]
                      border border-[var(--arcade-edge)]
@@ -80,7 +81,12 @@ export function GameCard({ game, progress, onPlay, className }: GameCardProps) {
             boxShadow: `0 8px 26px -14px var(${cat.cssGlowVar}), inset 0 1px 0 oklch(1 0 0 / 0.12)`,
           }}
         >
-          {game.icon}
+          <GameIconFor
+            title={game.title}
+            className="w-8 h-8 sm:w-10 sm:h-10"
+            strokeWidth={1.6}
+            style={{ color: `var(${cat.cssVar})` }}
+          />
         </span>
 
         <div className="flex-1 min-w-0">
