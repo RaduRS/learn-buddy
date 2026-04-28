@@ -2,13 +2,14 @@
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
-import { Trophy, RotateCcw } from "lucide-react";
+import { ChevronDown, RotateCcw } from "lucide-react";
+import { LoadingScreen } from "@/components/game/LoadingScreen";
+import { ResultsScreen } from "@/components/game/ResultsScreen";
 import { useScore } from "@/hooks/useScore";
 import { useApiCall } from "@/hooks/useApiCall";
+import { useAchievementUnlock } from "@/hooks/useAchievementUnlock";
+import { useSfx } from "@/components/sound/SoundProvider";
+import { cn } from "@/lib/utils";
 
 interface PuzzlePiece {
   id: string;
@@ -54,41 +55,34 @@ export default function PuzzleGame({
   userAge,
   onGameComplete,
 }: PuzzleGameProps) {
-  /* ─── core state ─── */
   const [config, setConfig] = useState<PuzzleConfig | null>(null);
   const [placed, setPlaced] = useState<Record<string, boolean>>({});
   const [bank, setBank] = useState<PuzzlePiece[]>([]);
   const [score, setScore] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
 
-  /* ─── drag-and-drop state ─── */
   const [dragInfo, setDragInfo] = useState<DragInfo | null>(null);
   const [hoveredTarget, setHoveredTarget] = useState<string | null>(null);
   const [returnAnim, setReturnAnim] = useState<ReturnAnimState | null>(null);
   const [wrongDropId, setWrongDropId] = useState<string | null>(null);
   const [recentlyPlaced, setRecentlyPlaced] = useState<string | null>(null);
 
-  /* ─── refs ─── */
   const boardRef = useRef<HTMLDivElement>(null);
   const bankPieceRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const configRef = useRef<PuzzleConfig | null>(null);
   const dragInfoRef = useRef<DragInfo | null>(null);
 
-  /* ─── difficulty / grid size ─── */
-  const [difficulty, setDifficulty] = useState(2); // 1→2×2, 2→3×3, 3→4×4, 4→5×5
+  const [difficulty, setDifficulty] = useState(2);
   const [showGridPicker, setShowGridPicker] = useState(false);
   const gridPickerRef = useRef<HTMLDivElement>(null);
 
-  /* ─── portal mount guard (SSR-safe) ─── */
   const [mounted, setMounted] = useState(false);
 
-  /* ─── hooks ─── */
   const { incrementScore } = useScore();
-  const { execute, loading, error } = useApiCall<PuzzleConfig>({
-    timeout: 30000,
-  });
+  const { unlock } = useAchievementUnlock(userId);
+  const { play } = useSfx();
+  const { execute, loading, error } = useApiCall<PuzzleConfig>({ timeout: 30000 });
 
-  /* ─── keep refs in sync ─── */
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -99,32 +93,14 @@ export default function PuzzleGame({
     dragInfoRef.current = dragInfo;
   }, [dragInfo]);
 
-  /* ─── responsive board size ─── */
-  const [boardSize, setBoardSize] = useState(400);
+  const [boardSize, setBoardSize] = useState(420);
   useEffect(() => {
-    const update = () => setBoardSize(Math.min(400, window.innerWidth - 64));
+    const update = () => setBoardSize(Math.min(440, window.innerWidth - 64));
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
   }, []);
 
-  /* ─── achievement helper ─── */
-  const unlockAchievement = useCallback(
-    async (title: string, description: string, icon: string) => {
-      try {
-        await fetch("/api/achievements", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId, gameId, title, description, icon }),
-        });
-      } catch (err) {
-        console.error("Error unlocking achievement:", err);
-      }
-    },
-    [userId, gameId],
-  );
-
-  /* ─── load puzzle from API ─── */
   const loadPuzzle = useCallback(async () => {
     setConfig(null);
     setPlaced({});
@@ -134,7 +110,7 @@ export default function PuzzleGame({
     setWrongDropId(null);
     setRecentlyPlaced(null);
 
-    const result = await execute(
+    await execute(
       async () => {
         const response = await fetch("/api/ai/generate-puzzle", {
           method: "POST",
@@ -147,18 +123,14 @@ export default function PuzzleGame({
         setBank(shuffled);
         return cfg;
       },
-      (data: PuzzleConfig) => {
-        setConfig(data);
-      },
+      (data) => setConfig(data),
     );
-    void result;
   }, [userAge, difficulty, execute]);
 
   useEffect(() => {
-    loadPuzzle();
+    void loadPuzzle();
   }, [loadPuzzle]);
 
-  /* ─── background helpers ─── */
   const bgSize = (gs: number) => `${gs * 100}% ${gs * 100}%`;
   const bgPos = (row: number, col: number, gs: number) => {
     const x = gs <= 1 ? 0 : (col * 100) / (gs - 1);
@@ -177,7 +149,6 @@ export default function PuzzleGame({
     backgroundPosition: bgPos(row, col, gs),
   });
 
-  /* ─── determine which grid cell a screen point lands on ─── */
   const getTargetCell = useCallback(
     (clientX: number, clientY: number): string | null => {
       const cfg = configRef.current;
@@ -200,12 +171,11 @@ export default function PuzzleGame({
     [],
   );
 
-  /* ─── pointer-down on a bank piece → start drag ─── */
   const handlePiecePointerDown = useCallback(
     (e: React.PointerEvent<HTMLButtonElement>, piece: PuzzlePiece) => {
       e.preventDefault();
       e.stopPropagation();
-
+      play("tap");
       const rect = e.currentTarget.getBoundingClientRect();
       const info: DragInfo = {
         piece,
@@ -216,15 +186,12 @@ export default function PuzzleGame({
       };
       setDragInfo(info);
       dragInfoRef.current = info;
-
-      // Lock page scroll
       document.body.style.overflow = "hidden";
       document.body.style.touchAction = "none";
     },
-    [],
+    [play],
   );
 
-  /* ─── global move / up handlers while dragging ─── */
   const isDragging = dragInfo !== null;
 
   useEffect(() => {
@@ -252,17 +219,12 @@ export default function PuzzleGame({
       const pieceId = current.piece.id;
 
       if (target === pieceId) {
-        // ✅ Correct placement
-        setPlaced((prev: Record<string, boolean>) => ({
-          ...prev,
-          [target]: true,
-        }));
-        setBank((prev: PuzzlePiece[]) =>
-          prev.filter((p: PuzzlePiece) => p.id !== pieceId),
-        );
+        play("correct");
+        setPlaced((prev) => ({ ...prev, [target]: true }));
+        setBank((prev) => prev.filter((p) => p.id !== pieceId));
         setRecentlyPlaced(target);
       } else {
-        // ❌ Wrong / missed – animate return to bank
+        play("wrong");
         const bankEl = bankPieceRefs.current.get(pieceId);
         if (bankEl) {
           const bankRect = bankEl.getBoundingClientRect();
@@ -280,12 +242,9 @@ export default function PuzzleGame({
         setWrongDropId(pieceId);
       }
 
-      // Reset drag
       setDragInfo(null);
       dragInfoRef.current = null;
       setHoveredTarget(null);
-
-      // Unlock scroll
       document.body.style.overflow = "";
       document.body.style.touchAction = "";
     };
@@ -301,35 +260,33 @@ export default function PuzzleGame({
       document.body.style.overflow = "";
       document.body.style.touchAction = "";
     };
-  }, [isDragging, getTargetCell]);
+  }, [isDragging, getTargetCell, play]);
 
-  /* ─── return animation – kick off transition on next frame ─── */
   useEffect(() => {
     if (!returnAnim || returnAnim.animating) return;
     const raf = requestAnimationFrame(() => {
-      setReturnAnim((prev: ReturnAnimState | null) =>
-        prev ? { ...prev, animating: true } : null,
-      );
+      setReturnAnim((prev) => (prev ? { ...prev, animating: true } : null));
     });
     return () => cancelAnimationFrame(raf);
   }, [returnAnim]);
 
-  /* ─── return animation – clean up after transition ─── */
   const returnAnimating = returnAnim?.animating ?? false;
   useEffect(() => {
     if (!returnAnimating) return;
-    const timer = setTimeout(() => {
+    const id = setTimeout(() => {
       setReturnAnim(null);
       setWrongDropId(null);
     }, 400);
-    return () => clearTimeout(timer);
+    return () => clearTimeout(id);
   }, [returnAnimating]);
 
-  /* ─── close grid picker on outside click ─── */
   useEffect(() => {
     if (!showGridPicker) return;
     const handler = (e: PointerEvent) => {
-      if (gridPickerRef.current && !gridPickerRef.current.contains(e.target as Node)) {
+      if (
+        gridPickerRef.current &&
+        !gridPickerRef.current.contains(e.target as Node)
+      ) {
         setShowGridPicker(false);
       }
     };
@@ -337,50 +294,59 @@ export default function PuzzleGame({
     return () => document.removeEventListener("pointerdown", handler);
   }, [showGridPicker]);
 
-  /* ─── recently-placed highlight ─── */
   useEffect(() => {
     if (!recentlyPlaced) return;
-    const timer = setTimeout(() => setRecentlyPlaced(null), 700);
-    return () => clearTimeout(timer);
+    const id = setTimeout(() => setRecentlyPlaced(null), 700);
+    return () => clearTimeout(id);
   }, [recentlyPlaced]);
 
-  /* ─── completion check ─── */
   useEffect(() => {
     if (!config || isCompleted) return;
     const total = config.pieces.length;
     const placedCount = Object.values(placed).filter(Boolean).length;
     if (placedCount === total) {
       setIsCompleted(true);
-      setScore((s: number) => s + 1);
+      setScore((s) => s + 1);
       incrementScore(gameId, 1);
-      unlockAchievement("Puzzle Master", "Completed a Puzzle!", "🧩");
+      void unlock({
+        gameId,
+        title: "Puzzle Master",
+        description: "Completed a Puzzle!",
+        icon: "🧩",
+      });
       onGameComplete?.(1, 1);
     }
-  }, [
-    placed,
-    config,
-    isCompleted,
-    gameId,
-    incrementScore,
-    onGameComplete,
-    unlockAchievement,
-  ]);
-
-  /* ═══════════════════════════  RENDER  ═══════════════════════════ */
+  }, [placed, config, isCompleted, gameId, incrementScore, onGameComplete, unlock]);
 
   if (loading || !config) {
     if (error) {
       return (
-        <div className="min-h-[400px] flex items-center justify-center">
-          <div className="text-red-600">{error}</div>
+        <div className="surface-card cat-spatial p-6 max-w-md mx-auto text-center text-arcade-mid">
+          {error}
         </div>
       );
     }
     return (
-      <LoadingSkeleton
-        message="Creating your puzzle..."
-        subMessage="Please wait while we generate a new puzzle for you"
+      <LoadingScreen
+        tone="generating"
+        message="Buddy is cutting up a picture…"
+        subMessage="Hang on while we make your puzzle."
       />
+    );
+  }
+
+  if (isCompleted) {
+    return (
+      <div className="py-6 space-y-5">
+        <ResultsScreen
+          score={score}
+          total={1}
+          category="spatial"
+          headline="Puzzle complete!"
+          message="Beautiful work — every piece in its place."
+          onPlayAgain={loadPuzzle}
+        />
+      </div>
     );
   }
 
@@ -389,206 +355,183 @@ export default function PuzzleGame({
   const placedCount = Object.values(placed).filter(Boolean).length;
 
   return (
-    <div className="mt-4">
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span>🧩</span>
-              <span>Puzzle</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="text-xs font-medium">
-                {placedCount}/{pieces.length} pieces
-              </Badge>
-              {/* Grid size dropdown trigger */}
-              <div ref={gridPickerRef} className="relative">
+    <div className="space-y-5">
+      <div className="surface-card cat-spatial p-4 sm:p-5 flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 text-arcade-strong font-display text-lg">
+          <span aria-hidden>🧩</span>
+          <span>Puzzle</span>
+        </div>
+        <span className="chip">
+          <span className="text-sm opacity-80">Pieces</span>
+          <span className="font-display">{placedCount}</span>
+          <span className="opacity-70">/</span>
+          <span className="font-display opacity-80">{pieces.length}</span>
+        </span>
+        <span className="flex-1" />
+
+        <div ref={gridPickerRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setShowGridPicker((v) => !v)}
+            className="font-display inline-flex items-center gap-1.5 px-3 py-2 rounded-full
+                       bg-[var(--arcade-card-soft)] text-arcade-strong
+                       border border-[var(--arcade-edge)]
+                       active:scale-[0.97]"
+          >
+            {gridSize}×{gridSize}
+            <ChevronDown
+              className={cn(
+                "w-4 h-4 transition-transform",
+                showGridPicker && "rotate-180",
+              )}
+            />
+          </button>
+
+          {showGridPicker && (
+            <div
+              className="absolute right-0 top-full mt-2 z-50 surface-card p-2 min-w-[160px]"
+              style={{ borderRadius: "1rem" }}
+            >
+              <p className="px-2 py-1 text-[10px] uppercase tracking-wide text-arcade-soft font-display">
+                Grid size
+              </p>
+              {[
+                { d: 1, label: "2 × 2", desc: "4 pieces" },
+                { d: 2, label: "3 × 3", desc: "9 pieces" },
+                { d: 3, label: "4 × 4", desc: "16 pieces" },
+                { d: 4, label: "5 × 5", desc: "25 pieces" },
+              ].map((opt) => (
                 <button
+                  key={opt.d}
                   type="button"
-                  onClick={() => setShowGridPicker((v) => !v)}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full border border-gray-200 bg-white text-gray-600 hover:border-blue-300 hover:text-blue-600 transition-colors"
+                  onClick={() => {
+                    play("tap");
+                    setDifficulty(opt.d);
+                    setShowGridPicker(false);
+                  }}
+                  className={cn(
+                    "w-full flex items-center justify-between px-2.5 py-2 text-sm rounded-lg",
+                    difficulty === opt.d
+                      ? "bg-[oklch(0.30_0.10_25_/_0.5)] text-arcade-strong"
+                      : "text-arcade-mid hover:bg-[oklch(1_0_0_/_0.06)]",
+                  )}
                 >
-                  {gridSize}×{gridSize}
-                  <svg
-                    className={`w-3 h-3 transition-transform ${showGridPicker ? "rotate-180" : ""}`}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
+                  <span className="font-display">{opt.label}</span>
+                  <span className="text-arcade-soft text-[10px]">{opt.desc}</span>
                 </button>
-
-                {/* Dropdown */}
-                {showGridPicker && (
-                  <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg p-1.5 z-50 min-w-[140px]">
-                    <p className="px-2 py-1 text-[10px] text-gray-400 font-medium uppercase tracking-wide">
-                      Grid size
-                    </p>
-                    {[
-                      { d: 1, label: "2×2", desc: "4 pieces" },
-                      { d: 2, label: "3×3", desc: "9 pieces" },
-                      { d: 3, label: "4×4", desc: "16 pieces" },
-                      { d: 4, label: "5×5", desc: "25 pieces" },
-                    ].map((opt) => (
-                      <button
-                        key={opt.d}
-                        type="button"
-                        onClick={() => {
-                          setDifficulty(opt.d);
-                          setShowGridPicker(false);
-                        }}
-                        className={`w-full flex items-center justify-between px-2.5 py-1.5 text-sm rounded-lg transition-colors ${
-                          difficulty === opt.d
-                            ? "bg-blue-50 text-blue-600 font-medium"
-                            : "text-gray-600 hover:bg-gray-50"
-                        }`}
-                      >
-                        <span>{opt.label}</span>
-                        <span className="text-[10px] text-gray-400">{opt.desc}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </CardTitle>
-        </CardHeader>
-
-        <CardContent>
-          {/* ── Completion celebration ── */}
-          {isCompleted && (
-            <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-center">
-              <div className="text-3xl mb-1">🎉🧩🎉</div>
-              <div className="text-green-700 font-semibold text-lg">
-                Puzzle Complete!
-              </div>
-              <div className="text-green-600 text-sm">Great job!</div>
+              ))}
             </div>
           )}
+        </div>
 
-          <div className="flex flex-col md:flex-row gap-4 items-start">
-            {/* ── Board ── */}
-            <div
-              ref={boardRef}
-              className="relative border-2 border-gray-300 rounded-lg shadow-md bg-gray-50/80 shrink-0"
-              style={{ width: boardSize, height: boardSize }}
-            >
-              {pieces.map((piece: PuzzlePiece) => {
-                const targetId = `${piece.row}-${piece.col}`;
-                const isPlaced = placed[targetId];
-                const isHovered = hoveredTarget === targetId;
-                const isRecent = recentlyPlaced === targetId;
+        <button
+          type="button"
+          onClick={loadPuzzle}
+          disabled={isDragging}
+          className="font-display inline-flex items-center gap-2 px-4 py-2 rounded-full
+                     bg-[var(--arcade-card-soft)] text-arcade-strong
+                     border border-[var(--arcade-edge)]
+                     active:scale-[0.97]
+                     disabled:opacity-50"
+        >
+          <RotateCcw className="w-4 h-4" /> New
+        </button>
+      </div>
 
+      <div className="surface-card cat-spatial p-4 sm:p-6">
+        <div className="flex flex-col md:flex-row gap-5 md:gap-6 items-start">
+          <div
+            ref={boardRef}
+            className="relative border-2 border-[var(--arcade-edge)] rounded-2xl bg-[oklch(0.20_0.06_285_/_0.55)] shrink-0"
+            style={{ width: boardSize, height: boardSize }}
+          >
+            {pieces.map((piece) => {
+              const targetId = `${piece.row}-${piece.col}`;
+              const isPlaced = placed[targetId];
+              const isHovered = hoveredTarget === targetId;
+              const isRecent = recentlyPlaced === targetId;
+              return (
+                <div
+                  key={targetId}
+                  className={cn(
+                    "absolute",
+                    isPlaced
+                      ? "border border-[oklch(1_0_0_/_0.10)]"
+                      : isHovered
+                        ? "border-2 border-[color:var(--cat-spatial)] bg-[oklch(0.50_0.20_25_/_0.18)]"
+                        : "border border-dashed border-[var(--arcade-edge)]",
+                    isRecent && "just-placed",
+                  )}
+                  style={{
+                    left: piece.col * cellPx,
+                    top: piece.row * cellPx,
+                    width: cellPx,
+                    height: cellPx,
+                    borderRadius: 4,
+                    transition:
+                      "background-color 0.15s, border-color 0.15s",
+                  }}
+                >
+                  {isPlaced && (
+                    <div
+                      className="w-full h-full"
+                      style={pieceBg(piece.row, piece.col, gridSize, imageUrl)}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-arcade-soft mb-2 select-none">
+              Drag pieces onto the board.
+            </p>
+
+            <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+              {bank.map((piece) => {
+                const isBeingDragged = dragInfo?.piece.id === piece.id;
+                const isWrong = wrongDropId === piece.id;
                 return (
-                  <div
-                    key={targetId}
-                    className={`absolute ${
-                      isPlaced
-                        ? "border border-gray-100"
-                        : isHovered
-                          ? "border-2 border-blue-400 bg-blue-100/40"
-                          : "border border-dashed border-gray-300"
-                    } ${isRecent ? "just-placed" : ""}`}
+                  <button
+                    key={piece.id}
+                    ref={(el) => {
+                      if (el) bankPieceRefs.current.set(piece.id, el);
+                      else bankPieceRefs.current.delete(piece.id);
+                    }}
+                    onPointerDown={(e) => handlePiecePointerDown(e, piece)}
+                    type="button"
+                    className={cn(
+                      "relative border-2 rounded-xl overflow-hidden",
+                      "shadow-[inset_0_1px_0_oklch(1_0_0_/_0.10)]",
+                      isBeingDragged
+                        ? "opacity-25 border-[var(--arcade-edge)] scale-95"
+                        : isWrong
+                          ? "border-[oklch(0.65_0.22_25)] shake-piece"
+                          : "border-[var(--arcade-edge)] hover:border-[color:var(--cat-spatial)] active:scale-95",
+                    )}
                     style={{
-                      left: piece.col * cellPx,
-                      top: piece.row * cellPx,
                       width: cellPx,
                       height: cellPx,
-                      borderRadius: 2,
-                      transition:
-                        "background-color 0.15s, border-color 0.15s",
+                      touchAction: "none",
+                      cursor: "grab",
+                      transition: isBeingDragged
+                        ? "none"
+                        : "transform 0.15s, border-color 0.15s, opacity 0.15s",
                     }}
                   >
-                    {isPlaced && (
-                      <div
-                        className="w-full h-full"
-                        style={pieceBg(
-                          piece.row,
-                          piece.col,
-                          gridSize,
-                          imageUrl,
-                        )}
-                      />
-                    )}
-                  </div>
+                    <div
+                      className="w-full h-full"
+                      style={pieceBg(piece.row, piece.col, gridSize, imageUrl)}
+                    />
+                  </button>
                 );
               })}
             </div>
-
-            {/* ── Piece bank ── */}
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-gray-400 mb-2 select-none">
-                👆 Drag pieces onto the board
-              </p>
-
-              <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
-                {bank.map((piece: PuzzlePiece) => {
-                  const isBeingDragged = dragInfo?.piece.id === piece.id;
-                  const isWrong = wrongDropId === piece.id;
-
-                  return (
-                    <button
-                      key={piece.id}
-                      ref={(el: HTMLButtonElement | null) => {
-                        if (el) bankPieceRefs.current.set(piece.id, el);
-                        else bankPieceRefs.current.delete(piece.id);
-                      }}
-                      onPointerDown={(e: React.PointerEvent<HTMLButtonElement>) =>
-                        handlePiecePointerDown(e, piece)
-                      }
-                      type="button"
-                      className={`
-                        relative border-2 rounded-lg overflow-hidden
-                        ${
-                          isBeingDragged
-                            ? "opacity-25 border-gray-300 scale-95"
-                            : isWrong
-                              ? "border-red-400 shake-piece"
-                              : "border-gray-200 hover:border-blue-400 active:scale-95"
-                        }
-                      `}
-                      style={{
-                        width: cellPx,
-                        height: cellPx,
-                        touchAction: "none",
-                        cursor: "grab",
-                        transition: isBeingDragged
-                          ? "none"
-                          : "transform 0.15s, border-color 0.15s, opacity 0.15s",
-                      }}
-                    >
-                      <div
-                        className="w-full h-full"
-                        style={pieceBg(
-                          piece.row,
-                          piece.col,
-                          gridSize,
-                          imageUrl,
-                        )}
-                      />
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Controls */}
-              <div className="mt-4 flex items-center gap-3 flex-wrap">
-                <Button onClick={loadPuzzle} disabled={isDragging} size="sm">
-                  <RotateCcw className="w-4 h-4 mr-2" /> New Puzzle
-                </Button>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Trophy className="w-4 h-4 text-yellow-500" />
-                  Score: {score}
-                </div>
-              </div>
-            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* ── Drag ghost (portal → body) ── */}
       {mounted &&
         dragInfo &&
         createPortal(
@@ -599,11 +542,12 @@ export default function PuzzleGame({
               top: dragInfo.currentY - dragInfo.ghostHeight / 2,
               width: dragInfo.ghostWidth,
               height: dragInfo.ghostHeight,
-              opacity: 0.88,
+              opacity: 0.92,
               zIndex: 50,
               pointerEvents: "none",
-              borderRadius: 6,
-              boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
+              borderRadius: 8,
+              boxShadow:
+                "0 16px 36px oklch(0 0 0 / 0.45), 0 0 0 2px var(--cat-spatial-glow)",
               transform: "scale(1.12)",
               transition: "none",
               ...pieceBg(
@@ -617,26 +561,21 @@ export default function PuzzleGame({
           document.body,
         )}
 
-      {/* ── Return-to-bank animation (portal → body) ── */}
       {mounted &&
         returnAnim &&
         createPortal(
           <div
             style={{
               position: "fixed",
-              left: returnAnim.animating
-                ? returnAnim.toX
-                : returnAnim.fromX,
-              top: returnAnim.animating
-                ? returnAnim.toY
-                : returnAnim.fromY,
+              left: returnAnim.animating ? returnAnim.toX : returnAnim.fromX,
+              top: returnAnim.animating ? returnAnim.toY : returnAnim.fromY,
               width: returnAnim.width,
               height: returnAnim.height,
-              opacity: returnAnim.animating ? 0.25 : 0.8,
+              opacity: returnAnim.animating ? 0.25 : 0.85,
               zIndex: 50,
               pointerEvents: "none",
-              borderRadius: 6,
-              boxShadow: "0 4px 15px rgba(0,0,0,0.2)",
+              borderRadius: 8,
+              boxShadow: "0 8px 22px oklch(0 0 0 / 0.4)",
               transition: returnAnim.animating
                 ? "left 0.3s cubic-bezier(.4,0,.2,1), top 0.3s cubic-bezier(.4,0,.2,1), opacity 0.3s ease"
                 : "none",

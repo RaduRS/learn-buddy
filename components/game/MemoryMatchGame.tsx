@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Loader2, RotateCcw, Trophy, Clock } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Clock, RotateCcw } from "lucide-react";
+import { LoadingScreen } from "@/components/game/LoadingScreen";
+import { ResultsScreen } from "@/components/game/ResultsScreen";
 import { useScore } from "@/hooks/useScore";
+import { useAchievementUnlock } from "@/hooks/useAchievementUnlock";
+import { useSfx } from "@/components/sound/SoundProvider";
+import { cn } from "@/lib/utils";
 
 interface MemoryCard {
   id: string;
@@ -32,50 +33,46 @@ interface MemoryMatchGameProps {
   onGameComplete: (score: number, totalQuestions: number) => void;
 }
 
+const GRID_COLS_CLASS: Record<number, string> = {
+  2: "grid-cols-2",
+  3: "grid-cols-3",
+  4: "grid-cols-4",
+  5: "grid-cols-5",
+  6: "grid-cols-6",
+  7: "grid-cols-7",
+  8: "grid-cols-8",
+};
+
 export default function MemoryMatchGame({
-  userAge,
   userId,
   gameId,
+  userAge,
   gridConfig,
   onGameComplete,
 }: MemoryMatchGameProps) {
   const { incrementScore } = useScore();
+  const { unlock } = useAchievementUnlock(userId);
+  const { play } = useSfx();
+
   const [config, setConfig] = useState<MemoryMatchConfig | null>(null);
   const [cards, setCards] = useState<MemoryCard[]>([]);
-  const [flippedCards, setFlippedCards] = useState<string[]>([]);
+  const [flippedIds, setFlippedIds] = useState<string[]>([]);
   const [matchedPairs, setMatchedPairs] = useState<string[]>([]);
   const [moves, setMoves] = useState(0);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
-  const [gameStatus, setGameStatus] = useState<
-    "loading" | "playing" | "won" | "lost"
-  >("loading");
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  const unlockAchievement = useCallback(
-    async (title: string, description: string, icon: string) => {
-      if (!userId || !gameId) return;
-
-      try {
-        await fetch("/api/achievements", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId, gameId, title, description, icon }),
-        });
-      } catch (error) {
-        console.error("Failed to unlock achievement:", error);
-      }
-    },
-    [userId, gameId],
-  );
+  const [status, setStatus] = useState<"loading" | "playing" | "won" | "lost">("loading");
+  const [isResolving, setIsResolving] = useState(false);
+  const completedRef = useRef(false);
 
   const loadGame = useCallback(async () => {
-    setGameStatus("loading");
+    completedRef.current = false;
+    setStatus("loading");
     setCards([]);
-    setFlippedCards([]);
+    setFlippedIds([]);
     setMatchedPairs([]);
     setMoves(0);
     setTimeLeft(null);
-    setIsProcessing(false);
+    setIsResolving(false);
 
     try {
       const response = await fetch("/api/ai/generate-memory-match", {
@@ -88,321 +85,309 @@ export default function MemoryMatchGame({
           pairs: gridConfig?.pairs,
         }),
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to load memory match game");
-      }
+      if (!response.ok) throw new Error("Failed to load memory match game");
 
       const gameConfig: MemoryMatchConfig = await response.json();
       setConfig(gameConfig);
       setCards(
-        gameConfig.cards.map((card) => ({
-          ...card,
-          isFlipped: false,
-          isMatched: false,
-        })),
+        gameConfig.cards.map((c) => ({ ...c, isFlipped: false, isMatched: false })),
       );
       setTimeLeft(gameConfig.timeLimit || 60000);
-      setGameStatus("playing");
+      setStatus("playing");
     } catch (error) {
       console.error("Error loading memory match game:", error);
-      setGameStatus("lost");
+      setStatus("lost");
     }
   }, [userAge, gridConfig?.rows, gridConfig?.cols, gridConfig?.pairs]);
 
-  // Load game on mount
   useEffect(() => {
-    loadGame();
+    void loadGame();
   }, [loadGame]);
 
-  // Timer effect
+  // Wall-clock timer (re-uses the existing 1s tick logic but is robust to tab throttling).
   useEffect(() => {
-    if (gameStatus === "playing" && timeLeft !== null && timeLeft > 0) {
-      const timer = setTimeout(() => {
-        setTimeLeft((prev) => {
-          if (prev === null || prev <= 1000) {
-            setGameStatus("lost");
-            return 0;
-          }
-          return prev - 1000;
-        });
-      }, 1000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [timeLeft, gameStatus]);
-
-  // Check for matches when two cards are flipped
-  useEffect(() => {
-    if (flippedCards.length === 2 && !isProcessing) {
-      setIsProcessing(true);
-      setMoves((prev) => prev + 1);
-
-      const [firstId, secondId] = flippedCards;
-      const firstCard = cards.find((card) => card.id === firstId);
-      const secondCard = cards.find((card) => card.id === secondId);
-
-      setTimeout(() => {
-        if (firstCard && secondCard && firstCard.pairId === secondCard.pairId) {
-          // Match found!
-          setMatchedPairs((prev) => [...prev, firstCard.pairId]);
-          setCards((prev) =>
-            prev.map((card) =>
-              card.pairId === firstCard.pairId
-                ? { ...card, isMatched: true, isFlipped: true }
-                : card,
-            ),
-          );
-        } else {
-          // No match, flip cards back
-          setCards((prev) =>
-            prev.map((card) =>
-              flippedCards.includes(card.id)
-                ? { ...card, isFlipped: false }
-                : card,
-            ),
-          );
+    if (status !== "playing" || timeLeft === null || timeLeft <= 0) return;
+    const id = window.setTimeout(() => {
+      setTimeLeft((prev) => {
+        if (prev === null || prev <= 1000) {
+          setStatus("lost");
+          play("wrong");
+          return 0;
         }
+        return prev - 1000;
+      });
+    }, 1000);
+    return () => window.clearTimeout(id);
+  }, [timeLeft, status, play]);
 
-        setFlippedCards([]);
-        setIsProcessing(false);
-      }, 1000);
-    }
-  }, [flippedCards, cards, isProcessing, incrementScore]);
+  // Resolve a pair after two cards are flipped.
+  useEffect(() => {
+    if (flippedIds.length !== 2 || isResolving) return;
+    setIsResolving(true);
+    setMoves((m) => m + 1);
 
-  // Check for win condition
+    const [firstId, secondId] = flippedIds;
+    const a = cards.find((c) => c.id === firstId);
+    const b = cards.find((c) => c.id === secondId);
+
+    const id = window.setTimeout(() => {
+      if (a && b && a.pairId === b.pairId) {
+        play("correct");
+        setMatchedPairs((prev) => [...prev, a.pairId]);
+        setCards((prev) =>
+          prev.map((c) =>
+            c.pairId === a.pairId ? { ...c, isMatched: true, isFlipped: true } : c,
+          ),
+        );
+      } else {
+        play("wrong");
+        setCards((prev) =>
+          prev.map((c) =>
+            flippedIds.includes(c.id) ? { ...c, isFlipped: false } : c,
+          ),
+        );
+      }
+      setFlippedIds([]);
+      setIsResolving(false);
+    }, 900);
+    return () => window.clearTimeout(id);
+  }, [flippedIds, cards, isResolving, play]);
+
+  // Win condition.
   useEffect(() => {
     if (
-      config &&
-      matchedPairs.length === config.cards.length / 2 &&
-      gameStatus === "playing"
+      !config ||
+      status !== "playing" ||
+      matchedPairs.length !== config.cards.length / 2 ||
+      completedRef.current
     ) {
-      setGameStatus("won");
+      return;
+    }
+    completedRef.current = true;
+    setStatus("won");
 
-      // Calculate score based on performance
-      const numPairs = config.cards.length / 2;
-      let score = 1; // Base score for completion
-      if (moves <= numPairs + 2) score += 1; // Bonus for efficiency
-      if (timeLeft && timeLeft > (config.timeLimit || 60000) * 0.5) score += 1; // Bonus for speed
+    const numPairs = config.cards.length / 2;
+    let score = 1;
+    if (moves <= numPairs + 2) score += 1;
+    if (timeLeft && timeLeft > (config.timeLimit || 60000) * 0.5) score += 1;
 
-      // Call onGameComplete to properly track score
-      if (typeof onGameComplete === "function") {
-        onGameComplete(score, numPairs);
-      }
+    if (gameId) incrementScore(gameId, score);
+    onGameComplete(score, numPairs);
 
-      // Unlock achievements
-      unlockAchievement("Memory Master", "Complete a Memory Match game!", "🧠");
+    void unlock({
+      gameId,
+      title: "Memory Master",
+      description: "Complete a Memory Match game!",
+      icon: "🧠",
+    });
 
-      if (moves <= config.cards.length) {
-        unlockAchievement(
-          "Perfect Memory",
-          "Complete Memory Match with minimal moves!",
-          "⭐",
-        );
-      }
-
-      if (timeLeft && timeLeft > (config.timeLimit || 60000) * 0.5) {
-        unlockAchievement(
-          "Speed Demon",
-          "Complete Memory Match quickly!",
-          "⚡",
-        );
-      }
+    if (moves <= config.cards.length) {
+      void unlock({
+        gameId,
+        title: "Perfect Memory",
+        description: "Complete Memory Match with minimal moves!",
+        icon: "⭐",
+      });
+    }
+    if (timeLeft && timeLeft > (config.timeLimit || 60000) * 0.5) {
+      void unlock({
+        gameId,
+        title: "Speed Demon",
+        description: "Complete Memory Match quickly!",
+        icon: "⚡",
+      });
     }
   }, [
     matchedPairs,
     config,
-    gameStatus,
+    status,
     moves,
     timeLeft,
-    unlockAchievement,
+    gameId,
+    unlock,
+    incrementScore,
     onGameComplete,
   ]);
 
   const handleCardClick = (cardId: string) => {
-    if (isProcessing || flippedCards.length >= 2 || gameStatus !== "playing")
-      return;
-
+    if (isResolving || flippedIds.length >= 2 || status !== "playing") return;
     const card = cards.find((c) => c.id === cardId);
     if (!card || card.isMatched || card.isFlipped) return;
 
+    play("tap");
     setCards((prev) =>
       prev.map((c) => (c.id === cardId ? { ...c, isFlipped: true } : c)),
     );
-    setFlippedCards((prev) => [...prev, cardId]);
+    setFlippedIds((prev) => [...prev, cardId]);
   };
 
-  const formatTime = (ms: number) => {
-    const seconds = Math.ceil(ms / 1000);
-    return `${seconds}s`;
-  };
+  const formattedTime = useMemo(() => {
+    if (timeLeft === null) return null;
+    return `${Math.ceil(timeLeft / 1000)}s`;
+  }, [timeLeft]);
 
-  const getGridCols = (cols: number) => {
-    switch (cols) {
-      case 2:
-        return "grid-cols-2";
-      case 3:
-        return "grid-cols-3";
-      case 4:
-        return "grid-cols-4";
-      case 5:
-        return "grid-cols-5";
-      case 6:
-        return "grid-cols-6";
-      case 7:
-        return "grid-cols-7";
-      case 8:
-        return "grid-cols-8";
-      default:
-        return "grid-cols-4";
-    }
-  };
-
-  if (gameStatus === "loading") {
+  if (status === "loading") {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-        <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
-        <p className="text-xl font-semibold text-gray-700">Generating your memory cards...</p>
-        <p className="text-sm text-gray-500">
-          Creating beautiful images just for you!
-        </p>
+      <LoadingScreen
+        tone="generating"
+        message="Buddy is shuffling the cards…"
+        subMessage="Picking a fresh set just for you."
+      />
+    );
+  }
+
+  if (status === "won" && config) {
+    const numPairs = config.cards.length / 2;
+    const finalScore = (() => {
+      let score = 1;
+      if (moves <= numPairs + 2) score += 1;
+      if (timeLeft && timeLeft > (config.timeLimit || 60000) * 0.5) score += 1;
+      return score;
+    })();
+    return (
+      <div className="py-6">
+        <ResultsScreen
+          score={finalScore}
+          total={3}
+          category="memory"
+          headline="Match made!"
+          message={`You found all ${numPairs} pairs in ${moves} moves${timeLeft ? `, with ${formattedTime} to spare` : ""}.`}
+          onPlayAgain={loadGame}
+        />
       </div>
     );
   }
 
-  return (
-    <div className="w-full max-w-4xl mx-auto p-4 space-y-6">
-      {/* Game Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-        <div className="flex items-center gap-4">
-          <Badge variant="outline" className="text-sm">
-            Moves: {moves}
-          </Badge>
-          <Badge variant="outline" className="text-sm">
-            Pairs: {matchedPairs.length}/{config ? config.cards.length / 2 : 0}
-          </Badge>
-          {timeLeft !== null && (
-            <Badge
-              variant={timeLeft < 10000 ? "destructive" : "outline"}
-              className="text-sm"
-            >
-              <Clock className="w-3 h-3 mr-1" />
-              {formatTime(timeLeft)}
-            </Badge>
-          )}
-        </div>
+  if (status === "lost" && config) {
+    return (
+      <div className="py-6">
+        <ResultsScreen
+          score={matchedPairs.length}
+          total={config.cards.length / 2}
+          category="memory"
+          headline="Time's up!"
+          message={`You matched ${matchedPairs.length} of ${config.cards.length / 2} pairs. Want another round?`}
+          onPlayAgain={loadGame}
+        />
+      </div>
+    );
+  }
 
-        <Button onClick={loadGame} variant="outline">
-          <RotateCcw className="w-4 h-4 mr-2" />
-          New Game
-        </Button>
+  if (!config) return null;
+
+  const totalPairs = config.cards.length / 2;
+  const lowTime = (timeLeft ?? Infinity) < 10000;
+
+  return (
+    <div className="space-y-5">
+      <div className="surface-card cat-memory p-4 flex items-center gap-3">
+        <span className="chip">
+          <span className="text-sm opacity-80">Moves</span>
+          <span className="font-display">{moves}</span>
+        </span>
+        <span className="chip">
+          <span className="text-sm opacity-80">Pairs</span>
+          <span className="font-display">{matchedPairs.length}</span>
+          <span className="opacity-70">/</span>
+          <span className="font-display opacity-80">{totalPairs}</span>
+        </span>
+        {formattedTime !== null && (
+          <span
+            className={cn("chip", lowTime && "chip-gold")}
+            style={
+              lowTime
+                ? {
+                    background:
+                      "linear-gradient(180deg, oklch(0.86 0.20 25), oklch(0.62 0.20 25))",
+                    color: "oklch(0.18 0.06 25)",
+                    borderColor: "oklch(0.50 0.16 25)",
+                  }
+                : undefined
+            }
+          >
+            <Clock className="w-4 h-4" aria-hidden />
+            <span className="font-display">{formattedTime}</span>
+          </span>
+        )}
+        <span className="flex-1" />
+        <button
+          type="button"
+          onClick={loadGame}
+          className="font-display inline-flex items-center gap-2 px-4 py-2 rounded-full
+                     bg-[var(--arcade-card-soft)] text-arcade-strong
+                     border border-[var(--arcade-edge)]
+                     active:scale-[0.97]"
+          aria-label="New game"
+        >
+          <RotateCcw className="w-4 h-4" />
+          New
+        </button>
       </div>
 
-      {/* Game Grid */}
-      {config && (
-        <div
-          className={cn(
-            "grid gap-3 mx-auto max-w-3xl",
-            getGridCols(config.gridCols),
-          )}
-        >
-          {cards.map((card) => {
-            const isEmpty = card.emoji === "";
-
-            return (
-              <Card
-                key={card.id}
-                className={cn(
-                  "aspect-square transition-all duration-300 relative overflow-hidden",
-                  isEmpty
-                    ? "bg-gray-100 border-gray-200"
-                    : cn(
-                        "cursor-pointer hover:scale-105 active:scale-95",
-                        card.isMatched &&
-                          "ring-2 ring-green-500 ring-opacity-50",
-                        card.isFlipped || card.isMatched
-                          ? "bg-white"
-                          : "bg-gradient-to-br from-blue-500 to-purple-600",
-                      ),
-                )}
-                onClick={() => !isEmpty && handleCardClick(card.id)}
-              >
-                <CardContent className="p-0 h-full relative">
-                  {/* Card Back */}
-                  {!isEmpty && (
-                    <div
-                      className={cn(
-                        "absolute inset-0 flex items-center justify-center transition-opacity duration-300",
-                        card.isFlipped || card.isMatched
-                          ? "opacity-0"
-                          : "opacity-100",
-                      )}
-                    >
-                      <div className="text-white text-2xl font-bold">?</div>
-                    </div>
-                  )}
-
-                  {/* Card Front */}
-                  {!isEmpty && (
-                    <div
-                      className={cn(
-                        "absolute inset-0 transition-opacity duration-300",
-                        card.isFlipped || card.isMatched
-                          ? "opacity-100"
-                          : "opacity-0",
-                      )}
-                    >
-                      <div className="w-full h-full flex items-center justify-center text-4xl">
-                        {card.emoji}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Game Status Messages */}
-      {gameStatus === "won" && (
-        <Card className="border-green-200 bg-gradient-to-b from-green-50 to-white">
-          <CardContent className="text-center space-y-4 p-8">
-            <div className="flex justify-center">
-              <Trophy className="h-14 w-14 text-yellow-500" />
-            </div>
-            <h3 className="text-2xl font-bold text-green-800">
-              Congratulations!
-            </h3>
-            <p className="text-green-700 text-lg">
-              You matched all pairs in {moves} moves!
-              {timeLeft && ` With ${formatTime(timeLeft)} remaining!`}
-            </p>
-            <Button
-              onClick={loadGame}
-              size="lg"
-              className="bg-green-600 hover:bg-green-700"
+      <div
+        className={cn(
+          "grid gap-2 sm:gap-3 mx-auto",
+          GRID_COLS_CLASS[config.gridCols] ?? "grid-cols-4",
+        )}
+        style={{ maxWidth: `${Math.min(900, config.gridCols * 110)}px` }}
+      >
+        {cards.map((card) => {
+          const empty = card.emoji === "";
+          const revealed = card.isFlipped || card.isMatched;
+          return (
+            <button
+              key={card.id}
+              type="button"
+              onClick={() => !empty && handleCardClick(card.id)}
+              disabled={empty}
+              aria-label={revealed ? card.emoji : "Hidden card"}
+              className={cn(
+                "aspect-square rounded-2xl relative overflow-hidden",
+                "border border-[var(--arcade-edge)]",
+                "shadow-[inset_0_1px_0_oklch(1_0_0_/_0.10)]",
+                "transition-transform",
+                empty
+                  ? "bg-[oklch(0.20_0.06_285_/_0.45)] opacity-40 cursor-default"
+                  : revealed
+                    ? "bg-[var(--arcade-card-soft)]"
+                    : "active:scale-[0.97] cursor-pointer",
+                card.isMatched && "ring-2 ring-[color:var(--cat-music)] just-placed",
+              )}
+              style={
+                !revealed && !empty
+                  ? {
+                      background:
+                        "linear-gradient(140deg, var(--cat-memory) 0%, var(--cat-default) 100%)",
+                    }
+                  : undefined
+              }
             >
-              Play Again
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {gameStatus === "lost" && (
-        <Card className="border-red-200 bg-gradient-to-b from-red-50 to-white">
-          <CardContent className="text-center space-y-4 p-8">
-            <h3 className="text-2xl font-bold text-red-800">Time&apos;s Up!</h3>
-            <p className="text-red-700 text-lg">
-              You matched {matchedPairs.length} out of{" "}
-              {config ? config.cards.length / 2 : 0} pairs.
-            </p>
-            <Button onClick={loadGame} size="lg" className="bg-red-600 hover:bg-red-700">
-              Try Again
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+              {!empty && (
+                <span
+                  className={cn(
+                    "absolute inset-0 grid place-items-center font-display text-3xl text-white/95",
+                    "transition-opacity duration-300",
+                    revealed ? "opacity-0" : "opacity-100",
+                  )}
+                >
+                  ?
+                </span>
+              )}
+              {!empty && (
+                <span
+                  className={cn(
+                    "absolute inset-0 grid place-items-center text-4xl sm:text-5xl",
+                    "transition-opacity duration-300",
+                    revealed ? "opacity-100" : "opacity-0",
+                  )}
+                >
+                  {card.emoji}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
