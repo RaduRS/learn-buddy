@@ -122,36 +122,47 @@ export default function MusicLearningGame({
   }, []);
 
   const playNote = useCallback(
-    (freq: number, duration = 0.45) => {
+    (freq: number, duration = 1.1) => {
       const ctx = ensureCtx();
       if (!ctx) return;
       const now = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = "triangle";
-      osc.frequency.setValueAtTime(freq, now);
-      g.gain.setValueAtTime(0, now);
-      g.gain.linearRampToValueAtTime(0.22, now + 0.01);
-      g.gain.linearRampToValueAtTime(0.16, now + duration * 0.7);
-      g.gain.linearRampToValueAtTime(0.0001, now + duration);
-      osc.connect(g).connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + duration + 0.05);
+      const stop = now + duration + 0.1;
+
+      const master = ctx.createGain();
+      master.gain.setValueAtTime(0.0001, now);
+      master.gain.exponentialRampToValueAtTime(0.32, now + 0.006);
+      master.gain.exponentialRampToValueAtTime(0.0001, stop);
+      master.connect(ctx.destination);
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.value = Math.min(8000, freq * 10);
+      filter.Q.value = 0.4;
+      filter.connect(master);
+
+      const partials: Array<{ mult: number; amp: number; decay: number }> = [
+        { mult: 1, amp: 1.0, decay: 1.0 },
+        { mult: 2, amp: 0.45, decay: 0.7 },
+        { mult: 3, amp: 0.22, decay: 0.5 },
+        { mult: 4, amp: 0.12, decay: 0.4 },
+        { mult: 5, amp: 0.07, decay: 0.3 },
+        { mult: 6, amp: 0.04, decay: 0.25 },
+      ];
+      for (const { mult, amp, decay } of partials) {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq * mult;
+        g.gain.setValueAtTime(0.0001, now);
+        g.gain.exponentialRampToValueAtTime(amp, now + 0.004);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + duration * decay);
+        osc.connect(g).connect(filter);
+        osc.start(now);
+        osc.stop(stop);
+      }
     },
     [ensureCtx],
   );
-
-  const speakName = useCallback((noteKey: string) => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    // Lowercase: iOS / VoiceOver otherwise announces a single capital
-    // letter as "capital B" instead of just "bee".
-    const letter = (NOTE_LABEL[noteKey] ?? noteKey).toLowerCase();
-    const u = new SpeechSynthesisUtterance(letter);
-    u.rate = 0.85;
-    u.pitch = 1.15;
-    window.speechSynthesis.speak(u);
-  }, []);
 
   const completeLesson = useCallback(
     (lesson: LessonId) => {
@@ -257,7 +268,6 @@ export default function MusicLearningGame({
       {activeLesson === "notes" && (
         <NotesLesson
           playNote={playNote}
-          speakName={speakName}
           sfx={sfx}
           onComplete={() => completeLesson("notes")}
         />
@@ -338,12 +348,10 @@ function LessonTile({
 
 function NotesLesson({
   playNote,
-  speakName,
   sfx,
   onComplete,
 }: {
   playNote: (freq: number, duration?: number) => void;
-  speakName: (note: string) => void;
   sfx: (sound: "tap" | "correct" | "wrong" | "levelup" | "finish" | "ding") => void;
   onComplete: () => void;
 }) {
@@ -359,10 +367,9 @@ function NotesLesson({
     setTarget(nextTarget);
     setFeedback(null);
     setTimeout(() => {
-      playNote(nextTarget.freq, 0.5);
-      setTimeout(() => speakName(nextTarget.note), 350);
+      playNote(nextTarget.freq, 1.2);
     }, 80);
-  }, [playNote, speakName]);
+  }, [playNote]);
 
   useEffect(() => {
     if (round < TARGET_COUNT) newRound();
@@ -395,8 +402,7 @@ function NotesLesson({
 
   const replay = () => {
     if (!target) return;
-    playNote(target.freq, 0.5);
-    setTimeout(() => speakName(target.note), 350);
+    playNote(target.freq, 1.2);
   };
 
   if (doneCelebration) {
