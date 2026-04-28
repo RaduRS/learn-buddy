@@ -75,8 +75,12 @@ ${usedQuestions.length > 0 ? `- DO NOT REPEAT or paraphrase any of these used qu
 BALANCE GUIDANCE: ${balanceGuidance}
 
 TOPIC SUGGESTIONS (pick ONE randomly; do NOT include examples):
-- animals, colors, foods, weather, school objects, nature, vehicles,
-  family, playground activities, simple body parts, safety, everyday routines
+- animals, pets, baby animals, colors, foods, fruits, vegetables,
+  weather, seasons, school objects, nature, plants, trees, flowers,
+  vehicles, boats, planes, family, playground activities, sports, toys,
+  music instruments, simple body parts, clothes, hygiene, safety,
+  everyday routines, sounds, sizes, shapes, kitchen items, sleeping,
+  birthdays, holidays
 
 AVOID:
 - complex or confusing ideas
@@ -131,8 +135,31 @@ Return ONLY a JSON object with:
       throw new Error('Invalid question data structure')
     }
 
-    // Create enhanced image prompt with stronger text prevention
-     const imagePrompt = `Simple cartoon illustration showing: ${questionData.statement.replace(/[.!?]/g, '').replace(/\b(is|are|can|have|has)\b/g, '').trim()}
+    // Composition + style variety so repeat topics still look different
+    const compositionCues = [
+      'centered subject with soft background',
+      'wide cheerful scene',
+      'close-up with playful details',
+      'top-down storybook view',
+      'side-view storybook composition',
+    ]
+    const composition = compositionCues[Math.floor(Math.random() * compositionCues.length)]
+
+    const styleCues = [
+      'clean cartoon illustration',
+      'soft watercolor children\'s book style',
+      'flat vector illustration',
+      'cute Pixar-inspired 3D render',
+      'warm crayon-textured cartoon',
+    ]
+    const style = styleCues[Math.floor(Math.random() * styleCues.length)]
+
+    const cleanStatement = questionData.statement
+      .replace(/[.!?]/g, '')
+      .replace(/\b(is|are|can|have|has)\b/g, '')
+      .trim()
+
+    const imagePrompt = `${style} showing: ${cleanStatement}. ${composition}. Bright colors, simple shapes, child-friendly, minimalist.
 
 ULTRA STRICT NO-TEXT REQUIREMENTS:
 - ZERO TEXT - NO LETTERS, WORDS, SYMBOLS, NUMBERS, CHARACTERS
@@ -143,9 +170,7 @@ ULTRA STRICT NO-TEXT REQUIREMENTS:
 - NO MATHEMATICAL SYMBOLS (+, -, =, etc.)
 - NO PUNCTUATION MARKS (., !, ?, etc.)
 - NO ARROWS WITH TEXT OR LABELS
-- PURE VISUAL ONLY - LIKE A SILENT MOVIE
-
-Style: Clean cartoon, bright colors, simple shapes, child-friendly, minimalist`
+- PURE VISUAL ONLY - LIKE A SILENT MOVIE`
 
     // Call Replicate flux-schnell (sync via Prefer: wait)
     const replicateResponse = await fetch(
