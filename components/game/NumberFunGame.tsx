@@ -175,7 +175,6 @@ export default function NumberFunGame({
   }
 
   if (gameCompleted) {
-    const percentage = Math.round((score / totalQuestions) * 100);
     return (
       <div className="max-w-2xl mx-auto p-6">
         <Card className="border-green-200 bg-gradient-to-b from-green-50 to-white">

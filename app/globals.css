@@ -8,6 +8,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-fredoka);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -37,25 +38,21 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 8px);
+  --radius-md: calc(var(--radius) - 4px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 8px);
 }
 
 body {
-  /* Prevent text selection on touch devices for better UX */
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
-  /* Prevent zoom on double tap */
   touch-action: manipulation;
-  /* Smooth scrolling */
   scroll-behavior: smooth;
 }
 
-/* Allow text selection for readable content */
 p, h1, h2, h3, h4, h5, h6 {
   -webkit-user-select: text;
   -moz-user-select: text;
@@ -63,25 +60,19 @@ p, h1, h2, h3, h4, h5, h6 {
   user-select: text;
 }
 
-/* Touch-friendly button styles */
 button, [role="button"], .cursor-pointer {
-  /* Minimum touch target size for accessibility */
   min-height: 44px;
   min-width: 44px;
-  /* Remove tap highlight on mobile */
   -webkit-tap-highlight-color: transparent;
-  /* Improve touch responsiveness */
   touch-action: manipulation;
 }
 
-/* Responsive font sizes for better readability on tablets */
 @media (min-width: 768px) and (max-width: 1024px) {
   html {
     font-size: 18px;
   }
 }
 
-/* Optimize for landscape tablet orientation */
 @media (orientation: landscape) and (max-height: 768px) {
   .container {
     padding-left: 2rem;
@@ -89,7 +80,6 @@ button, [role="button"], .cursor-pointer {
   }
 }
 
-/* Ensure proper spacing on small screens */
 @media (max-width: 640px) {
   .container {
     padding-left: 1rem;
@@ -97,23 +87,25 @@ button, [role="button"], .cursor-pointer {
   }
 }
 
-/* PWA specific styles */
 @media (display-mode: standalone) {
   body {
-    /* Add padding for status bar on iOS */
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
 
-/* Smooth animations for interactive elements only */
 button, [role="button"], a, .cursor-pointer {
-  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+  transition:
+    transform var(--duration-fast) var(--spring),
+    box-shadow var(--duration-mid) var(--ease-out-quart),
+    background-color var(--duration-mid) var(--ease-out-quart),
+    color var(--duration-mid) var(--ease-out-quart);
 }
 
-/* Reduce motion for users who prefer it */
 @media (prefers-reduced-motion: reduce) {
-  * {
+  *,
+  ::before,
+  ::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
@@ -121,7 +113,8 @@ button, [role="button"], a, .cursor-pointer {
   }
 }
 
-/* Puzzle game: shake animation for wrong drop */
+/* ---------- Existing animations (preserved) ---------- */
+
 @keyframes puzzle-shake {
   0%, 100% { transform: translateX(0); }
   20% { transform: translateX(-4px); }
@@ -129,24 +122,23 @@ button, [role="button"], a, .cursor-pointer {
   60% { transform: translateX(-4px); }
   80% { transform: translateX(4px); }
 }
+.shake-piece { animation: puzzle-shake 0.4s ease-in-out; }
 
-.shake-piece {
-  animation: puzzle-shake 0.4s ease-in-out;
-}
-
-/* Puzzle game: glow animation for correct placement */
 @keyframes just-placed-glow {
   0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5); }
   50% { box-shadow: 0 0 12px 4px rgba(59, 130, 246, 0.3); }
   100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
 }
+.just-placed { animation: just-placed-glow 0.6s ease-out; }
 
-.just-placed {
-  animation: just-placed-glow 0.6s ease-out;
-}
+/* ============================================================
+   Arcade-Night Design System (additive, used by new components)
+   ============================================================ */
 
 :root {
   --radius: 0.625rem;
+
+  /* shadcn-compatible (existing) */
   --background: oklch(1 0 0);
   --foreground: oklch(0.147 0.004 49.25);
   --card: oklch(1 0 0);
@@ -178,6 +170,60 @@ button, [role="button"], a, .cursor-pointer {
   --sidebar-accent-foreground: oklch(0.216 0.006 56.043);
   --sidebar-border: oklch(0.923 0.003 48.717);
   --sidebar-ring: oklch(0.709 0.01 56.259);
+
+  /* Arcade-night surfaces */
+  --arcade-bg:           oklch(0.18 0.07 285);
+  --arcade-bg-deep:      oklch(0.13 0.06 285);
+  --arcade-card:         oklch(0.27 0.08 280);
+  --arcade-card-soft:    oklch(0.32 0.05 280);
+  --arcade-edge:         oklch(0.42 0.08 280 / 0.45);
+  --arcade-highlight:    oklch(0.95 0.02 280 / 0.14);
+
+  /* Ink — text colors used inside arcade surfaces */
+  --ink-strong:          oklch(0.98 0.02 95);
+  --ink-mid:             oklch(0.86 0.04 90);
+  --ink-soft:            oklch(0.72 0.06 280);
+  --ink-on-color:        oklch(0.18 0.07 285);
+
+  /* Five category channels */
+  --cat-math:            oklch(0.70 0.20 250);
+  --cat-math-glow:       oklch(0.70 0.20 250 / 0.55);
+  --cat-math-ink:        oklch(0.92 0.10 250);
+
+  --cat-memory:          oklch(0.72 0.24 340);
+  --cat-memory-glow:     oklch(0.72 0.24 340 / 0.55);
+  --cat-memory-ink:      oklch(0.93 0.12 340);
+
+  --cat-reading:         oklch(0.80 0.18 70);
+  --cat-reading-glow:    oklch(0.80 0.18 70 / 0.55);
+  --cat-reading-ink:     oklch(0.93 0.12 70);
+
+  --cat-music:           oklch(0.80 0.18 160);
+  --cat-music-glow:      oklch(0.80 0.18 160 / 0.55);
+  --cat-music-ink:       oklch(0.93 0.12 160);
+
+  --cat-spatial:         oklch(0.72 0.20 25);
+  --cat-spatial-glow:    oklch(0.72 0.20 25 / 0.55);
+  --cat-spatial-ink:     oklch(0.93 0.14 25);
+
+  --cat-default:         oklch(0.70 0.18 290);
+  --cat-default-glow:    oklch(0.70 0.18 290 / 0.55);
+  --cat-default-ink:     oklch(0.92 0.10 290);
+
+  /* Joy — celebration palette */
+  --joy-gold:            oklch(0.84 0.17 88);
+  --joy-gold-glow:       oklch(0.84 0.17 88 / 0.55);
+  --joy-correct:         oklch(0.78 0.22 145);
+  --joy-correct-glow:    oklch(0.78 0.22 145 / 0.55);
+  --joy-wrong:           oklch(0.66 0.22 25);
+  --joy-wrong-glow:      oklch(0.66 0.22 25 / 0.55);
+
+  /* Motion */
+  --spring:         cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --duration-fast:  0.18s;
+  --duration-mid:   0.32s;
+  --duration-slow:  0.6s;
 }
 
 .dark {
@@ -222,3 +268,210 @@ button, [role="button"], a, .cursor-pointer {
     @apply bg-background text-foreground;
   }
 }
+
+/* ============================================================
+   Arcade backdrop — used by the new GameShell / Home / Achievements.
+   Replaces the 8 duplicated `bg-gradient-to-br from-blue-50 ...` blocks.
+   ============================================================ */
+.bg-arcade {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--arcade-bg);
+  background-image:
+    radial-gradient(ellipse 60% 50% at 20% 0%,    oklch(0.32 0.12 285) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 60% at 100% 100%, oklch(0.28 0.14 320) 0%, transparent 65%),
+    radial-gradient(ellipse 60% 60% at 0% 100%,   oklch(0.24 0.10 220) 0%, transparent 65%);
+  color: var(--ink-mid);
+}
+
+.bg-arcade::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    radial-gradient(1.2px 1.2px at 18% 22%, oklch(1 0 0 / 0.55), transparent 60%),
+    radial-gradient(1px   1px   at 62% 71%, oklch(1 0 0 / 0.40), transparent 60%),
+    radial-gradient(1.6px 1.6px at 81% 18%, oklch(1 0 0 / 0.55), transparent 60%),
+    radial-gradient(1px   1px   at 31% 79%, oklch(1 0 0 / 0.40), transparent 60%),
+    radial-gradient(1.4px 1.4px at 72% 38%, oklch(1 0 0 / 0.45), transparent 60%),
+    radial-gradient(1px   1px   at 45% 12%, oklch(1 0 0 / 0.30), transparent 60%);
+  background-size:
+    420px 420px,
+    360px 360px,
+    540px 540px,
+    300px 300px,
+    480px 480px,
+    260px 260px;
+  animation: starfield-drift 90s linear infinite;
+  opacity: 0.85;
+}
+
+.bg-arcade > * { position: relative; z-index: 1; }
+
+@keyframes starfield-drift {
+  0%   { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(0, -60px, 0); }
+}
+
+/* ============================================================
+   Card surface — chunky rounded panel with inset top highlight
+   ============================================================ */
+.surface-card {
+  --surface-tint: var(--cat-default-glow);
+  position: relative;
+  background-image:
+    linear-gradient(180deg, var(--arcade-highlight) 0%, transparent 55%),
+    linear-gradient(180deg, var(--arcade-card) 0%, var(--arcade-card-soft) 100%);
+  border: 1px solid var(--arcade-edge);
+  border-radius: 1.5rem;
+  box-shadow:
+    inset 0 1px 0 0 oklch(1 0 0 / 0.10),
+    0 14px 30px -16px var(--surface-tint),
+    0 2px 0 0 oklch(0 0 0 / 0.25);
+  overflow: hidden;
+}
+
+.surface-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 12%; right: 12%; height: 1px;
+  background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.4), transparent);
+  pointer-events: none;
+}
+
+/* Category surface tints — apply alongside .surface-card */
+.cat-math    { --surface-tint: var(--cat-math-glow); }
+.cat-memory  { --surface-tint: var(--cat-memory-glow); }
+.cat-reading { --surface-tint: var(--cat-reading-glow); }
+.cat-music   { --surface-tint: var(--cat-music-glow); }
+.cat-spatial { --surface-tint: var(--cat-spatial-glow); }
+.cat-gold    { --surface-tint: var(--joy-gold-glow); }
+
+/* Color helpers usable as text / bg */
+.text-arcade-strong { color: var(--ink-strong); }
+.text-arcade-mid    { color: var(--ink-mid); }
+.text-arcade-soft   { color: var(--ink-soft); }
+
+/* Pretty chip — used for score, streaks, badges */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: 999px;
+  font-family: var(--font-fredoka), var(--font-geist-sans);
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+  background:
+    linear-gradient(180deg, oklch(1 0 0 / 0.10), transparent),
+    var(--arcade-card-soft);
+  color: var(--ink-strong);
+  border: 1px solid var(--arcade-edge);
+  box-shadow: inset 0 1px 0 0 oklch(1 0 0 / 0.10);
+}
+.chip-gold {
+  background: linear-gradient(180deg, oklch(0.92 0.12 88), oklch(0.78 0.18 78));
+  color: oklch(0.18 0.06 50);
+  border-color: oklch(0.78 0.18 78);
+  box-shadow: 0 6px 18px -8px var(--joy-gold-glow), inset 0 1px 0 0 oklch(1 0 0 / 0.4);
+}
+
+/* Display headlines (uses Fredoka if loaded, falls back to Geist) */
+.font-display {
+  font-family: var(--font-fredoka), var(--font-geist-sans), system-ui, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+/* ============================================================
+   Motion utilities (used by new components and games)
+   ============================================================ */
+
+@keyframes shake-x {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-7px); }
+  40%      { transform: translateX(7px); }
+  60%      { transform: translateX(-5px); }
+  80%      { transform: translateX(5px); }
+}
+.shake { animation: shake-x 0.42s var(--ease-out-quart); }
+
+@keyframes pulse-correct-key {
+  0%   { box-shadow: 0 0 0 0 var(--joy-correct-glow); }
+  50%  { box-shadow: 0 0 28px 10px var(--joy-correct-glow); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+.pulse-correct { animation: pulse-correct-key 0.7s var(--ease-out-quart); }
+
+@keyframes pop-in-key {
+  0%   { transform: scale(0.6); opacity: 0; }
+  60%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.pop-in { animation: pop-in-key 0.42s var(--spring); }
+
+@keyframes bob-key {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+.bob { animation: bob-key 2.4s ease-in-out infinite; }
+
+@keyframes blink-key {
+  0%, 92%, 100% { transform: scaleY(1); }
+  94%, 98%      { transform: scaleY(0.1); }
+}
+.blink-eyes { animation: blink-key 4.2s ease-in-out infinite; transform-origin: center; }
+
+@keyframes wobble-key {
+  0%, 100% { transform: rotate(0deg); }
+  25%      { transform: rotate(-6deg); }
+  75%      { transform: rotate(6deg); }
+}
+.wobble { animation: wobble-key 1.6s ease-in-out infinite; }
+
+@keyframes spin-slow-key {
+  to { transform: rotate(360deg); }
+}
+.spin-slow { animation: spin-slow-key 9s linear infinite; }
+
+@keyframes float-key {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50%      { transform: translateY(-12px) rotate(2deg); }
+}
+.float-mascot { animation: float-key 3.8s ease-in-out infinite; }
+
+@keyframes confetti-fall {
+  0%   { transform: translate3d(0, -10vh, 0) rotate(0); opacity: 0; }
+  10%  { opacity: 1; }
+  100% { transform: translate3d(var(--cx, 0px), 110vh, 0) rotate(720deg); opacity: 0; }
+}
+.confetti-piece {
+  position: absolute;
+  top: 0;
+  width: 10px;
+  height: 14px;
+  border-radius: 2px;
+  animation: confetti-fall var(--cd, 1.6s) ease-in forwards;
+  animation-delay: var(--cdelay, 0s);
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+@keyframes sparkle-key {
+  0%, 100% { opacity: 0; transform: scale(0.6) rotate(0deg); }
+  50%      { opacity: 1; transform: scale(1.1) rotate(180deg); }
+}
+.sparkle { animation: sparkle-key 1.8s ease-in-out infinite; }
+
+@keyframes ring-pulse-key {
+  0%   { box-shadow: 0 0 0 0 currentColor; opacity: 0.7; }
+  100% { box-shadow: 0 0 0 22px transparent; opacity: 0; }
+}
+.ring-pulse { animation: ring-pulse-key 1.4s ease-out infinite; }
+
+/* Pretty scrollbars */
+.scroll-arcade::-webkit-scrollbar       { width: 10px; height: 10px; }
+.scroll-arcade::-webkit-scrollbar-track { background: transparent; }
+.scroll-arcade::-webkit-scrollbar-thumb { background: var(--arcade-edge); border-radius: 999px; }
