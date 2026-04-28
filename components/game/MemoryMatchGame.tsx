@@ -65,8 +65,9 @@ export default function MemoryMatchGame({
   const [moves, setMoves] = useState(0);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [status, setStatus] = useState<"loading" | "playing" | "won" | "lost">("loading");
-  const [isResolving, setIsResolving] = useState(false);
   const completedRef = useRef(false);
+  const cardsRef = useRef<MemoryCard[]>([]);
+  cardsRef.current = cards;
 
   const loadGame = useCallback(async () => {
     completedRef.current = false;
@@ -76,7 +77,6 @@ export default function MemoryMatchGame({
     setMatchedPairs([]);
     setMoves(0);
     setTimeLeft(null);
-    setIsResolving(false);
 
     try {
       const response = await fetch("/api/ai/generate-memory-match", {
@@ -126,15 +126,14 @@ export default function MemoryMatchGame({
 
   // Resolve a pair after two cards are flipped.
   useEffect(() => {
-    if (flippedIds.length !== 2 || isResolving) return;
-    setIsResolving(true);
+    if (flippedIds.length !== 2) return;
     setMoves((m) => m + 1);
 
     const [firstId, secondId] = flippedIds;
-    const a = cards.find((c) => c.id === firstId);
-    const b = cards.find((c) => c.id === secondId);
 
     const id = window.setTimeout(() => {
+      const a = cardsRef.current.find((c) => c.id === firstId);
+      const b = cardsRef.current.find((c) => c.id === secondId);
       if (a && b && a.pairId === b.pairId) {
         play("correct");
         setMatchedPairs((prev) => [...prev, a.pairId]);
@@ -147,15 +146,14 @@ export default function MemoryMatchGame({
         play("wrong");
         setCards((prev) =>
           prev.map((c) =>
-            flippedIds.includes(c.id) ? { ...c, isFlipped: false } : c,
+            c.id === firstId || c.id === secondId ? { ...c, isFlipped: false } : c,
           ),
         );
       }
       setFlippedIds([]);
-      setIsResolving(false);
     }, 900);
     return () => window.clearTimeout(id);
-  }, [flippedIds, cards, isResolving, play]);
+  }, [flippedIds, play]);
 
   // Win condition.
   useEffect(() => {
@@ -214,7 +212,7 @@ export default function MemoryMatchGame({
   ]);
 
   const handleCardClick = (cardId: string) => {
-    if (isResolving || flippedIds.length >= 2 || status !== "playing") return;
+    if (flippedIds.length >= 2 || status !== "playing") return;
     const card = cards.find((c) => c.id === cardId);
     if (!card || card.isMatched || card.isFlipped) return;
 
