@@ -167,12 +167,6 @@ export function Buddy({
           </ellipse>
         )}
 
-        {/* Waving hand */}
-        {mood === "wave" && (
-          <g style={{ transformOrigin: "172px 120px" }} className="wobble">
-            <ellipse cx="172" cy="120" rx="12" ry="14" fill="url(#buddyBody)" stroke="oklch(0.42 0.09 160)" strokeWidth="2.5" />
-          </g>
-        )}
       </svg>
     </div>
   );
