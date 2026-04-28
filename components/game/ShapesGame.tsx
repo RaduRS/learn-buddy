@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { RotateCcw, Trophy, Volume2 } from "lucide-react";
+import { Volume2 } from "lucide-react";
+import { ResultsScreen } from "@/components/game/ResultsScreen";
+import { useSfx } from "@/components/sound/SoundProvider";
 import { cn } from "@/lib/utils";
 
 interface ShapesGameProps {
@@ -18,71 +17,78 @@ interface ShapesGameProps {
 type ShapeConfig = {
   id: string;
   label: string;
-  colorClass: string;
+  fill: string; // CSS color
+  ring: string; // CSS color
   sizeClass?: string;
   className?: string;
   style?: CSSProperties;
 };
 
-const shapes: ShapeConfig[] = [
+const SHAPES: ShapeConfig[] = [
   {
     id: "circle",
     label: "Circle",
-    colorClass: "bg-rose-400",
+    fill: "oklch(0.78 0.18 25)",
+    ring: "oklch(0.50 0.18 25)",
     className: "rounded-full",
   },
   {
     id: "square",
     label: "Square",
-    colorClass: "bg-blue-400",
+    fill: "oklch(0.74 0.18 250)",
+    ring: "oklch(0.46 0.18 250)",
   },
   {
     id: "rectangle",
     label: "Rectangle",
-    colorClass: "bg-green-400",
-    sizeClass: "w-24 h-14 sm:w-28 sm:h-16",
+    fill: "oklch(0.78 0.18 145)",
+    ring: "oklch(0.45 0.18 145)",
+    sizeClass: "w-28 h-16 sm:w-32 sm:h-18",
   },
   {
     id: "triangle",
     label: "Triangle",
-    colorClass: "bg-yellow-400",
-    style: {
-      clipPath: "polygon(50% 0%, 0% 100%, 100% 100%)",
-    },
+    fill: "oklch(0.85 0.16 90)",
+    ring: "oklch(0.55 0.16 80)",
+    style: { clipPath: "polygon(50% 0%, 0% 100%, 100% 100%)" },
   },
   {
     id: "oval",
     label: "Oval",
-    colorClass: "bg-purple-400",
-    sizeClass: "w-14 h-24 sm:w-16 sm:h-28",
+    fill: "oklch(0.74 0.20 290)",
+    ring: "oklch(0.46 0.20 290)",
+    sizeClass: "w-16 h-24 sm:w-18 sm:h-28",
     className: "rounded-full",
   },
   {
     id: "diamond",
     label: "Diamond",
-    colorClass: "bg-pink-400",
+    fill: "oklch(0.74 0.22 340)",
+    ring: "oklch(0.50 0.22 340)",
     className: "rotate-45",
   },
   {
     id: "pentagon",
     label: "Pentagon",
-    colorClass: "bg-orange-400",
-    style: {
-      clipPath: "polygon(50% 0%, 0% 38%, 18% 100%, 82% 100%, 100% 38%)",
-    },
+    fill: "oklch(0.78 0.18 60)",
+    ring: "oklch(0.50 0.18 55)",
+    style: { clipPath: "polygon(50% 0%, 0% 38%, 18% 100%, 82% 100%, 100% 38%)" },
   },
   {
     id: "hexagon",
     label: "Hexagon",
-    colorClass: "bg-teal-400",
+    fill: "oklch(0.78 0.16 200)",
+    ring: "oklch(0.50 0.16 200)",
     style: {
-      clipPath: "polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)",
+      clipPath:
+        "polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)",
     },
   },
   {
     id: "octagon",
     label: "Octagon",
-    colorClass: "bg-indigo-400",
+    fill: "oklch(0.74 0.18 280)",
+    ring: "oklch(0.46 0.18 280)",
     style: {
       clipPath:
         "polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)",
@@ -91,7 +97,8 @@ const shapes: ShapeConfig[] = [
   {
     id: "star",
     label: "Star",
-    colorClass: "bg-amber-400",
+    fill: "oklch(0.85 0.17 88)",
+    ring: "oklch(0.55 0.16 80)",
     style: {
       clipPath:
         "polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)",
@@ -100,28 +107,26 @@ const shapes: ShapeConfig[] = [
   {
     id: "trapezoid",
     label: "Trapezoid",
-    colorClass: "bg-lime-400",
-    style: {
-      clipPath: "polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%)",
-    },
+    fill: "oklch(0.80 0.18 130)",
+    ring: "oklch(0.50 0.18 130)",
+    style: { clipPath: "polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%)" },
   },
   {
     id: "parallelogram",
     label: "Parallelogram",
-    colorClass: "bg-cyan-400",
-    style: {
-      clipPath: "polygon(20% 0%, 100% 0%, 80% 100%, 0% 100%)",
-    },
+    fill: "oklch(0.78 0.18 180)",
+    ring: "oklch(0.50 0.18 180)",
+    style: { clipPath: "polygon(20% 0%, 100% 0%, 80% 100%, 0% 100%)" },
   },
 ];
 
 export default function ShapesGame({ onGameComplete }: ShapesGameProps) {
+  const { play } = useSfx();
   const [lastSpoken, setLastSpoken] = useState<string | null>(null);
-  const [clickCount, setClickCount] = useState(0);
+  const [tappedIds, setTappedIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [isComplete, setIsComplete] = useState(false);
 
-  // Cancel any speech when leaving the game
   useEffect(() => {
     return () => {
       if (typeof window !== "undefined" && "speechSynthesis" in window) {
@@ -131,8 +136,7 @@ export default function ShapesGame({ onGameComplete }: ShapesGameProps) {
   }, []);
 
   const speak = (text: string) => {
-    if (typeof window === "undefined") return;
-    if (!("speechSynthesis" in window)) {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
       setError("Speech is not supported in this browser.");
       return;
     }
@@ -143,127 +147,161 @@ export default function ShapesGame({ onGameComplete }: ShapesGameProps) {
     window.speechSynthesis.speak(utterance);
   };
 
-  const handleShapeClick = (shape: ShapeConfig) => {
+  const handleShapeTap = (shape: ShapeConfig) => {
     setError(null);
     setLastSpoken(shape.label);
-    setClickCount((prev) => prev + 1);
+    setTappedIds((prev) => new Set(prev).add(shape.id));
+    play("ding");
     speak(shape.label);
   };
 
   const handleRepeat = () => {
     if (lastSpoken) {
+      play("tap");
       speak(lastSpoken);
     }
   };
 
   const handleFinish = () => {
+    play("finish");
     setIsComplete(true);
-    onGameComplete(clickCount, shapes.length);
+    onGameComplete(tappedIds.size, SHAPES.length);
   };
 
   const handleReset = () => {
     setIsComplete(false);
-    setClickCount(0);
+    setTappedIds(new Set());
     setLastSpoken(null);
     setError(null);
   };
 
   if (isComplete) {
     return (
-      <div className="max-w-2xl mx-auto p-6">
-        <Card className="border-green-200 bg-gradient-to-b from-green-50 to-white">
-          <CardContent className="text-center space-y-4 p-8">
-            <Trophy className="h-16 w-16 text-yellow-500 mx-auto" />
-            <h2 className="text-3xl font-bold text-green-600">Great Job!</h2>
-            <p className="text-xl">
-              You explored {clickCount} shape{clickCount === 1 ? "" : "s"}!
-            </p>
-            <div className="pt-2">
-              <Button onClick={handleReset} size="lg">
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Play Again
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="py-6">
+        <ResultsScreen
+          score={tappedIds.size}
+          total={SHAPES.length}
+          category="spatial"
+          headline={
+            tappedIds.size === SHAPES.length
+              ? "You met every shape!"
+              : tappedIds.size > 0
+                ? "Nice exploring!"
+                : "Tap a shape to hear it!"
+          }
+          message={
+            tappedIds.size === SHAPES.length
+              ? "Every shape said hello back to you. Want to play again?"
+              : `You met ${tappedIds.size} of ${SHAPES.length} shapes. Try the rest next time!`
+          }
+          onPlayAgain={handleReset}
+        />
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
-      <Card className="mb-6">
-        <CardContent className="p-6 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="space-y-1">
-              <h2 className="text-2xl font-bold text-gray-800">
-                Tap a shape to hear its name
-              </h2>
-              <p className="text-sm text-gray-600">
-                Explore circles, squares, triangles, and more.
-              </p>
-            </div>
-            <Badge className="w-fit">Shapes</Badge>
-          </div>
+    <div className="space-y-5">
+      <div className="surface-card cat-spatial p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="flex-1">
+          <h2 className="font-display text-2xl text-arcade-strong">
+            Tap a shape to hear its name
+          </h2>
+          <p className="text-arcade-mid text-sm mt-1">
+            Explore circles, squares, triangles, and more. Tap the gold button when you&apos;re done.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2 sm:justify-end">
+          <span className="chip">
+            <span className="text-sm opacity-80">Met</span>
+            <span className="font-display">{tappedIds.size}</span>
+            <span className="opacity-70">/</span>
+            <span className="font-display opacity-80">{SHAPES.length}</span>
+          </span>
+          {lastSpoken && (
+            <span className="chip">
+              <span className="text-sm opacity-80">Last</span>
+              <span className="font-display">{lastSpoken}</span>
+            </span>
+          )}
+        </div>
+      </div>
 
-          {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && (
+        <div role="alert" className="surface-card p-4 text-arcade-mid">
+          {error}
+        </div>
+      )}
 
-          <div className="flex flex-wrap items-center gap-3">
-            <Badge variant="secondary">Clicks: {clickCount}</Badge>
-            {lastSpoken && (
-              <Badge variant="secondary">Last: {lastSpoken}</Badge>
-            )}
-            <Button
-              onClick={handleRepeat}
-              variant="outline"
-              disabled={!lastSpoken}
-            >
-              <Volume2 className="h-4 w-4 mr-2" />
-              Repeat
-            </Button>
-            <Button onClick={handleFinish}>
-              Finish
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-        {shapes.map((shape) => {
-          const sizeClass = shape.sizeClass ?? "w-16 h-16 sm:w-20 sm:h-20";
-          const shapeClassName = cn(
-            "shadow-sm",
-            sizeClass,
-            shape.colorClass,
-            shape.className,
-          );
-
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+        {SHAPES.map((shape) => {
+          const sizeClass = shape.sizeClass ?? "w-20 h-20 sm:w-24 sm:h-24";
+          const tapped = tappedIds.has(shape.id);
+          const active = lastSpoken === shape.label;
           return (
             <button
               key={shape.id}
               type="button"
-              onClick={() => handleShapeClick(shape)}
-              className="w-full text-left focus:outline-none"
+              onClick={() => handleShapeTap(shape)}
               aria-label={shape.label}
+              className={cn(
+                "surface-card cat-spatial p-4 grid place-items-center gap-3 min-h-[10rem]",
+                "active:scale-[0.97] transition-transform",
+                active && "pulse-correct",
+              )}
+              style={
+                tapped
+                  ? ({
+                      outline: "2px solid var(--cat-spatial)",
+                      outlineOffset: "-2px",
+                    } as CSSProperties)
+                  : undefined
+              }
             >
-              <Card
-                className={cn(
-                  "transition hover:shadow-md active:scale-95",
-                  lastSpoken === shape.label
-                    ? "ring-2 ring-indigo-400 shadow-md"
-                    : "ring-1 ring-transparent",
-                )}
-              >
-                <CardContent className="p-4 flex flex-col items-center justify-center gap-3">
-                  <div className={shapeClassName} style={shape.style} />
-                  <span className="text-sm font-semibold text-gray-700">
-                    {shape.label}
-                  </span>
-                </CardContent>
-              </Card>
+              <span
+                aria-hidden
+                className={cn(sizeClass, shape.className)}
+                style={{
+                  ...shape.style,
+                  background: `linear-gradient(180deg, oklch(1 0 0 / 0.18), transparent), ${shape.fill}`,
+                  boxShadow: shape.style?.clipPath
+                    ? undefined
+                    : `0 6px 22px -10px ${shape.ring}, inset 0 1px 0 oklch(1 0 0 / 0.20)`,
+                }}
+              />
+              <span className="font-display text-arcade-strong">
+                {shape.label}
+              </span>
             </button>
           );
         })}
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+        <button
+          type="button"
+          onClick={handleRepeat}
+          disabled={!lastSpoken}
+          className="font-display px-5 py-3 rounded-full inline-flex items-center justify-center gap-2
+                     bg-[var(--arcade-card-soft)] text-arcade-strong
+                     border border-[var(--arcade-edge)]
+                     active:scale-[0.97]
+                     disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <Volume2 className="w-4 h-4" aria-hidden />
+          Hear again
+        </button>
+        <button
+          type="button"
+          onClick={handleFinish}
+          className="font-display px-6 py-3 rounded-full text-[var(--ink-on-color)]
+                     bg-[var(--joy-gold)]
+                     border border-[oklch(0.65_0.16_75)]
+                     shadow-[0_8px_22px_-10px_var(--joy-gold-glow),inset_0_1px_0_oklch(1_0_0_/_0.4)]
+                     hover:brightness-105 active:scale-[0.97]"
+        >
+          I&apos;m done!
+        </button>
       </div>
     </div>
   );

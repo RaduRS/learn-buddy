@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
-import { CheckCircle, XCircle, RotateCcw, Trophy } from "lucide-react";
+import { CheckCircle, XCircle } from "lucide-react";
+import { LoadingScreen } from "@/components/game/LoadingScreen";
+import { ResultsScreen } from "@/components/game/ResultsScreen";
+import { ProgressStrip } from "@/components/game/ProgressStrip";
 import { useScore } from "@/hooks/useScore";
 import { useApiCall } from "@/hooks/useApiCall";
+import { useSfx } from "@/components/sound/SoundProvider";
+import { cn } from "@/lib/utils";
 
 interface Question {
   id: number;
@@ -32,59 +33,31 @@ interface AIContent {
   difficulty: number;
 }
 
+const TOTAL = 5;
+
 export default function TrueFalseGame({
-  userId,
   gameId,
   userAge,
   onGameComplete,
 }: TrueFalseGameProps) {
   const { incrementScore } = useScore();
+  const { play } = useSfx();
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [questionIndex, setQuestionIndex] = useState(0);
   const [score, setScore] = useState(0);
-  const [answers, setAnswers] = useState<boolean[]>([]);
+  const scoreRef = useRef(0);
+  const [selectedAnswer, setSelectedAnswer] = useState<boolean | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [gameCompleted, setGameCompleted] = useState(false);
-  const [selectedAnswer, setSelectedAnswer] = useState<boolean | null>(null);
   const [usedQuestions, setUsedQuestions] = useState<Set<string>>(new Set());
-  const [showNextButton, setShowNextButton] = useState(false);
   const [trueFalseHistory, setTrueFalseHistory] = useState<boolean[]>([]);
   const [hasInitialized, setHasInitialized] = useState(false);
   const isGeneratingRef = useRef(false);
   const { execute, loading, error } = useApiCall<AIContent>({ timeout: 30000 });
 
-  const totalQuestions = 5;
-  const progress = ((currentQuestionIndex + 1) / totalQuestions) * 100;
-
-  // Function to load initial total score
-  const loadInitialTotalScore = useCallback(async () => {
-    try {
-      const response = await fetch(
-        `/api/game-progress?userId=${userId}&gameId=${gameId}`,
-      );
-      if (response.ok) {
-        // Score is now handled by the useScore context
-      }
-    } catch (error) {
-      console.error("Error loading initial total score:", error);
-    }
-  }, [userId, gameId]);
-
-  // Function to save progress after each correct answer
-  const saveProgressAfterCorrectAnswer = async () => {
-    // Use the score context to increment score by 1 point
-    incrementScore(gameId, 1);
-  };
-
-  // Generate a single question with duplicate prevention
   const generateQuestion = useCallback(
     async (questionNumber: number, retryCount = 0) => {
-      // Prevent duplicate calls
-      if (isGeneratingRef.current) {
-        console.log("Question generation already in progress, skipping...");
-        return;
-      }
-
+      if (isGeneratingRef.current) return;
       isGeneratingRef.current = true;
 
       try {
@@ -92,46 +65,37 @@ export default function TrueFalseGame({
           async () => {
             const response = await fetch("/api/ai/generate-content", {
               method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
+              headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 age: userAge,
-                questionNumber: questionNumber,
+                questionNumber,
                 timestamp: Date.now() + retryCount,
                 usedQuestions: Array.from(usedQuestions),
-                trueFalseHistory: trueFalseHistory,
+                trueFalseHistory,
               }),
             });
-
             if (!response.ok) {
               throw new Error(`Failed to generate question ${questionNumber}`);
             }
-
             return await response.json();
           },
           (content: AIContent) => {
-            // Check if this question was already used - throw error to trigger retry
             if (usedQuestions.has(content.statement)) {
               throw new Error("DUPLICATE_QUESTION");
             }
-
-            const newQuestion: Question = {
+            const next: Question = {
               id: questionNumber,
               statement: content.statement,
               imageUrl: content.imageUrl,
               correctAnswer: content.isTrue,
               difficulty: content.difficulty,
             };
-
-            // Add to used questions
             setUsedQuestions((prev) => new Set([...prev, content.statement]));
-            setCurrentQuestion(newQuestion);
+            setCurrentQuestion(next);
           },
         );
 
         if (result.error === "DUPLICATE_QUESTION" && retryCount < 3) {
-          console.log("Duplicate question detected, retrying...");
           isGeneratingRef.current = false;
           await generateQuestion(questionNumber, retryCount + 1);
         }
@@ -142,286 +106,230 @@ export default function TrueFalseGame({
     [userAge, usedQuestions, trueFalseHistory, execute],
   );
 
-  // Generate first question on component mount
+  // Generate the first question once on mount.
   useEffect(() => {
     if (!hasInitialized && !currentQuestion && !loading) {
       setHasInitialized(true);
-      generateQuestion(1);
+      void generateQuestion(1);
     }
   }, [hasInitialized, currentQuestion, loading, generateQuestion]);
 
-  // Load initial total score on component mount
-  useEffect(() => {
-    loadInitialTotalScore();
-  }, [userId, gameId, loadInitialTotalScore]);
-
-  const handleAnswer = async (answer: boolean) => {
-    if (!currentQuestion) return;
-
+  const handleAnswer = (answer: boolean) => {
+    if (!currentQuestion || selectedAnswer !== null) return;
     setSelectedAnswer(answer);
     const isCorrect = answer === currentQuestion.correctAnswer;
-
-    // Update answers array
-    const newAnswers = [...answers, answer];
-    setAnswers(newAnswers);
-
-    // Update score if correct
     if (isCorrect) {
-      setScore(score + 1);
-      // Save progress immediately after correct answer
-      await saveProgressAfterCorrectAnswer();
+      const next = scoreRef.current + 1;
+      scoreRef.current = next;
+      setScore(next);
+      play("correct");
+      if (gameId) incrementScore(gameId, 1);
+    } else {
+      play("wrong");
     }
-
     setShowResult(true);
-
-    // Show Next button instead of auto-advancing
-    setShowNextButton(true);
   };
 
   const handleNext = () => {
-    // Record the current question's true/false value in history
+    play("tap");
     if (currentQuestion) {
       setTrueFalseHistory((prev) => [...prev, currentQuestion.correctAnswer]);
     }
-
     setShowResult(false);
     setSelectedAnswer(null);
-    setShowNextButton(false);
 
-    if (currentQuestionIndex >= totalQuestions - 1) {
+    if (questionIndex >= TOTAL - 1) {
       setGameCompleted(true);
-      onGameComplete(score, totalQuestions);
-    } else {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-      generateQuestion(currentQuestionIndex + 2);
+      onGameComplete(scoreRef.current, TOTAL);
+      return;
     }
+    setQuestionIndex((i) => i + 1);
+    setCurrentQuestion(null);
+    void generateQuestion(questionIndex + 2);
   };
 
-  const restartGame = () => {
-    setCurrentQuestionIndex(0);
+  const restart = () => {
+    play("tap");
+    scoreRef.current = 0;
+    setQuestionIndex(0);
     setScore(0);
-    setAnswers([]);
+    setSelectedAnswer(null);
     setShowResult(false);
     setGameCompleted(false);
-    setSelectedAnswer(null);
     setCurrentQuestion(null);
-    setShowNextButton(false);
-    setUsedQuestions(new Set()); // Clear used questions
-    setTrueFalseHistory([]); // Clear true/false history for new game
-    setHasInitialized(false); // Reset initialization flag
-    isGeneratingRef.current = false; // Reset generation flag
-    // Don't call generateQuestion here - let useEffect handle it
+    setUsedQuestions(new Set());
+    setTrueFalseHistory([]);
+    setHasInitialized(false);
+    isGeneratingRef.current = false;
   };
 
-  // Loading state
-  if (loading) {
+  if (loading || (!currentQuestion && !error && !gameCompleted)) {
     return (
-      <div className="max-w-3xl mx-auto p-6">
-        <Card>
-          <CardContent>
-            <LoadingSkeleton
-              variant="card"
-              message="Creating Your Question"
-              subMessage={`Generating question ${currentQuestionIndex + 1} of ${totalQuestions}...`}
-              progress={progress}
-            />
-          </CardContent>
-        </Card>
-      </div>
+      <LoadingScreen
+        tone="generating"
+        message="Buddy is thinking up a question…"
+        subMessage={`Question ${questionIndex + 1} of ${TOTAL}`}
+      />
     );
   }
 
-  // Error state
   if (error) {
     return (
-      <div className="max-w-3xl mx-auto p-6">
-        <Card>
-          <CardContent className="p-8">
-            <div className="text-center space-y-4">
-              <XCircle className="w-12 h-12 mx-auto text-red-500" />
-              <h3 className="text-xl font-semibold text-red-600">Oops!</h3>
-              <p className="text-gray-600">{error}</p>
-              <Button
-                onClick={() => generateQuestion(currentQuestionIndex + 1)}
-                className="mt-4"
-              >
-                Try Again
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="surface-card cat-spatial p-8 max-w-md mx-auto text-center">
+        <XCircle className="w-12 h-12 mx-auto" style={{ color: "var(--joy-wrong)" }} />
+        <h3 className="mt-3 font-display text-2xl text-arcade-strong">
+          Oops!
+        </h3>
+        <p className="mt-2 text-arcade-mid">{error}</p>
+        <button
+          type="button"
+          onClick={() => generateQuestion(questionIndex + 1)}
+          className="mt-5 font-display px-5 py-3 rounded-full
+                     bg-[var(--cat-math)] text-[var(--ink-on-color)]
+                     border border-[oklch(0.45_0.18_250)]
+                     shadow-[0_8px_22px_-10px_var(--cat-math-glow),inset_0_1px_0_oklch(1_0_0_/_0.4)]
+                     active:scale-[0.97]"
+        >
+          Try again
+        </button>
       </div>
     );
   }
 
-  // Game completed state
   if (gameCompleted) {
-    const percentage = Math.round((score / totalQuestions) * 100);
     return (
-      <div className="max-w-3xl mx-auto p-6">
-        <Card className="border-green-200 bg-gradient-to-b from-green-50 to-white">
-          <CardHeader className="text-center">
-            <div className="mx-auto w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mb-4">
-              <Trophy className="w-8 h-8 text-yellow-600" />
-            </div>
-            <CardTitle className="text-2xl">Game Complete!</CardTitle>
-          </CardHeader>
-          <CardContent className="text-center space-y-4">
-            <div className="text-4xl font-bold text-blue-600">
-              {score}/{totalQuestions}
-            </div>
-            <div className="text-lg text-gray-600">
-              You got {percentage}% correct!
-            </div>
-
-            {percentage >= 80 && (
-              <div className="text-green-600 font-semibold">
-                🎉 Excellent work!
-              </div>
-            )}
-            {percentage >= 60 && percentage < 80 && (
-              <div className="text-blue-600 font-semibold">👍 Good job!</div>
-            )}
-            {percentage < 60 && (
-              <div className="text-orange-600 font-semibold">
-                💪 Keep practicing!
-              </div>
-            )}
-
-            <Button
-              onClick={restartGame}
-              size="lg"
-              className="mt-6 flex items-center gap-2"
-            >
-              <RotateCcw className="w-4 h-4" />
-              Play Again
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="py-6">
+        <ResultsScreen
+          score={score}
+          total={TOTAL}
+          category="math"
+          onPlayAgain={restart}
+        />
       </div>
     );
   }
 
-  // Game playing state
   if (!currentQuestion) {
-    return (
-      <div className="max-w-3xl mx-auto p-6">
-        <Card>
-          <CardContent>
-            <LoadingSkeleton variant="card" message="Loading question..." />
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return null;
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-6">
-      {/* Question Card */}
-      <Card className="mb-6">
-        <CardContent className="p-6">
-          {/* Image */}
-          <div className="relative w-full h-64 mb-6 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
-            {currentQuestion.imageUrl ? (
-              <Image
-                src={currentQuestion.imageUrl}
-                alt="Question image"
-                fill
-                className="object-contain"
-              />
-            ) : (
-              <div className="flex flex-col items-center space-y-2">
-                <LoadingSkeleton variant="minimal" message="Loading image..." />
-              </div>
-            )}
-          </div>
+    <div className="space-y-5">
+      <ProgressStrip
+        category="math"
+        index={questionIndex}
+        total={TOTAL}
+        score={score}
+        label="Question"
+      />
 
-          {/* Question Text */}
-          <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold mb-2">
-              {currentQuestion.statement}
-            </h2>
-          </div>
-
-          {/* Answer Buttons */}
-          {!showResult ? (
-            <div className="flex gap-4 justify-center">
-              <Button
-                onClick={() => handleAnswer(true)}
-                size="lg"
-                className="bg-green-500 hover:bg-green-600 text-white px-8 py-4 text-lg"
-                disabled={selectedAnswer !== null}
-              >
-                <CheckCircle className="w-6 h-6 mr-2" />
-                True
-              </Button>
-              <Button
-                onClick={() => handleAnswer(false)}
-                size="lg"
-                className="bg-red-500 hover:bg-red-600 text-white px-8 py-4 text-lg"
-                disabled={selectedAnswer !== null}
-              >
-                <XCircle className="w-6 h-6 mr-2" />
-                False
-              </Button>
-            </div>
+      <div className="surface-card cat-math p-5 sm:p-7">
+        <div className="relative w-full aspect-[16/10] rounded-2xl overflow-hidden bg-[oklch(0.20_0.06_285_/_0.6)] border border-[var(--arcade-edge)]">
+          {currentQuestion.imageUrl ? (
+            <Image
+              src={currentQuestion.imageUrl}
+              alt=""
+              fill
+              className="object-contain p-4"
+            />
           ) : (
-            <div className="text-center">
-              <div
-                className={`text-2xl font-bold mb-2 ${
-                  selectedAnswer === currentQuestion.correctAnswer
-                    ? "text-green-600"
-                    : "text-red-600"
-                }`}
-              >
-                {selectedAnswer === currentQuestion.correctAnswer
-                  ? "✅ Correct!"
-                  : "❌ Incorrect!"}
-              </div>
-              <div className="text-gray-600">
-                The correct answer is:{" "}
-                <strong>
-                  {currentQuestion.correctAnswer ? "True" : "False"}
-                </strong>
-              </div>
-              {showNextButton && (
-                <div className="mt-4">
-                  <Button
-                    onClick={handleNext}
-                    className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 text-lg font-semibold rounded-lg"
-                  >
-                    {currentQuestionIndex >= totalQuestions - 1
-                      ? "Finish Game"
-                      : "Next Question"}
-                  </Button>
-                </div>
-              )}
+            <div className="absolute inset-0 grid place-items-center text-arcade-soft">
+              Loading image…
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Progress Bar */}
-      <div className="mb-6">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-medium">
-            Question {currentQuestionIndex + 1} of {totalQuestions}
-          </span>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
-          <div
-            className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      </div>
 
-      {/* Difficulty Badge */}
-      <div className="text-center">
-        <Badge variant="outline">
-          Difficulty: {currentQuestion.difficulty}/3
-        </Badge>
+        <h2 className="mt-5 font-display text-2xl sm:text-3xl text-arcade-strong text-center">
+          {currentQuestion.statement}
+        </h2>
+
+        {!showResult ? (
+          <div className="mt-6 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+            <AnswerButton
+              kind="true"
+              onClick={() => handleAnswer(true)}
+              disabled={selectedAnswer !== null}
+            />
+            <AnswerButton
+              kind="false"
+              onClick={() => handleAnswer(false)}
+              disabled={selectedAnswer !== null}
+            />
+          </div>
+        ) : (
+          <div className="mt-6 text-center">
+            <div
+              className={cn(
+                "px-5 py-4 rounded-2xl border font-display max-w-md mx-auto",
+                selectedAnswer === currentQuestion.correctAnswer
+                  ? "bg-[oklch(0.30_0.10_145_/_0.5)] text-[oklch(0.92_0.13_145)] border-[oklch(0.55_0.16_145)]"
+                  : "bg-[oklch(0.30_0.12_25_/_0.5)] text-[oklch(0.92_0.13_25)] border-[oklch(0.55_0.16_25)]",
+              )}
+            >
+              <div className="text-2xl">
+                {selectedAnswer === currentQuestion.correctAnswer
+                  ? "Yes! That's right."
+                  : "Not this time — let's see."}
+              </div>
+              <div className="mt-2 text-arcade-mid">
+                The answer is <strong>{currentQuestion.correctAnswer ? "True" : "False"}</strong>.
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleNext}
+              className="mt-5 font-display text-lg px-7 py-3 rounded-full text-[var(--ink-on-color)]
+                         bg-[var(--cat-math)]
+                         border border-[oklch(0.45_0.18_250)]
+                         shadow-[0_8px_22px_-10px_var(--cat-math-glow),inset_0_1px_0_oklch(1_0_0_/_0.4)]
+                         active:scale-[0.97]"
+            >
+              {questionIndex >= TOTAL - 1 ? "Finish game" : "Next question"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+function AnswerButton({
+  kind,
+  onClick,
+  disabled,
+}: {
+  kind: "true" | "false";
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  const isTrue = kind === "true";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "flex-1 sm:flex-none sm:min-w-[200px] inline-flex items-center justify-center gap-2",
+        "font-display text-xl py-4 px-8 rounded-full",
+        "border",
+        "shadow-[inset_0_1px_0_oklch(1_0_0_/_0.20)]",
+        "active:scale-[0.97]",
+        "disabled:opacity-60 disabled:cursor-not-allowed",
+      )}
+      style={{
+        color: "var(--ink-on-color)",
+        background: isTrue
+          ? "linear-gradient(180deg, oklch(0.92 0.18 145), oklch(0.65 0.20 150))"
+          : "linear-gradient(180deg, oklch(0.86 0.20 25), oklch(0.60 0.20 25))",
+        borderColor: isTrue ? "oklch(0.50 0.16 145)" : "oklch(0.50 0.16 25)",
+      }}
+    >
+      {isTrue ? (
+        <CheckCircle className="w-6 h-6" aria-hidden />
+      ) : (
+        <XCircle className="w-6 h-6" aria-hidden />
+      )}
+      {isTrue ? "True" : "False"}
+    </button>
   );
 }

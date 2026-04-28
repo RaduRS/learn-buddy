@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { RotateCcw, Trophy, Volume2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useMemo, useRef, useState } from "react";
+import { Volume2 } from "lucide-react";
+import { ResultsScreen } from "@/components/game/ResultsScreen";
+import { ProgressStrip } from "@/components/game/ProgressStrip";
 import { useScore } from "@/hooks/useScore";
+import { useSfx } from "@/components/sound/SoundProvider";
+import { cn } from "@/lib/utils";
 
 interface MathProblem {
   id: number;
@@ -14,8 +14,6 @@ interface MathProblem {
   secondNumber: number;
   operation: "+" | "-";
   correctAnswer: number;
-  userAnswer?: number;
-  isCorrect?: boolean;
 }
 
 interface NumberFunGameProps {
@@ -25,7 +23,9 @@ interface NumberFunGameProps {
   onGameComplete: (score: number, totalQuestions: number) => void;
 }
 
-function createProblem(questionNumber: number): MathProblem {
+const TOTAL_QUESTIONS = 10;
+
+function createProblem(id: number): MathProblem {
   const operation = Math.random() < 0.5 ? "+" : "-";
   let firstNumber: number;
   let secondNumber: number;
@@ -40,33 +40,18 @@ function createProblem(questionNumber: number): MathProblem {
     secondNumber = Math.floor(Math.random() * (firstNumber - 1)) + 1;
     correctAnswer = firstNumber - secondNumber;
   }
-
-  return {
-    id: questionNumber,
-    firstNumber,
-    secondNumber,
-    operation,
-    correctAnswer,
-  };
+  return { id, firstNumber, secondNumber, operation, correctAnswer };
 }
 
-function createAnswerChoices(correctAnswer: number): number[] {
-  const choices = [correctAnswer];
-
+function createAnswerChoices(correct: number): number[] {
+  const choices = [correct];
   while (choices.length < 4) {
     const offset = Math.floor(Math.random() * 20) + 1;
     const direction = Math.random() < 0.5 ? -1 : 1;
-    let wrongAnswer = correctAnswer + direction * offset;
-
-    if (wrongAnswer < 1 || wrongAnswer > 100) {
-      wrongAnswer = Math.floor(Math.random() * 100) + 1;
-    }
-
-    if (!choices.includes(wrongAnswer)) {
-      choices.push(wrongAnswer);
-    }
+    let wrong = correct + direction * offset;
+    if (wrong < 1 || wrong > 100) wrong = Math.floor(Math.random() * 100) + 1;
+    if (!choices.includes(wrong)) choices.push(wrong);
   }
-
   return choices.sort(() => Math.random() - 0.5);
 }
 
@@ -75,249 +60,224 @@ export default function NumberFunGame({
   onGameComplete,
 }: NumberFunGameProps) {
   const { incrementScore } = useScore();
-  const [currentProblem, setCurrentProblem] = useState<MathProblem>(() =>
-    createProblem(1),
-  );
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const { play } = useSfx();
+
+  const [currentProblem, setCurrentProblem] = useState<MathProblem>(() => createProblem(1));
+  const [questionIndex, setQuestionIndex] = useState(0);
   const [score, setScore] = useState(0);
-  const [answers, setAnswers] = useState<number[]>([]);
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [gameCompleted, setGameCompleted] = useState(false);
-  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [showNextButton, setShowNextButton] = useState(false);
-  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-
-  // Use a ref to track the canonical score and avoid stale closures
   const scoreRef = useRef(0);
 
-  const totalQuestions = 10;
-  const progress = ((currentQuestionIndex + 1) / totalQuestions) * 100;
+  // Stable per-question answer choices.
+  const answerChoices = useMemo(
+    () => createAnswerChoices(currentProblem.correctAnswer),
+    [currentProblem],
+  );
 
-  // Handle answer selection
-  const handleAnswer = async (answer: number) => {
-    if (!currentProblem) return;
-
+  const handleAnswer = (answer: number) => {
+    if (selectedAnswer !== null) return;
     setSelectedAnswer(answer);
     const correct = answer === currentProblem.correctAnswer;
     setIsCorrect(correct);
-
-    // Update answers array
-    const newAnswers = [...answers, answer];
-    setAnswers(newAnswers);
-
-    // Update score if correct — use ref to avoid stale closure issues
-    if (correct) {
-      const newScore = scoreRef.current + 1;
-      scoreRef.current = newScore;
-      setScore(newScore);
-      // Increment score in the system
-      if (gameId) incrementScore(gameId, 1);
-    }
-
     setShowResult(true);
-    setShowNextButton(true);
+
+    if (correct) {
+      const next = scoreRef.current + 1;
+      scoreRef.current = next;
+      setScore(next);
+      play("correct");
+      if (gameId) incrementScore(gameId, 1);
+    } else {
+      play("wrong");
+    }
   };
 
-  // Handle next question
   const handleNext = () => {
-    setShowNextButton(false);
+    play("tap");
     setSelectedAnswer(null);
     setIsCorrect(null);
     setShowResult(false);
 
-    if (currentQuestionIndex + 1 >= totalQuestions) {
+    if (questionIndex + 1 >= TOTAL_QUESTIONS) {
       setGameCompleted(true);
-      onGameComplete(scoreRef.current, totalQuestions);
-    } else {
-      setCurrentQuestionIndex((prev) => prev + 1);
-      const nextProblem = createProblem(currentQuestionIndex + 2);
-      setCurrentProblem(nextProblem);
+      onGameComplete(scoreRef.current, TOTAL_QUESTIONS);
+      return;
     }
+    setQuestionIndex((i) => i + 1);
+    setCurrentProblem(createProblem(questionIndex + 2));
   };
 
-  // Restart game
-  const restartGame = () => {
+  const restart = () => {
+    play("tap");
     scoreRef.current = 0;
-    setCurrentQuestionIndex(0);
     setScore(0);
-    setAnswers([]);
+    setQuestionIndex(0);
+    setSelectedAnswer(null);
+    setIsCorrect(null);
     setShowResult(false);
     setGameCompleted(false);
-    setSelectedAnswer(null);
     setCurrentProblem(createProblem(1));
-    setShowNextButton(false);
-    setIsCorrect(null);
-    setError(null);
   };
 
-  // Speak the problem (text-to-speech)
   const speakProblem = () => {
-    if (!currentProblem) return;
-
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    play("tap");
     const text = `${currentProblem.firstNumber} ${currentProblem.operation === "+" ? "plus" : "minus"} ${currentProblem.secondNumber}`;
-
-    if ("speechSynthesis" in window) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 0.8;
-      utterance.pitch = 1.2;
-      speechSynthesis.speak(utterance);
-    }
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.85;
+    utterance.pitch = 1.15;
+    window.speechSynthesis.speak(utterance);
   };
-
-  if (error) {
-    return (
-      <div className="text-center p-8">
-        <p className="text-red-500 mb-4">{error}</p>
-        <Button onClick={restartGame}>Try Again</Button>
-      </div>
-    );
-  }
 
   if (gameCompleted) {
     return (
-      <div className="max-w-2xl mx-auto p-6">
-        <Card className="border-green-200 bg-gradient-to-b from-green-50 to-white">
-          <CardContent className="text-center space-y-4 p-8">
-            <Trophy className="h-16 w-16 text-yellow-500 mx-auto" />
-            <h2 className="text-3xl font-bold text-green-600">Great Job!</h2>
-            <p className="text-xl">
-              You scored {score} out of {totalQuestions}!
-            </p>
-            <div className="text-lg text-gray-600">
-              {score === totalQuestions && "Perfect! You're a math star! ⭐"}
-              {score >= totalQuestions * 0.8 &&
-                score < totalQuestions &&
-                "Excellent work! 🎉"}
-              {score >= totalQuestions * 0.6 &&
-                score < totalQuestions * 0.8 &&
-                "Good job! Keep practicing! 👍"}
-              {score < totalQuestions * 0.6 &&
-                "Nice try! Practice makes perfect! 💪"}
-            </div>
-            <div className="pt-2">
-              <Button onClick={restartGame} size="lg">
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Play Again
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="py-6">
+        <ResultsScreen
+          score={score}
+          total={TOTAL_QUESTIONS}
+          category="math"
+          onPlayAgain={restart}
+        />
       </div>
     );
   }
 
-  const answerChoices = createAnswerChoices(currentProblem.correctAnswer);
-
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="text-center space-y-4">
-        <h1 className="text-3xl font-bold text-blue-600">Number Fun! 🔢</h1>
-        <div className="flex items-center justify-center space-x-4">
-          <Badge variant="outline">
-            Question {currentQuestionIndex + 1} of {totalQuestions}
-          </Badge>
-          <Badge variant="outline">Score: {score}</Badge>
-        </div>
+    <div className="space-y-5">
+      <ProgressStrip
+        category="math"
+        index={questionIndex}
+        total={TOTAL_QUESTIONS}
+        score={score}
+      />
 
-        {/* Progress bar */}
-        <div className="w-full bg-gray-200 rounded-full h-3">
-          <div
-            className="bg-blue-500 h-3 rounded-full transition-all duration-300"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Math Problem */}
-      <Card className="p-8">
-        <CardContent className="text-center space-y-6">
-          <div className="space-y-4">
-            <div className="text-6xl font-bold text-gray-800 flex items-center justify-center space-x-4">
-              <span className="text-blue-600">
-                {currentProblem.firstNumber}
-              </span>
-              <span className="text-gray-600">{currentProblem.operation}</span>
-              <span className="text-green-600">
-                {currentProblem.secondNumber}
-              </span>
-              <span className="text-gray-600">=</span>
-              <span className="text-purple-600">?</span>
-            </div>
-
-            <Button
-              onClick={speakProblem}
-              variant="outline"
-              size="sm"
-              className="mt-4"
-            >
-              <Volume2 className="h-4 w-4 mr-2" />
-              Hear Problem
-            </Button>
+      <div className="surface-card cat-math p-6 sm:p-10">
+        <div className="flex flex-col items-center gap-5">
+          <div className="font-display text-5xl sm:text-7xl text-arcade-strong tracking-tight flex items-center gap-3 sm:gap-5">
+            <span style={{ color: "var(--cat-math)" }}>
+              {currentProblem.firstNumber}
+            </span>
+            <span className="text-arcade-mid">{currentProblem.operation}</span>
+            <span style={{ color: "var(--cat-music)" }}>
+              {currentProblem.secondNumber}
+            </span>
+            <span className="text-arcade-mid">=</span>
+            <span style={{ color: "var(--joy-gold)" }}>?</span>
           </div>
 
-          {/* Answer Choices */}
-          {!showResult && (
-            <div className="grid grid-cols-2 gap-4 max-w-lg mx-auto">
-              {answerChoices.map((choice, index) => (
-                <Button
-                  key={index}
-                  onClick={() => handleAnswer(choice)}
-                  size="lg"
-                  variant="outline"
-                  className="h-16 text-2xl font-bold hover:bg-blue-50 hover:border-blue-300"
-                  disabled={selectedAnswer !== null}
-                >
-                  {choice}
-                </Button>
-              ))}
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={speakProblem}
+            className="font-display inline-flex items-center gap-2 px-4 py-2 rounded-full
+                       bg-[var(--arcade-card-soft)] text-arcade-strong
+                       border border-[var(--arcade-edge)]
+                       active:scale-[0.97]"
+          >
+            <Volume2 className="w-4 h-4" aria-hidden />
+            Hear it
+          </button>
+        </div>
 
-          {/* Result */}
-          {showResult && (
-            <div className="space-y-4">
-              <div
-                className={cn(
-                  "text-2xl font-bold p-4 rounded-lg",
-                  isCorrect
-                    ? "bg-green-100 text-green-800"
-                    : "bg-red-100 text-red-800",
-                )}
-              >
-                {isCorrect ? (
-                  <div className="space-y-2">
-                    <div>🎉 Correct!</div>
-                    <div className="text-lg">
-                      {currentProblem.firstNumber} {currentProblem.operation}{" "}
-                      {currentProblem.secondNumber} ={" "}
-                      {currentProblem.correctAnswer}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div>Try again next time!</div>
-                    <div className="text-lg">
-                      {currentProblem.firstNumber} {currentProblem.operation}{" "}
-                      {currentProblem.secondNumber} ={" "}
-                      {currentProblem.correctAnswer}
-                    </div>
-                  </div>
-                )}
-              </div>
+        {!showResult && (
+          <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 max-w-lg mx-auto">
+            {answerChoices.map((choice) => (
+              <AnswerButton
+                key={choice}
+                value={choice}
+                onClick={() => handleAnswer(choice)}
+                disabled={selectedAnswer !== null}
+              />
+            ))}
+          </div>
+        )}
 
-              {showNextButton && (
-                <Button onClick={handleNext} size="lg" className="mt-4">
-                  {currentQuestionIndex + 1 >= totalQuestions
-                    ? "Finish Game"
-                    : "Next Problem"}
-                </Button>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        {showResult && (
+          <FeedbackPanel
+            correct={!!isCorrect}
+            answer={currentProblem.correctAnswer}
+            expression={`${currentProblem.firstNumber} ${currentProblem.operation} ${currentProblem.secondNumber}`}
+            isLastQuestion={questionIndex + 1 >= TOTAL_QUESTIONS}
+            onNext={handleNext}
+          />
+        )}
+      </div>
     </div>
   );
 }
+
+function AnswerButton({
+  value,
+  onClick,
+  disabled,
+}: {
+  value: number;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "font-display text-3xl h-16 sm:h-20 rounded-2xl",
+        "bg-[var(--arcade-card-soft)] text-arcade-strong",
+        "border border-[var(--arcade-edge)]",
+        "shadow-[inset_0_1px_0_oklch(1_0_0_/_0.10)]",
+        "active:scale-[0.97]",
+        "disabled:opacity-50 disabled:cursor-not-allowed",
+      )}
+    >
+      {value}
+    </button>
+  );
+}
+
+function FeedbackPanel({
+  correct,
+  answer,
+  expression,
+  isLastQuestion,
+  onNext,
+}: {
+  correct: boolean;
+  answer: number;
+  expression: string;
+  isLastQuestion: boolean;
+  onNext: () => void;
+}) {
+  return (
+    <div className="mt-8 max-w-lg mx-auto text-center">
+      <div
+        className={cn(
+          "px-5 py-4 rounded-2xl border font-display",
+          correct
+            ? "bg-[oklch(0.30_0.10_145_/_0.5)] text-[oklch(0.92_0.13_145)] border-[oklch(0.55_0.16_145)]"
+            : "bg-[oklch(0.30_0.12_25_/_0.5)] text-[oklch(0.92_0.13_25)] border-[oklch(0.55_0.16_25)]",
+        )}
+      >
+        <div className="text-2xl">
+          {correct ? "Yes! That's right." : "Nice try — let's see it together."}
+        </div>
+        <div className="mt-2 text-lg opacity-95">
+          {expression} = {answer}
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onNext}
+        className="mt-5 font-display text-lg px-6 py-3 rounded-full text-[var(--ink-on-color)]
+                   bg-[var(--cat-math)]
+                   border border-[oklch(0.45_0.18_250)]
+                   shadow-[0_8px_22px_-10px_var(--cat-math-glow),inset_0_1px_0_oklch(1_0_0_/_0.4)]
+                   hover:brightness-105 active:scale-[0.97]"
+      >
+        {isLastQuestion ? "Finish game" : "Next question"}
+      </button>
+    </div>
+  );
+}
+
