@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { GameShell } from "@/components/game/GameShell";
 import { LoadingScreen } from "@/components/game/LoadingScreen";
-import { resolveGameEntry } from "@/lib/games/registry";
+import { resolveGameEntry, slugifyTitle } from "@/lib/games/registry";
 import { Buddy } from "@/components/mascot/Buddy";
 import { CATEGORIES, toCategoryKey } from "@/lib/games/categories";
 import type { Game, User } from "@/types";
@@ -27,7 +27,7 @@ export default function GamePage() {
       const cachedGame = sessionStorage.getItem("pendingGameData");
       if (cachedGame) {
         const parsed = JSON.parse(cachedGame) as Game;
-        if (parsed.id === gameId) {
+        if (parsed.id === gameId || slugifyTitle(parsed.title) === gameId) {
           setGame(parsed);
           sessionStorage.removeItem("pendingGameData");
           return;
@@ -35,7 +35,12 @@ export default function GamePage() {
       }
       const response = await fetch("/api/games");
       const games = (await response.json()) as Game[];
-      setGame(games.find((g) => g.id === gameId) ?? null);
+      // Match by id or by title slug so PWA shortcuts (/game/memory-match)
+      // work alongside the home-page navigation (/game/<cuid>).
+      const match =
+        games.find((g) => g.id === gameId) ??
+        games.find((g) => slugifyTitle(g.title) === gameId);
+      setGame(match ?? null);
     } catch (error) {
       console.error("Failed to load game:", error);
     } finally {
@@ -200,7 +205,11 @@ function readSessionCache(gameId: string) {
     const cachedUser = sessionStorage.getItem("pendingUserData");
     const game = cachedGame ? (JSON.parse(cachedGame) as Game) : null;
     const user = cachedUser ? (JSON.parse(cachedUser) as User) : null;
-    const cached = !!(game && game.id === gameId && user);
+    const cached = !!(
+      game &&
+      (game.id === gameId || slugifyTitle(game.title) === gameId) &&
+      user
+    );
     if (cached) {
       sessionStorage.removeItem("pendingGameData");
       sessionStorage.removeItem("pendingUserData");

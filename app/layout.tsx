@@ -27,10 +27,13 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: '#4f46e5',
+  themeColor: '#52cba0',
 };
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://learn-buddy.app';
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "Learn Buddy - Kids Games",
     template: "%s | Learn Buddy"
@@ -48,13 +51,21 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: "Learn Buddy",
     startupImage: [
-      {
-        url: "/icon-512.png",
-        media: "(device-width: 768px) and (device-height: 1024px)",
-      },
+      // iPad Pro 12.9"
+      { url: "/icon-maskable-512.png", media: "(device-width: 1024px) and (device-height: 1366px) and (orientation: portrait)" },
+      { url: "/icon-maskable-512.png", media: "(device-width: 1024px) and (device-height: 1366px) and (orientation: landscape)" },
+      // iPad Pro 11"
+      { url: "/icon-maskable-512.png", media: "(device-width: 834px) and (device-height: 1194px) and (orientation: portrait)" },
+      { url: "/icon-maskable-512.png", media: "(device-width: 834px) and (device-height: 1194px) and (orientation: landscape)" },
+      // iPad Air / iPad 10
+      { url: "/icon-maskable-512.png", media: "(device-width: 820px) and (device-height: 1180px) and (orientation: portrait)" },
+      { url: "/icon-maskable-512.png", media: "(device-width: 820px) and (device-height: 1180px) and (orientation: landscape)" },
+      // iPad mini / iPad 9
+      { url: "/icon-maskable-512.png", media: "(device-width: 768px) and (device-height: 1024px) and (orientation: portrait)" },
+      { url: "/icon-maskable-512.png", media: "(device-width: 768px) and (device-height: 1024px) and (orientation: landscape)" },
     ],
   },
   openGraph: {

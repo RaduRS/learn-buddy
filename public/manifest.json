@@ -4,8 +4,8 @@
   "description": "Educational games and activities for kids",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#4f46e5",
+  "background_color": "#291b4d",
+  "theme_color": "#52cba0",
   "orientation": "any",
   "scope": "/",
   "lang": "en",
@@ -40,6 +40,36 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Memory Match",
+      "short_name": "Memory",
+      "description": "Find matching pairs",
+      "url": "/game/memory-match",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "MathSpark",
+      "short_name": "MathSpark",
+      "description": "Mental math drills",
+      "url": "/game/mathspark",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Music Maker",
+      "short_name": "Music",
+      "description": "Notes, rhythm and melodies",
+      "url": "/game/music-maker",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Achievements",
+      "short_name": "Trophies",
+      "description": "Your trophy room",
+      "url": "/achievements",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
   ],
   "screenshots": [

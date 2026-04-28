@@ -59,6 +59,11 @@ export default [
     languageOptions: {
       globals: {
         ...globals.browser,
+        // Server components and route handlers under app/ also have access
+        // to Node globals (process, Buffer, etc.). Keep both available so
+        // shared files don't need ad-hoc disables.
+        process: "readonly",
+        Buffer: "readonly",
       },
     },
   },
