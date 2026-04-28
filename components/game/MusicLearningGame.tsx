@@ -1,28 +1,19 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import type { ReactNode } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-
 import {
-  Volume2,
-  VolumeX,
-  Play,
-  Pause,
-  RotateCcw,
-  Star,
-  Music,
-  Heart,
-} from "lucide-react";
-
-interface Note {
-  name: string;
-  frequency: number;
-  color: string;
-  isBlack?: boolean;
-}
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { CheckCircle, ChevronRight, Lock, Music, Sparkles, Volume2 } from "lucide-react";
+import { ResultsScreen } from "@/components/game/ResultsScreen";
+import { Buddy } from "@/components/mascot/Buddy";
+import { useAchievementUnlock } from "@/hooks/useAchievementUnlock";
+import { useScore } from "@/hooks/useScore";
+import { useSfx } from "@/components/sound/SoundProvider";
+import { cn } from "@/lib/utils";
 
 interface MusicLearningGameProps {
   userId: string;
@@ -31,684 +22,802 @@ interface MusicLearningGameProps {
   onGameComplete: (score: number, totalQuestions: number) => void;
 }
 
-interface GameMode {
-  id: string;
-  name: string;
-  description: string;
-  icon: ReactNode;
+type LessonId = "notes" | "rhythm" | "song" | "free";
+
+interface PianoKey {
+  note: string;
+  freq: number;
+  isBlack?: boolean;
 }
 
-interface RhythmPattern {
-  beats: boolean[];
-  name: string;
-  tempo: number;
+const KEYS: PianoKey[] = [
+  { note: "C",  freq: 261.63 },
+  { note: "C#", freq: 277.18, isBlack: true },
+  { note: "D",  freq: 293.66 },
+  { note: "D#", freq: 311.13, isBlack: true },
+  { note: "E",  freq: 329.63 },
+  { note: "F",  freq: 349.23 },
+  { note: "F#", freq: 369.99, isBlack: true },
+  { note: "G",  freq: 392.00 },
+  { note: "G#", freq: 415.30, isBlack: true },
+  { note: "A",  freq: 440.00 },
+  { note: "A#", freq: 466.16, isBlack: true },
+  { note: "B",  freq: 493.88 },
+  { note: "C2", freq: 523.25 },
+];
+
+const WHITE_KEYS = KEYS.filter((k) => !k.isBlack);
+const NOTE_LABEL: Record<string, string> = {
+  C: "C", D: "D", E: "E", F: "F", G: "G", A: "A", B: "B", C2: "C",
+};
+
+const TWINKLE = ["C", "C", "G", "G", "A", "A", "G"];
+const RHYTHM_PATTERNS: number[][] = [
+  [1, 1, 1, 1],
+  [1, 1, 2],
+  [2, 1, 1],
+  [1, 2, 1],
+  [1, 1, 1, 2],
+];
+
+const STORAGE_KEY = "learn-buddy:music-progress";
+
+type Progress = Record<LessonId, boolean>;
+const EMPTY_PROGRESS: Progress = { notes: false, rhythm: false, song: false, free: false };
+
+function loadProgress(userId: string): Progress {
+  if (typeof window === "undefined") return EMPTY_PROGRESS;
+  try {
+    const raw = window.localStorage.getItem(`${STORAGE_KEY}:${userId}`);
+    if (!raw) return EMPTY_PROGRESS;
+    return { ...EMPTY_PROGRESS, ...JSON.parse(raw) };
+  } catch {
+    return EMPTY_PROGRESS;
+  }
 }
 
-const MAX_MELODY_NOTES = 50;
-
-const NOTES: Note[] = [
-  { name: "C", frequency: 261.63, color: "#FF6B6B" },
-  { name: "C#", frequency: 277.18, color: "#4ECDC4", isBlack: true },
-  { name: "D", frequency: 293.66, color: "#45B7D1" },
-  { name: "D#", frequency: 311.13, color: "#96CEB4", isBlack: true },
-  { name: "E", frequency: 329.63, color: "#FFEAA7" },
-  { name: "F", frequency: 349.23, color: "#DDA0DD" },
-  { name: "F#", frequency: 369.99, color: "#98D8C8", isBlack: true },
-  { name: "G", frequency: 392.0, color: "#F7DC6F" },
-  { name: "G#", frequency: 415.3, color: "#BB8FCE", isBlack: true },
-  { name: "A", frequency: 440.0, color: "#85C1E9" },
-  { name: "A#", frequency: 466.16, color: "#F8C471", isBlack: true },
-  { name: "B", frequency: 493.88, color: "#82E0AA" },
-];
-
-const GAME_MODES: GameMode[] = [
-  {
-    id: "free-play",
-    name: "Free Play",
-    description: "Play the piano freely and explore sounds!",
-    icon: <Music className="w-6 h-6" />,
-  },
-  {
-    id: "note-recognition",
-    name: "Note Recognition",
-    description: "Listen and identify the correct note!",
-    icon: <Volume2 className="w-6 h-6" />,
-  },
-  {
-    id: "rhythm-game",
-    name: "Rhythm Game",
-    description: "Follow the rhythm pattern!",
-    icon: <Heart className="w-6 h-6" />,
-  },
-  {
-    id: "melody-maker",
-    name: "Melody Maker",
-    description: "Create your own beautiful melodies!",
-    icon: <Star className="w-6 h-6" />,
-  },
-];
-
-const RHYTHM_PATTERNS: RhythmPattern[] = [
-  { beats: [true, false, true, false], name: "Simple Beat", tempo: 120 },
-  { beats: [true, true, false, true], name: "Fun Pattern", tempo: 100 },
-  {
-    beats: [true, false, false, true, true, false],
-    name: "Advanced",
-    tempo: 140,
-  },
-];
+function saveProgress(userId: string, progress: Progress) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      `${STORAGE_KEY}:${userId}`,
+      JSON.stringify(progress),
+    );
+  } catch {
+    // ignore quota / private mode
+  }
+}
 
 export default function MusicLearningGame({
   userId,
   gameId,
-  userAge,
   onGameComplete,
 }: MusicLearningGameProps) {
-  void userId;
-  void gameId;
-  void userAge;
-  void onGameComplete;
-  const [currentMode, setCurrentMode] = useState<string>("free-play");
-  const [score, setScore] = useState(0);
-  const [isMuted, setIsMuted] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const { incrementScore } = useScore();
+  const { unlock } = useAchievementUnlock(userId);
+  const { play: sfx } = useSfx();
+  const audioCtxRef = useRef<AudioContext | null>(null);
 
-  // Note Recognition Game State
-  const [targetNote, setTargetNote] = useState<Note | null>(null);
-  const [showFeedback, setShowFeedback] = useState(false);
-  const [feedbackMessage, setFeedbackMessage] = useState("");
-  const [correctAnswers, setCorrectAnswers] = useState(0);
-  const [totalQuestions, setTotalQuestions] = useState(0);
+  const [progress, setProgress] = useState<Progress>(EMPTY_PROGRESS);
+  const [activeLesson, setActiveLesson] = useState<LessonId>("notes");
 
-  // Rhythm Game State
-  const [currentPattern, setCurrentPattern] = useState<RhythmPattern | null>(
-    null,
-  );
-  const [currentBeat, setCurrentBeat] = useState(0);
-  const [playerPattern, setPlayerPattern] = useState<boolean[]>([]);
-  const [rhythmPlaying, setRhythmPlaying] = useState(false);
+  useEffect(() => {
+    setProgress(loadProgress(userId));
+  }, [userId]);
 
-  // Melody Maker State
-  const [recordedMelody, setRecordedMelody] = useState<Note[]>([]);
-  const [isRecording, setIsRecording] = useState(false);
-  const [maxNotesReached, setMaxNotesReached] = useState(false);
-
-  // Audio Context — created lazily on first user gesture to satisfy browser autoplay policy
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const rhythmIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const melodyTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
-
-  const getAudioContext = useCallback(() => {
+  const ensureCtx = useCallback((): AudioContext | null => {
     if (typeof window === "undefined") return null;
-    if (!audioContextRef.current) {
-      const AudioContextClass =
+    if (!audioCtxRef.current) {
+      const Ctor =
         window.AudioContext ||
         (window as unknown as { webkitAudioContext: typeof AudioContext })
           .webkitAudioContext;
-      audioContextRef.current = new AudioContextClass();
+      if (!Ctor) return null;
+      audioCtxRef.current = new Ctor();
     }
-    if (audioContextRef.current.state === "suspended") {
-      audioContextRef.current.resume();
+    if (audioCtxRef.current.state === "suspended") {
+      void audioCtxRef.current.resume();
     }
-    return audioContextRef.current;
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (rhythmIntervalRef.current) {
-        clearInterval(rhythmIntervalRef.current);
-      }
-      melodyTimeoutsRef.current.forEach((t) => clearTimeout(t));
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-        audioContextRef.current = null;
-      }
-    };
+    return audioCtxRef.current;
   }, []);
 
   const playNote = useCallback(
-    (note: Note, duration: number = 0.5) => {
-      if (isMuted) return;
-      const context = getAudioContext();
-      if (!context) return;
-
-      const oscillator = context.createOscillator();
-      const gainNode = context.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(context.destination);
-
-      oscillator.frequency.setValueAtTime(note.frequency, context.currentTime);
-      oscillator.type = "sine";
-
-      gainNode.gain.setValueAtTime(0.3, context.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(
-        0.01,
-        context.currentTime + duration,
-      );
-
-      oscillator.start(context.currentTime);
-      oscillator.stop(context.currentTime + duration);
-
-      // Add to recorded melody if recording (with max notes limit)
-      if (isRecording && currentMode === "melody-maker") {
-        setRecordedMelody((prev) => {
-          if (prev.length >= MAX_MELODY_NOTES) {
-            setMaxNotesReached(true);
-            return prev;
-          }
-          return [...prev, note];
-        });
-      }
+    (freq: number, duration = 0.45) => {
+      const ctx = ensureCtx();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(freq, now);
+      g.gain.setValueAtTime(0, now);
+      g.gain.linearRampToValueAtTime(0.22, now + 0.01);
+      g.gain.linearRampToValueAtTime(0.16, now + duration * 0.7);
+      g.gain.linearRampToValueAtTime(0.0001, now + duration);
+      osc.connect(g).connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + duration + 0.05);
     },
-    [isMuted, isRecording, currentMode, getAudioContext],
+    [ensureCtx],
   );
 
-  const startNoteRecognitionGame = useCallback(() => {
-    const randomNote = NOTES[Math.floor(Math.random() * NOTES.length)];
-    setTargetNote(randomNote);
-    setShowFeedback(false);
-
-    // Play the note automatically
-    setTimeout(() => {
-      playNote(randomNote, 1);
-    }, 500);
-  }, [playNote]);
-
-  const handleNoteGuess = useCallback(
-    (guessedNote: Note) => {
-      if (!targetNote) return;
-
-      const isCorrect = guessedNote.name === targetNote.name;
-      setTotalQuestions((prev) => prev + 1);
-
-      if (isCorrect) {
-        setCorrectAnswers((prev) => prev + 1);
-        setScore((prev) => prev + 10);
-        setFeedbackMessage("🎉 Correct! Great job!");
-      } else {
-        setFeedbackMessage(
-          `❌ That was ${guessedNote.name}. The correct answer was ${targetNote.name}. Try again!`,
-        );
-      }
-
-      setShowFeedback(true);
-
-      // Start next question after delay
-      setTimeout(() => {
-        startNoteRecognitionGame();
-      }, 2000);
-    },
-    [targetNote, startNoteRecognitionGame],
-  );
-
-  const startRhythmGame = useCallback(() => {
-    const pattern =
-      RHYTHM_PATTERNS[Math.floor(Math.random() * RHYTHM_PATTERNS.length)];
-    setCurrentPattern(pattern);
-    setCurrentBeat(0);
-    setPlayerPattern([]);
-    setRhythmPlaying(true);
-
-    // Play the pattern
-    let beatIndex = 0;
-    rhythmIntervalRef.current = setInterval(() => {
-      if (beatIndex >= pattern.beats.length) {
-        clearInterval(rhythmIntervalRef.current!);
-        setRhythmPlaying(false);
-        setCurrentBeat(0);
-        return;
-      }
-
-      setCurrentBeat(beatIndex);
-      if (pattern.beats[beatIndex] && !isMuted) {
-        // Play a drum sound (using a low frequency note)
-        playNote({ name: "C", frequency: 130.81, color: "#FF6B6B" }, 0.2);
-      }
-      beatIndex++;
-    }, 60000 / pattern.tempo);
-  }, [playNote, isMuted]);
-
-  const handleRhythmTap = useCallback(() => {
-    if (!currentPattern || rhythmPlaying) return;
-
-    const newPattern = [...playerPattern, true];
-    setPlayerPattern(newPattern);
-
-    // Play tap sound
-    playNote({ name: "C", frequency: 523.25, color: "#FF6B6B" }, 0.1);
-
-    // Check if pattern is complete
-    if (newPattern.length === currentPattern.beats.length) {
-      // Simple scoring - give points for any attempt
-      setScore((prev) => prev + 5);
-      setTimeout(() => {
-        startRhythmGame();
-      }, 1000);
-    }
-  }, [currentPattern, rhythmPlaying, playerPattern, playNote, startRhythmGame]);
-
-  const playRecordedMelody = useCallback(() => {
-    if (recordedMelody.length === 0) return;
-
-    // Clear any previous playback timeouts
-    melodyTimeoutsRef.current.forEach((t) => clearTimeout(t));
-    melodyTimeoutsRef.current = [];
-
-    setIsPlaying(true);
-    recordedMelody.forEach((note, index) => {
-      const t = setTimeout(() => {
-        playNote(note, 0.5);
-        if (index === recordedMelody.length - 1) {
-          setIsPlaying(false);
-        }
-      }, index * 600);
-      melodyTimeoutsRef.current.push(t);
-    });
-  }, [recordedMelody, playNote]);
-
-  const clearMelody = useCallback(() => {
-    setRecordedMelody([]);
-    setIsRecording(false);
-    setMaxNotesReached(false);
+  const speakName = useCallback((noteKey: string) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(NOTE_LABEL[noteKey] ?? noteKey);
+    u.rate = 0.85;
+    u.pitch = 1.15;
+    window.speechSynthesis.speak(u);
   }, []);
 
-  // Auto-stop recording when max notes reached
-  useEffect(() => {
-    if (maxNotesReached) {
-      setIsRecording(false);
-    }
-  }, [maxNotesReached]);
+  const completeLesson = useCallback(
+    (lesson: LessonId) => {
+      const next = { ...progress, [lesson]: true };
+      setProgress(next);
+      saveProgress(userId, next);
+      void unlock({
+        gameId,
+        title:
+          lesson === "notes"
+            ? "Note Spotter"
+            : lesson === "rhythm"
+              ? "Rhythm Star"
+              : lesson === "song"
+                ? "First Song"
+                : "Free Player",
+        description:
+          lesson === "notes"
+            ? "Found every note in Sing the Notes!"
+            : lesson === "rhythm"
+              ? "Matched a rhythm pattern!"
+              : lesson === "song"
+                ? "Played a real melody!"
+                : "Started Free Play!",
+        icon: lesson === "notes" ? "🎵" : lesson === "rhythm" ? "🥁" : lesson === "song" ? "🎶" : "🎹",
+      });
+      incrementScore(gameId, 1);
+      onGameComplete(1, 1);
+    },
+    [progress, userId, unlock, gameId, incrementScore, onGameComplete],
+  );
+
+  const lessonsDone =
+    Number(progress.notes) + Number(progress.rhythm) + Number(progress.song);
+  const freePlayUnlocked = lessonsDone >= 3;
+
+  return (
+    <div className="space-y-5">
+      <div className="surface-card cat-music p-5 sm:p-7 flex items-center gap-5">
+        <div className="hidden sm:block">
+          <Buddy mood={lessonsDone === 3 ? "celebrate" : "cheer"} size="md" />
+        </div>
+        <div className="flex-1">
+          <p
+            className="text-xs uppercase tracking-[0.22em] font-display"
+            style={{ color: "var(--cat-music)" }}
+          >
+            Music Lab
+          </p>
+          <h2 className="font-display text-2xl sm:text-3xl text-arcade-strong">
+            Three lessons, then a piano playground.
+          </h2>
+          <p className="mt-1 text-arcade-mid text-sm">
+            Learn the names of notes, match a rhythm, then play your first song.
+          </p>
+        </div>
+        <span className="chip chip-gold shrink-0" aria-label={`${lessonsDone} of 3 lessons done`}>
+          <Sparkles className="w-4 h-4" aria-hidden />
+          <span className="font-display">{lessonsDone}</span>
+          <span className="opacity-70">/</span>
+          <span className="font-display opacity-80">3</span>
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <LessonTile
+          id="notes"
+          title="1 · Sing the Notes"
+          subtitle="Hear it, find it"
+          done={progress.notes}
+          active={activeLesson === "notes"}
+          onSelect={setActiveLesson}
+        />
+        <LessonTile
+          id="rhythm"
+          title="2 · Match the Rhythm"
+          subtitle="Tap it back"
+          done={progress.rhythm}
+          active={activeLesson === "rhythm"}
+          locked={!progress.notes}
+          onSelect={setActiveLesson}
+        />
+        <LessonTile
+          id="song"
+          title="3 · Play a Song"
+          subtitle="Twinkle Twinkle"
+          done={progress.song}
+          active={activeLesson === "song"}
+          locked={!progress.rhythm}
+          onSelect={setActiveLesson}
+        />
+        <LessonTile
+          id="free"
+          title="Free Play"
+          subtitle="Just have fun"
+          done={progress.free}
+          active={activeLesson === "free"}
+          locked={!freePlayUnlocked}
+          onSelect={setActiveLesson}
+        />
+      </div>
+
+      {activeLesson === "notes" && (
+        <NotesLesson
+          playNote={playNote}
+          speakName={speakName}
+          sfx={sfx}
+          onComplete={() => completeLesson("notes")}
+        />
+      )}
+      {activeLesson === "rhythm" && (
+        <RhythmLesson
+          playNote={playNote}
+          sfx={sfx}
+          onComplete={() => completeLesson("rhythm")}
+        />
+      )}
+      {activeLesson === "song" && (
+        <SongLesson
+          playNote={playNote}
+          sfx={sfx}
+          onComplete={() => completeLesson("song")}
+        />
+      )}
+      {activeLesson === "free" && (
+        <FreePlay playNote={playNote} unlocked={freePlayUnlocked} />
+      )}
+    </div>
+  );
+}
+
+function LessonTile({
+  id,
+  title,
+  subtitle,
+  done,
+  active,
+  locked,
+  onSelect,
+}: {
+  id: LessonId;
+  title: string;
+  subtitle: string;
+  done: boolean;
+  active: boolean;
+  locked?: boolean;
+  onSelect: (id: LessonId) => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={locked}
+      onClick={() => onSelect(id)}
+      className={cn(
+        "surface-card cat-music text-left p-4 relative",
+        "active:scale-[0.985] transition-transform",
+        locked && "opacity-55 cursor-not-allowed",
+      )}
+      style={
+        active
+          ? { outline: "2px solid var(--joy-gold)", outlineOffset: "-2px" }
+          : undefined
+      }
+      aria-current={active ? "true" : undefined}
+    >
+      <div className="flex items-center justify-between">
+        <span className="font-display text-arcade-strong text-base sm:text-lg">
+          {title}
+        </span>
+        {done ? (
+          <CheckCircle className="w-5 h-5" style={{ color: "var(--joy-correct)" }} />
+        ) : locked ? (
+          <Lock className="w-4 h-4 text-arcade-soft" />
+        ) : (
+          <ChevronRight className="w-5 h-5 text-arcade-soft" />
+        )}
+      </div>
+      <p className="mt-1 text-sm text-arcade-mid">{subtitle}</p>
+    </button>
+  );
+}
+
+/* ───────── Lesson 1: Sing the Notes ───────── */
+
+function NotesLesson({
+  playNote,
+  speakName,
+  sfx,
+  onComplete,
+}: {
+  playNote: (freq: number, duration?: number) => void;
+  speakName: (note: string) => void;
+  sfx: (sound: "tap" | "correct" | "wrong" | "levelup" | "finish" | "ding") => void;
+  onComplete: () => void;
+}) {
+  const TARGET_COUNT = 8;
+  const [target, setTarget] = useState<PianoKey | null>(null);
+  const [round, setRound] = useState(0);
+  const [score, setScore] = useState(0);
+  const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
+  const [doneCelebration, setDoneCelebration] = useState(false);
+
+  const newRound = useCallback(() => {
+    const nextTarget = WHITE_KEYS[Math.floor(Math.random() * WHITE_KEYS.length)];
+    setTarget(nextTarget);
+    setFeedback(null);
+    setTimeout(() => {
+      playNote(nextTarget.freq, 0.5);
+      setTimeout(() => speakName(nextTarget.note), 350);
+    }, 80);
+  }, [playNote, speakName]);
 
   useEffect(() => {
-    if (currentMode === "note-recognition" && !targetNote) {
-      startNoteRecognitionGame();
+    if (round < TARGET_COUNT) newRound();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [round]);
+
+  const handleKey = (key: PianoKey) => {
+    if (key.isBlack) return;
+    playNote(key.freq);
+    if (!target || feedback || round >= TARGET_COUNT) return;
+    if (key.note === target.note) {
+      sfx("correct");
+      setFeedback("correct");
+      setScore((s) => s + 1);
+      setTimeout(() => {
+        if (round + 1 >= TARGET_COUNT) {
+          setDoneCelebration(true);
+          sfx("levelup");
+          onComplete();
+        } else {
+          setRound((r) => r + 1);
+        }
+      }, 700);
+    } else {
+      sfx("wrong");
+      setFeedback("wrong");
+      setTimeout(() => setFeedback(null), 700);
     }
-  }, [currentMode, targetNote, startNoteRecognitionGame]);
+  };
 
-  const renderPiano = () => {
-    const whiteKeys = NOTES.filter((note) => !note.isBlack);
-    const blackKeys = NOTES.filter((note) => note.isBlack);
+  const replay = () => {
+    if (!target) return;
+    playNote(target.freq, 0.5);
+    setTimeout(() => speakName(target.note), 350);
+  };
 
+  if (doneCelebration) {
     return (
-      <div className="relative mx-auto w-full max-w-lg">
-        {/* White Keys */}
-        <div className="flex w-full">
-          {whiteKeys.map((note) => (
+      <ResultsScreen
+        score={score}
+        total={TARGET_COUNT}
+        category="music"
+        headline="Note master!"
+        message="Beautiful ear — you found every note."
+        onPlayAgain={() => {
+          setRound(0);
+          setScore(0);
+          setDoneCelebration(false);
+        }}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="surface-card cat-music p-5">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <p className="text-xs uppercase tracking-[0.18em] font-display" style={{ color: "var(--cat-music)" }}>
+              Lesson 1
+            </p>
+            <h3 className="font-display text-xl sm:text-2xl text-arcade-strong">
+              Listen — then tap the matching note
+            </h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="chip">
+              <span className="text-sm opacity-80">Round</span>
+              <span className="font-display">{Math.min(round + 1, TARGET_COUNT)}</span>
+              <span className="opacity-70">/</span>
+              <span className="font-display opacity-80">{TARGET_COUNT}</span>
+            </span>
             <button
-              key={note.name}
-              className="flex-1 h-28 md:h-36 bg-white border-2 border-gray-300 hover:bg-gray-100 active:bg-gray-200 transition-colors duration-150 flex items-end justify-center pb-2 text-sm md:text-base font-semibold rounded-b-md"
-              style={{
-                borderColor: note.color,
-                boxShadow: `0 4px 8px ${note.color}40`,
-              }}
-              onClick={() => {
-                playNote(note);
-                if (currentMode === "note-recognition") {
-                  handleNoteGuess(note);
-                }
-              }}
+              type="button"
+              onClick={replay}
+              className="font-display inline-flex items-center gap-2 px-4 py-2 rounded-full
+                         bg-[var(--arcade-card-soft)] text-arcade-strong
+                         border border-[var(--arcade-edge)]
+                         active:scale-[0.97]"
             >
-              {note.name}
+              <Volume2 className="w-4 h-4" aria-hidden />
+              Hear again
             </button>
-          ))}
+          </div>
+        </div>
+      </div>
+
+      <Piano
+        onKey={handleKey}
+        highlightedNote={feedback === "correct" ? target?.note : undefined}
+        wrongShake={feedback === "wrong"}
+      />
+    </div>
+  );
+}
+
+/* ───────── Lesson 2: Match the Rhythm ───────── */
+
+function RhythmLesson({
+  playNote,
+  sfx,
+  onComplete,
+}: {
+  playNote: (freq: number, duration?: number) => void;
+  sfx: (sound: "tap" | "correct" | "wrong" | "levelup") => void;
+  onComplete: () => void;
+}) {
+  const [patternIndex, setPatternIndex] = useState(0);
+  const [phase, setPhase] = useState<"playing" | "listening">("playing");
+  const [tapsLeft, setTapsLeft] = useState(0);
+  const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
+  const [done, setDone] = useState(false);
+
+  const pattern = RHYTHM_PATTERNS[patternIndex];
+  const totalTaps = useMemo(() => pattern.length, [pattern]);
+
+  const playPattern = useCallback(async () => {
+    setPhase("playing");
+    setFeedback(null);
+    for (let i = 0; i < pattern.length; i++) {
+      const beat = pattern[i];
+      playNote(440, 0.18);
+      await new Promise((r) => setTimeout(r, beat * 320));
+    }
+    setPhase("listening");
+    setTapsLeft(pattern.length);
+  }, [pattern, playNote]);
+
+  useEffect(() => {
+    void playPattern();
+  }, [playPattern]);
+
+  const handleDrum = () => {
+    if (phase !== "listening") return;
+    playNote(440, 0.18);
+    sfx("tap");
+    setTapsLeft((n) => {
+      const left = Math.max(0, n - 1);
+      if (left === 0) {
+        sfx("correct");
+        setFeedback("correct");
+        setTimeout(() => {
+          if (patternIndex + 1 >= RHYTHM_PATTERNS.length) {
+            setDone(true);
+            sfx("levelup");
+            onComplete();
+          } else {
+            setPatternIndex((p) => p + 1);
+          }
+        }, 700);
+      }
+      return left;
+    });
+  };
+
+  if (done) {
+    return (
+      <ResultsScreen
+        score={RHYTHM_PATTERNS.length}
+        total={RHYTHM_PATTERNS.length}
+        category="music"
+        headline="Rhythm matched!"
+        message="You've got the beat. Ready for a real song?"
+        onPlayAgain={() => {
+          setPatternIndex(0);
+          setDone(false);
+        }}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="surface-card cat-music p-5">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <p className="text-xs uppercase tracking-[0.18em] font-display" style={{ color: "var(--cat-music)" }}>
+              Lesson 2
+            </p>
+            <h3 className="font-display text-xl sm:text-2xl text-arcade-strong">
+              {phase === "playing" ? "Listen carefully…" : "Now tap the drum back"}
+            </h3>
+            <p className="text-arcade-mid text-sm mt-1">
+              Pattern {patternIndex + 1} of {RHYTHM_PATTERNS.length}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void playPattern()}
+            disabled={phase === "playing"}
+            className="font-display inline-flex items-center gap-2 px-4 py-2 rounded-full
+                       bg-[var(--arcade-card-soft)] text-arcade-strong
+                       border border-[var(--arcade-edge)]
+                       active:scale-[0.97] disabled:opacity-50"
+          >
+            <Volume2 className="w-4 h-4" aria-hidden />
+            Hear it
+          </button>
         </div>
 
-        {/* Black Keys */}
-        <div className="absolute top-0 left-0 right-0 flex pointer-events-none">
-          {whiteKeys.map((_, index) => {
-            const blackKey = blackKeys.find((black) => {
-              const whiteNote = whiteKeys[index].name;
-              return (
-                (whiteNote === "C" && black.name === "C#") ||
-                (whiteNote === "D" && black.name === "D#") ||
-                (whiteNote === "F" && black.name === "F#") ||
-                (whiteNote === "G" && black.name === "G#") ||
-                (whiteNote === "A" && black.name === "A#")
-              );
-            });
+        <div className="mt-4 flex justify-center">
+          <button
+            type="button"
+            onClick={handleDrum}
+            disabled={phase !== "listening"}
+            className={cn(
+              "w-40 h-40 sm:w-52 sm:h-52 rounded-full grid place-items-center",
+              "border-4 active:scale-[0.96] transition-transform",
+              "shadow-[0_18px_40px_-12px_var(--cat-music-glow),inset_0_2px_0_oklch(1_0_0_/_0.30)]",
+              "disabled:opacity-50 disabled:cursor-not-allowed",
+              feedback === "wrong" && "shake",
+            )}
+            style={{
+              background:
+                "radial-gradient(circle at 35% 28%, oklch(1 0 0 / 0.35) 0%, transparent 38%), linear-gradient(160deg, var(--cat-music) 0%, var(--cat-default) 100%)",
+              borderColor: "oklch(0.45 0.10 160)",
+              color: "var(--ink-on-color)",
+            }}
+            aria-label="Drum"
+          >
+            <Music className="w-12 h-12 sm:w-14 sm:h-14" />
+          </button>
+        </div>
+        {phase === "listening" && (
+          <div className="mt-3 text-center text-arcade-mid font-display">
+            Taps left: <span className="text-arcade-strong">{tapsLeft}</span> / {totalTaps}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
-            if (!blackKey) {
-              return <div key={index} className="flex-1" />;
-            }
+/* ───────── Lesson 3: Play the Song ───────── */
 
+function SongLesson({
+  playNote,
+  sfx,
+  onComplete,
+}: {
+  playNote: (freq: number, duration?: number) => void;
+  sfx: (sound: "tap" | "correct" | "wrong" | "levelup") => void;
+  onComplete: () => void;
+}) {
+  const [step, setStep] = useState(0);
+  const [done, setDone] = useState(false);
+  const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
+
+  const expected = TWINKLE[step];
+  const expectedKey = WHITE_KEYS.find((k) => k.note === expected);
+
+  const handleKey = (key: PianoKey) => {
+    if (key.isBlack) return;
+    playNote(key.freq, 0.4);
+    if (!expectedKey || feedback) return;
+    if (key.note === expected) {
+      sfx("correct");
+      setFeedback("correct");
+      setTimeout(() => {
+        setFeedback(null);
+        if (step + 1 >= TWINKLE.length) {
+          setDone(true);
+          sfx("levelup");
+          onComplete();
+        } else {
+          setStep((s) => s + 1);
+        }
+      }, 280);
+    } else {
+      sfx("wrong");
+      setFeedback("wrong");
+      setTimeout(() => setFeedback(null), 600);
+    }
+  };
+
+  if (done) {
+    return (
+      <ResultsScreen
+        score={TWINKLE.length}
+        total={TWINKLE.length}
+        category="music"
+        headline="You played a song!"
+        message="Twinkle Twinkle is officially in your hands. Free play is unlocked."
+        onPlayAgain={() => {
+          setStep(0);
+          setDone(false);
+        }}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="surface-card cat-music p-5">
+        <p className="text-xs uppercase tracking-[0.18em] font-display" style={{ color: "var(--cat-music)" }}>
+          Lesson 3 · Twinkle Twinkle
+        </p>
+        <h3 className="font-display text-xl sm:text-2xl text-arcade-strong mt-1">
+          Tap the glowing key
+        </h3>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          {TWINKLE.map((n, i) => (
+            <span
+              key={i}
+              className={cn(
+                "min-w-9 h-9 px-2 inline-flex items-center justify-center rounded-full font-display text-sm border",
+                i < step
+                  ? "bg-[oklch(0.30_0.10_145_/_0.5)] text-[oklch(0.92_0.13_145)] border-[oklch(0.55_0.16_145)]"
+                  : i === step
+                    ? "bg-[var(--cat-music)] text-[var(--ink-on-color)] border-[oklch(0.45_0.10_160)] sparkle"
+                    : "bg-[var(--arcade-card-soft)] text-arcade-mid border-[var(--arcade-edge)]",
+              )}
+            >
+              {n}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <Piano
+        onKey={handleKey}
+        glowingNote={expected}
+        highlightedNote={feedback === "correct" ? expected : undefined}
+        wrongShake={feedback === "wrong"}
+      />
+    </div>
+  );
+}
+
+/* ───────── Free Play ───────── */
+
+function FreePlay({
+  playNote,
+  unlocked,
+}: {
+  playNote: (freq: number, duration?: number) => void;
+  unlocked: boolean;
+}) {
+  if (!unlocked) {
+    return (
+      <div className="surface-card p-8 text-center">
+        <div className="flex justify-center mb-3">
+          <Buddy mood="think" size="lg" />
+        </div>
+        <h3 className="font-display text-2xl text-arcade-strong">
+          Finish the lessons first!
+        </h3>
+        <p className="mt-2 text-arcade-mid">
+          Free Play unlocks once you complete all three.
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-3">
+      <div className="surface-card cat-music p-4 text-arcade-mid">
+        Tap any key. Try playing the notes you just learned.
+      </div>
+      <Piano onKey={(k) => playNote(k.freq, 0.5)} />
+    </div>
+  );
+}
+
+/* ───────── Piano keyboard ───────── */
+
+function Piano({
+  onKey,
+  glowingNote,
+  highlightedNote,
+  wrongShake,
+}: {
+  onKey: (key: PianoKey) => void;
+  glowingNote?: string;
+  highlightedNote?: string;
+  wrongShake?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "surface-card cat-music p-3 sm:p-4 overflow-x-auto scroll-arcade",
+        wrongShake && "shake",
+      )}
+    >
+      <div className="relative h-44 sm:h-56 mx-auto" style={{ width: "100%", maxWidth: 720 }}>
+        <div
+          className="grid h-full"
+          style={{
+            gridTemplateColumns: `repeat(${WHITE_KEYS.length}, 1fr)`,
+            gap: 4,
+          }}
+        >
+          {WHITE_KEYS.map((key) => {
+            const glow = glowingNote === key.note;
+            const hot = highlightedNote === key.note;
             return (
-              <div key={index} className="flex-1 flex justify-center">
-                <button
-                  className="w-[65%] h-16 md:h-20 bg-gray-800 hover:bg-gray-700 active:bg-gray-600 text-white text-xs font-semibold flex items-end justify-center pb-1 transition-colors duration-150 rounded-b-md pointer-events-auto z-10"
-                  style={{
-                    backgroundColor: blackKey.color,
-                    boxShadow: `0 2px 4px ${blackKey.color}60`,
-                  }}
-                  onClick={() => {
-                    playNote(blackKey);
-                    if (currentMode === "note-recognition") {
-                      handleNoteGuess(blackKey);
-                    }
-                  }}
-                >
-                  {blackKey.name}
-                </button>
-              </div>
+              <button
+                key={key.note}
+                type="button"
+                onPointerDown={() => onKey(key)}
+                aria-label={`${NOTE_LABEL[key.note]} key`}
+                className={cn(
+                  "relative rounded-b-2xl rounded-t-md border",
+                  "active:translate-y-0.5",
+                  "shadow-[inset_0_1px_0_oklch(1_0_0_/_0.50),0_6px_0_oklch(0_0_0_/_0.45)]",
+                )}
+                style={{
+                  background: hot
+                    ? "linear-gradient(180deg, oklch(0.92 0.18 145), oklch(0.65 0.20 150))"
+                    : "linear-gradient(180deg, oklch(0.97 0.01 95), oklch(0.86 0.04 90))",
+                  borderColor: hot ? "oklch(0.50 0.16 145)" : "oklch(0.55 0.04 90)",
+                  boxShadow: glow
+                    ? "0 0 28px 6px var(--cat-music-glow), inset 0 1px 0 oklch(1 0 0 / 0.5)"
+                    : undefined,
+                  transition: "box-shadow 0.18s ease",
+                }}
+              >
+                <span className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs font-display text-[oklch(0.20_0.05_280)]">
+                  {NOTE_LABEL[key.note]}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Black keys overlay */}
+        <div className="absolute inset-0 pointer-events-none">
+          {KEYS.filter((k) => k.isBlack).map((key) => {
+            const whiteIndex = WHITE_KEYS.findIndex((w) => {
+              const indexW = KEYS.indexOf(w);
+              const indexB = KEYS.indexOf(key);
+              return indexB === indexW + 1;
+            });
+            if (whiteIndex < 0) return null;
+            const left = ((whiteIndex + 1) / WHITE_KEYS.length) * 100;
+            return (
+              <button
+                key={key.note}
+                type="button"
+                onPointerDown={() => onKey(key)}
+                aria-label={`${key.note} key`}
+                className="absolute pointer-events-auto rounded-b-xl rounded-t-md
+                           shadow-[inset_0_2px_0_oklch(1_0_0_/_0.10),0_4px_0_oklch(0_0_0_/_0.6)]
+                           active:translate-y-0.5"
+                style={{
+                  width: "7%",
+                  height: "62%",
+                  top: 0,
+                  left: `calc(${left}% - 3.5%)`,
+                  background:
+                    "linear-gradient(180deg, oklch(0.30 0.05 280), oklch(0.13 0.04 280))",
+                  border: "1px solid oklch(0.10 0.04 280)",
+                }}
+              />
             );
           })}
         </div>
       </div>
-    );
-  };
-
-  const renderGameContent = () => {
-    switch (currentMode) {
-      case "free-play":
-        return (
-          <div className="text-center space-y-4">
-            <h3 className="text-xl font-bold text-purple-700">
-              🎹 Free Play Mode
-            </h3>
-            <p className="text-gray-600">
-              Click on the piano keys to make beautiful music!
-            </p>
-            {renderPiano()}
-            <div className="text-sm text-gray-500 mt-4">
-              Try playing different combinations of notes to create melodies!
-            </div>
-          </div>
-        );
-
-      case "note-recognition":
-        return (
-          <div className="text-center space-y-4">
-            <h3 className="text-xl font-bold text-purple-700">
-              🎵 Note Recognition
-            </h3>
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <p className="text-gray-700 mb-2">
-                Listen to the note and click the correct key!
-              </p>
-              {targetNote && (
-                <div className="text-lg font-semibold text-blue-600">
-                  🎵 Listen carefully and find the note!
-                </div>
-              )}
-              {showFeedback && (
-                <div className="mt-2 p-2 bg-white rounded border">
-                  {feedbackMessage}
-                </div>
-              )}
-            </div>
-            {renderPiano()}
-            <div className="flex justify-center gap-4 text-sm">
-              <Badge variant="secondary">
-                Correct: {correctAnswers}/{totalQuestions}
-              </Badge>
-              {targetNote && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => playNote(targetNote, 1)}
-                >
-                  🔊 Play Again
-                </Button>
-              )}
-            </div>
-          </div>
-        );
-
-      case "rhythm-game":
-        return (
-          <div className="text-center space-y-4">
-            <h3 className="text-xl font-bold text-purple-700">
-              🥁 Rhythm Game
-            </h3>
-            <div className="bg-green-50 p-4 rounded-lg">
-              <p className="text-gray-700 mb-4">
-                Listen to the rhythm, then tap the button to copy it!
-              </p>
-
-              {currentPattern && (
-                <div className="space-y-4">
-                  <div className="text-lg font-semibold">
-                    Pattern: {currentPattern.name}
-                  </div>
-
-                  {/* Visual rhythm display */}
-                  <div className="flex justify-center gap-2">
-                    {currentPattern.beats.map((beat, index) => (
-                      <div
-                        key={index}
-                        className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${
-                          beat
-                            ? "bg-green-500 border-green-600"
-                            : "bg-gray-200 border-gray-300"
-                        } ${
-                          rhythmPlaying && index === currentBeat
-                            ? "ring-4 ring-yellow-400"
-                            : ""
-                        }`}
-                      >
-                        {beat ? "♪" : "○"}
-                      </div>
-                    ))}
-                  </div>
-
-                  {!rhythmPlaying && (
-                    <div className="space-y-2">
-                      <Button
-                        onClick={handleRhythmTap}
-                        className="bg-green-500 hover:bg-green-600 text-white px-8 py-4 text-lg"
-                        disabled={rhythmPlaying}
-                      >
-                        🥁 TAP!
-                      </Button>
-                      <div className="text-sm text-gray-600">
-                        Tapped: {playerPattern.length}/
-                        {currentPattern.beats.length}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <Button
-                onClick={startRhythmGame}
-                variant="outline"
-                className="mt-4"
-              >
-                🔄 New Pattern
-              </Button>
-            </div>
-          </div>
-        );
-
-      case "melody-maker":
-        return (
-          <div className="text-center space-y-4">
-            <h3 className="text-xl font-bold text-purple-700">
-              🎼 Melody Maker
-            </h3>
-            <div className="bg-purple-50 p-4 rounded-lg">
-              <p className="text-gray-700 mb-4">
-                Create your own melody by playing the piano!
-              </p>
-
-              <div className="flex justify-center gap-2 mb-4">
-                <Button
-                  onClick={() => setIsRecording(!isRecording)}
-                  variant={isRecording ? "destructive" : "default"}
-                  className="flex items-center gap-2"
-                >
-                  {isRecording ? (
-                    <>
-                      <Pause className="w-4 h-4" />
-                      Stop Recording
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-4 h-4" />
-                      Start Recording
-                    </>
-                  )}
-                </Button>
-
-                {recordedMelody.length > 0 && (
-                  <>
-                    <Button
-                      onClick={playRecordedMelody}
-                      variant="outline"
-                      disabled={isPlaying}
-                      className="flex items-center gap-2"
-                    >
-                      <Volume2 className="w-4 h-4" />
-                      Play Melody
-                    </Button>
-
-                    <Button
-                      onClick={clearMelody}
-                      variant="outline"
-                      className="flex items-center gap-2"
-                    >
-                      <RotateCcw className="w-4 h-4" />
-                      Clear
-                    </Button>
-                  </>
-                )}
-              </div>
-
-              {recordedMelody.length > 0 && (
-                <div className="mb-4">
-                  <div className="text-sm font-semibold mb-2">Your Melody:</div>
-                  <div className="flex flex-wrap justify-center gap-1">
-                    {recordedMelody.map((note, index) => (
-                      <Badge
-                        key={index}
-                        style={{ backgroundColor: note.color }}
-                        className="text-white"
-                      >
-                        {note.name}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-center items-center gap-2 mb-2">
-                <Badge
-                  variant={
-                    recordedMelody.length >= MAX_MELODY_NOTES
-                      ? "destructive"
-                      : "secondary"
-                  }
-                >
-                  🎵 {recordedMelody.length}/{MAX_MELODY_NOTES} notes
-                </Badge>
-              </div>
-
-              {isRecording && (
-                <div className="text-red-600 font-semibold animate-pulse">
-                  🔴 Recording... Play some notes!
-                </div>
-              )}
-
-              {maxNotesReached && (
-                <div className="mt-2 p-2 bg-amber-100 border border-amber-300 rounded text-amber-800 font-semibold">
-                  🎵 Maximum of {MAX_MELODY_NOTES} notes reached! Play your melody or clear to start over.
-                </div>
-              )}
-            </div>
-
-            {renderPiano()}
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
-      {/* Header */}
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle className="text-2xl font-bold text-purple-700 flex items-center gap-2">
-              🎵 Music Learning Game
-            </CardTitle>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsMuted(!isMuted)}
-              >
-                {isMuted ? (
-                  <VolumeX className="w-4 h-4" />
-                ) : (
-                  <Volume2 className="w-4 h-4" />
-                )}
-              </Button>
-              <Badge variant="secondary" className="text-lg px-3 py-1">
-                Score: {score}
-              </Badge>
-            </div>
-          </div>
-        </CardHeader>
-      </Card>
-
-      {/* Game Mode Selection */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Choose Your Game Mode</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {GAME_MODES.map((mode) => (
-              <Button
-                key={mode.id}
-                variant={currentMode === mode.id ? "default" : "outline"}
-                className={`h-auto p-4 flex flex-col items-center gap-2 ${
-                  currentMode === mode.id
-                    ? "bg-purple-600 hover:bg-purple-700"
-                    : ""
-                }`}
-                onClick={() => setCurrentMode(mode.id)}
-              >
-                {mode.icon}
-                <div className="text-center">
-                  <div className="font-semibold">{mode.name}</div>
-                  <div className="text-xs opacity-80">{mode.description}</div>
-                </div>
-              </Button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Game Content */}
-      <Card>
-        <CardContent className="p-6">{renderGameContent()}</CardContent>
-      </Card>
-
-      {/* Progress */}
-      {currentMode === "note-recognition" && totalQuestions > 0 && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-center">
-              <div className="text-sm font-semibold mb-2">Progress</div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-purple-600 h-2 rounded-full transition-all duration-300"
-                  style={{
-                    width: `${(correctAnswers / totalQuestions) * 100}%`,
-                  }}
-                />
-              </div>
-              <div className="text-xs text-gray-600 mt-1">
-                {correctAnswers} correct out of {totalQuestions} questions
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
