@@ -3,11 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 const NEBIUS_API_URL =
   "https://api.tokenfactory.nebius.com/v1/chat/completions";
 const OPENAI_RESPONSES_API_URL = "https://api.openai.com/v1/responses";
-const OCR_MODELS = [
-  "deepseek-ai/DeepSeek-VL2",
-  "deepseek-ai/DeepSeek-VL2-Tiny",
-  "Qwen/Qwen2.5-VL-72B-Instruct",
-];
+const OCR_MODELS = ["Qwen/Qwen2.5-VL-72B-Instruct"];
 const OPENAI_OCR_MODEL = "gpt-4.1-nano";
 const OCR_SYSTEM_PROMPT =
   "You extract text from images for reading practice. Return only markdown text in natural reading order. Ignore partial words or cut-off text near image edges and corners. Prioritize complete, fully visible lines. Use markdown structure only when visually clear: # for main title, ## for subtitle, plain paragraphs with a blank line between paragraphs. Do not add commentary.";

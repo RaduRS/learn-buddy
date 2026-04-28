@@ -22,10 +22,10 @@ export async function POST(request: NextRequest) {
   try {
     const { difficulty = 2, theme } = (await request.json()) as PuzzleRequest;
 
-    const nebiusApiKey = process.env.NEBIUS_API_KEY;
-    if (!nebiusApiKey) {
+    const replicateApiKey = process.env.REPLICATE_API_KEY;
+    if (!replicateApiKey) {
       return NextResponse.json(
-        { error: "Nebius API key not configured" },
+        { error: "Replicate API key not configured" },
         { status: 500 },
       );
     }
@@ -35,47 +35,80 @@ export async function POST(request: NextRequest) {
 
     // Child-friendly themes
     const defaultThemes = [
-      "cute animals in a sunny park",
-      "colorful balloons and kites",
-      "happy dinosaurs in a friendly forest",
-      "underwater scene with smiling fish",
-      "space adventure with friendly rockets and stars",
-      "farm scene with cheerful animals",
+      "cute animals playing in a sunny park",
+      "colorful hot air balloons floating over hills",
+      "happy dinosaurs in a friendly jungle",
+      "underwater coral reef with smiling tropical fish",
+      "space adventure with friendly rockets, planets and stars",
+      "cheerful farm scene with cows, pigs and chickens",
+      "magical castle on a hill with rainbows and clouds",
+      "cozy treehouse village with squirrels and birds",
+      "snowy mountain village with penguins and igloos",
+      "tropical beach with sandcastles, palm trees and crabs",
+      "enchanted forest with friendly fairies and mushrooms",
+      "construction site with diggers, cranes and trucks",
+      "fire trucks and police cars in a cute town",
+      "circus tent with happy clowns, elephants and balloons",
+      "spring meadow with butterflies, bees and flowers",
+      "candy land with lollipops, gumdrops and chocolate rivers",
+      "pirate ship sailing on calm seas with friendly dolphins",
+      "autumn forest with foxes, owls and pumpkins",
+      "savanna with giraffes, zebras and lions cubs",
+      "winter wonderland with reindeer, snowmen and pine trees",
     ];
 
     const chosenTheme =
       theme || defaultThemes[Math.floor(Math.random() * defaultThemes.length)];
 
-    // Enhanced prompt suitable for kids and puzzles
-    const prompt = `${chosenTheme}. Child-friendly, colorful, safe, educational, cartoon style, bright and cheerful, suitable for kids. CRITICAL: ABSOLUTELY NO TEXT, NO WORDS, NO LETTERS, NO WRITING, NO CAPTIONS, NO TYPOGRAPHY anywhere in the image.`;
+    // Composition variety so identical themes still produce different images
+    const compositionCues = [
+      "wide cinematic landscape view",
+      "close-up scene full of small details",
+      "top-down storybook view",
+      "playful diagonal composition with foreground characters",
+      "centered illustration with soft background",
+    ];
+    const composition =
+      compositionCues[Math.floor(Math.random() * compositionCues.length)];
 
-    // Call Nebius image generation API
+    // Style variety (all kid-safe cartoon variants)
+    const styleCues = [
+      "vibrant cartoon illustration",
+      "soft watercolor children's book style",
+      "flat vector illustration",
+      "cute Pixar-inspired 3D render",
+      "warm crayon-textured cartoon",
+    ];
+    const style = styleCues[Math.floor(Math.random() * styleCues.length)];
+
+    const prompt = `${chosenTheme}. ${composition}. ${style}. Child-friendly, colorful, safe, educational, bright and cheerful, suitable for kids. CRITICAL: ABSOLUTELY NO TEXT, NO WORDS, NO LETTERS, NO WRITING, NO CAPTIONS, NO TYPOGRAPHY anywhere in the image.`;
+
+    // Call Replicate flux-schnell (sync via Prefer: wait)
     const response = await fetch(
-      "https://api.studio.nebius.ai/v1/images/generations",
+      "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions",
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${nebiusApiKey}`,
+          Authorization: `Bearer ${replicateApiKey}`,
           "Content-Type": "application/json",
+          Prefer: "wait",
         },
         body: JSON.stringify({
-          model: "black-forest-labs/flux-schnell",
-          prompt,
-          width: 768,
-          height: 768,
-          num_inference_steps: 4,
-          negative_prompt:
-            "text, words, letters, writing, captions, typography, adult content, violence, scary, dark, inappropriate",
-          response_extension: "png",
-          response_format: "b64_json",
-          seed: -1,
+          input: {
+            prompt,
+            aspect_ratio: "1:1",
+            num_outputs: 1,
+            output_format: "png",
+            output_quality: 90,
+            num_inference_steps: 4,
+          },
         }),
       },
     );
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Nebius API error:", response.status, errorText);
+      console.error("Replicate API error:", response.status, errorText);
       return NextResponse.json(
         { error: "Failed to generate image" },
         { status: 500 },
@@ -83,15 +116,27 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
-    const imageBase64 = data?.data?.[0]?.b64_json;
-    if (!imageBase64) {
+    const outputUrl: string | undefined = Array.isArray(data?.output)
+      ? data.output[0]
+      : data?.output;
+    if (!outputUrl) {
+      console.error("Replicate returned no output:", data);
       return NextResponse.json(
         { error: "Invalid image response" },
         { status: 500 },
       );
     }
 
-    const imageUrl = `data:image/png;base64,${imageBase64}`;
+    // Fetch image and inline as data URL so puzzle stays self-contained
+    const imgRes = await fetch(outputUrl);
+    if (!imgRes.ok) {
+      return NextResponse.json(
+        { error: "Failed to fetch generated image" },
+        { status: 500 },
+      );
+    }
+    const imgBuf = Buffer.from(await imgRes.arrayBuffer());
+    const imageUrl = `data:image/png;base64,${imgBuf.toString("base64")}`;
 
     // Build puzzle pieces grid
     const pieces: PuzzlePiece[] = [];

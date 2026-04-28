@@ -33,9 +33,9 @@ export async function POST(request: Request) {
 
     // Check for required API keys
     const deepseekApiKey = process.env.DEEPSEEK_API_KEY
-    const nebiusApiKey = process.env.NEBIUS_API_KEY
+    const replicateApiKey = process.env.REPLICATE_API_KEY
 
-    if (!deepseekApiKey || !nebiusApiKey) {
+    if (!deepseekApiKey || !replicateApiKey) {
       return NextResponse.json(
         { error: 'API keys not configured' },
         { status: 500 }
@@ -147,36 +147,50 @@ ULTRA STRICT NO-TEXT REQUIREMENTS:
 
 Style: Clean cartoon, bright colors, simple shapes, child-friendly, minimalist`
 
-    // Call Nebius API for image generation
-    const nebiusResponse = await fetch('https://api.studio.nebius.ai/v1/images/generations', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${nebiusApiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'black-forest-labs/flux-schnell',
-        prompt: imagePrompt,
-        negative_prompt: 'text, words, letters, writing, captions, typography, symbols, numbers, characters, speech bubbles, thought bubbles, watermarks, logos, signs, labels, titles, subtitles, annotations, descriptions, explanations, instructions, messages, notes, tags, stamps, seals, badges, emblems, banners, headers, footers, margins, borders with text, any form of written content, readable content, linguistic elements, alphabetic characters, numeric digits, punctuation marks, mathematical symbols, currency symbols, arrows with text, diagrams with labels, charts with text, maps with text, calendars with text, clocks with numbers, books, newspapers, magazines, screens with text, billboards, posters with text, signs with text, license plates, name tags, price tags, barcodes, QR codes, alphabet, fonts, typeface, script, handwriting, calligraphy, graffiti, realistic style, dark colors, scary elements, complex details, cluttered background, human faces, people',
-        n: 1,
-        size: '1024x1024',
-        response_format: 'b64_json',
-        seed: Math.floor(Math.random() * 1000000), // Random seed for variety
-      }),
-    })
+    // Call Replicate flux-schnell (sync via Prefer: wait)
+    const replicateResponse = await fetch(
+      'https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${replicateApiKey}`,
+          'Prefer': 'wait',
+        },
+        body: JSON.stringify({
+          input: {
+            prompt: imagePrompt,
+            aspect_ratio: '1:1',
+            num_outputs: 1,
+            output_format: 'png',
+            output_quality: 90,
+            num_inference_steps: 4,
+          },
+        }),
+      }
+    )
 
-    if (!nebiusResponse.ok) {
-      const errorText = await nebiusResponse.text()
-      console.error('Nebius API error:', errorText)
+    if (!replicateResponse.ok) {
+      const errorText = await replicateResponse.text()
+      console.error('Replicate API error:', replicateResponse.status, errorText)
       throw new Error('Failed to generate image')
     }
 
-    const nebiusData = await nebiusResponse.json()
-    const imageBase64 = nebiusData.data?.[0]?.b64_json
+    const replicateData = await replicateResponse.json()
+    const outputUrl: string | undefined = Array.isArray(replicateData?.output)
+      ? replicateData.output[0]
+      : replicateData?.output
 
-    if (!imageBase64) {
+    if (!outputUrl) {
       throw new Error('No image data received')
     }
+
+    const imgRes = await fetch(outputUrl)
+    if (!imgRes.ok) {
+      throw new Error('Failed to fetch generated image')
+    }
+    const imgBuf = Buffer.from(await imgRes.arrayBuffer())
+    const imageBase64 = imgBuf.toString('base64')
 
     // Return the combined content
     return NextResponse.json({
