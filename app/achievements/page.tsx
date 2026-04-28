@@ -1,384 +1,313 @@
-'use client'
+"use client";
 
-import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
-import { Header } from '@/components/layout/Header'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { LoadingSkeleton } from '@/components/ui/loading-skeleton'
-import { Trophy, Star, Award, Calendar } from 'lucide-react'
-import type { User, Game, GameProgress, Achievement } from '@/types'
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Calendar, Coins, Sparkles, Trophy as TrophyIcon } from "lucide-react";
+import { Header } from "@/components/layout/Header";
+import { LoadingScreen } from "@/components/game/LoadingScreen";
+import { Buddy } from "@/components/mascot/Buddy";
+import { Trophy, type TrophyTier } from "@/components/achievements/Trophy";
+import { CATEGORIES, toCategoryKey } from "@/lib/games/categories";
+import { useSfx } from "@/components/sound/SoundProvider";
+import type { Achievement, Game, GameProgress, User } from "@/types";
 
 interface GameAchievement {
-  game: Game
-  totalScore: number
-  timesPlayed: number
-  lastPlayed: Date
-  achievements: {
-    bronze: { unlocked: boolean; unlockedAt?: Date }
-    silver: { unlocked: boolean; unlockedAt?: Date }
-    gold: { unlocked: boolean; unlockedAt?: Date }
-  }
+  game: Game;
+  totalScore: number;
+  timesPlayed: number;
+  lastPlayed: Date;
+  tiers: Record<TrophyTier, { unlocked: boolean; unlockedAt?: Date }>;
 }
 
-function TrophyCup({ level, unlocked, progress }: { level: 'bronze' | 'silver' | 'gold', unlocked: boolean, progress: number }) {
-  const colors = {
-    bronze: unlocked ? 'from-amber-400 to-amber-600' : 'from-gray-300 to-gray-400',
-    silver: unlocked ? 'from-gray-300 to-gray-500' : 'from-gray-200 to-gray-300',
-    gold: unlocked ? 'from-yellow-400 to-yellow-600' : 'from-gray-200 to-gray-300'
-  }
-
-  const fillHeight = Math.min(progress, 100)
-
-  return (
-    <div className="relative w-16 h-20 mx-auto">
-      {/* Trophy Cup Base */}
-      <div className="absolute bottom-0 w-full h-16 rounded-t-full border-4 border-gray-400 bg-gray-100 overflow-hidden">
-        {/* Fill Animation */}
-        <div 
-          className={`absolute bottom-0 w-full bg-gradient-to-t ${colors[level]} transition-all duration-1000 ease-out`}
-          style={{ height: `${fillHeight}%` }}
-        />
-      </div>
-      
-      {/* Trophy Handles */}
-      <div className="absolute top-4 -left-2 w-4 h-8 border-4 border-gray-400 rounded-l-full bg-transparent" />
-      <div className="absolute top-4 -right-2 w-4 h-8 border-4 border-gray-400 rounded-r-full bg-transparent" />
-      
-      {/* Trophy Base */}
-      <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-12 h-4 bg-gray-400 rounded" />
-      
-      {/* Achievement Badge */}
-      {unlocked && (
-        <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-          <Star className="w-3 h-3 text-white fill-current" />
-        </div>
-      )}
-    </div>
-  )
-}
+const THRESHOLDS: Record<TrophyTier, number> = {
+  bronze: 10,
+  silver: 50,
+  gold: 100,
+};
 
 export default function AchievementsPage() {
-  const router = useRouter()
-  const [currentUser, setCurrentUser] = useState<User | null>(null)
-  const [gameAchievements, setGameAchievements] = useState<GameAchievement[]>([])
-  const [loading, setLoading] = useState(true)
+  const router = useRouter();
+  const { play } = useSfx();
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [items, setItems] = useState<GameAchievement[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const loadUserAndAchievements = useCallback(async () => {
+  const load = useCallback(async () => {
     try {
-      // Get current user
-      const savedUserId = localStorage.getItem('selectedUserId')
+      const savedUserId = localStorage.getItem("selectedUserId");
       if (!savedUserId) {
-        router.push('/')
-        return
+        router.push("/");
+        return;
       }
 
-      // Load user data
-      const usersResponse = await fetch('/api/users')
-      const users = await usersResponse.json()
-      const user = users.find((u: User) => u.id === savedUserId)
-      
+      const usersResponse = await fetch("/api/users");
+      const users = (await usersResponse.json()) as User[];
+      const user = users.find((u) => u.id === savedUserId);
       if (!user) {
-        router.push('/')
-        return
+        router.push("/");
+        return;
       }
-      setCurrentUser(user)
+      setCurrentUser(user);
 
-      // Load games and user-specific progress/achievements (filtered server-side)
       const [gamesResponse, progressResponse, achievementsResponse] = await Promise.all([
-        fetch('/api/games'),
+        fetch("/api/games"),
         fetch(`/api/game-progress?userId=${savedUserId}`),
-        fetch(`/api/achievements?userId=${savedUserId}`)
-      ])
+        fetch(`/api/achievements?userId=${savedUserId}`),
+      ]);
 
-      // Check if responses are ok
-      if (!gamesResponse.ok || !progressResponse.ok || !achievementsResponse.ok) {
-        throw new Error('Failed to fetch data from APIs')
+      if (
+        !gamesResponse.ok ||
+        !progressResponse.ok ||
+        !achievementsResponse.ok
+      ) {
+        throw new Error("Failed to fetch data");
       }
 
-      const games = await gamesResponse.json()
-      const userProgress = await progressResponse.json()
-      const userAchievements = await achievementsResponse.json()
+      const games = (await gamesResponse.json()) as Game[];
+      const progress = (await progressResponse.json()) as GameProgress[];
+      const achievements = (await achievementsResponse.json()) as Achievement[];
 
-      // Ensure data is arrays
-      const gamesArray = Array.isArray(games) ? games : []
-      const progressArray = Array.isArray(userProgress) ? userProgress : []
-      const achievementsArray = Array.isArray(userAchievements) ? userAchievements : []
+      const gamesArr = Array.isArray(games) ? games : [];
+      const progArr = Array.isArray(progress) ? progress : [];
+      const achArr = Array.isArray(achievements) ? achievements : [];
 
-      // Create game achievements data (progress/achievements already filtered server-side by userId)
-      const gameAchievementsData: GameAchievement[] = gamesArray
-        .filter((game: Game) => game.isActive)
-        .map((game: Game) => {
-          const progress = progressArray.find((p: GameProgress) => p.gameId === game.id)
-          const gameSpecificAchievements = achievementsArray.filter((a: Achievement) => a.gameId === game.id)
-          
-          const totalScore = progress?.totalScore || 0
+      const data: GameAchievement[] = gamesArr
+        .filter((g) => g.isActive)
+        .map((game) => {
+          const p = progArr.find((x) => x.gameId === game.id);
+          const gameAchs = achArr.filter((a) => a.gameId === game.id);
+          const totalScore = p?.totalScore ?? 0;
 
-          // Score-based achievement thresholds (replaces fragile string matching)
-          const ACHIEVEMENT_THRESHOLDS = { bronze: 10, silver: 50, gold: 100 } as const
-          
-          // Look for any existing achievement to preserve the unlockedAt date
-          const findUnlockDate = (level: 'bronze' | 'silver' | 'gold') => {
-            const threshold = ACHIEVEMENT_THRESHOLDS[level]
-            // Check if an achievement record exists for this level (by score threshold in description)
-            const match = gameSpecificAchievements.find((a: Achievement) => {
-              const descNum = parseInt(a.description)
-              return descNum === threshold || a.description.includes(`${threshold}`)
-            })
-            return match?.unlockedAt ? new Date(match.unlockedAt) : undefined
-          }
+          const findUnlockDate = (tier: TrophyTier) => {
+            const threshold = THRESHOLDS[tier];
+            const match = gameAchs.find((a) => {
+              const descNum = parseInt(a.description, 10);
+              return descNum === threshold || a.description.includes(`${threshold}`);
+            });
+            return match?.unlockedAt ? new Date(match.unlockedAt) : undefined;
+          };
 
           return {
             game,
             totalScore,
-            timesPlayed: progress?.timesPlayed || 0,
-            lastPlayed: progress?.lastPlayedAt ? new Date(progress.lastPlayedAt) : new Date(),
-            achievements: {
-              bronze: { 
-                unlocked: totalScore >= ACHIEVEMENT_THRESHOLDS.bronze, 
-                unlockedAt: findUnlockDate('bronze')
-              },
-              silver: { 
-                unlocked: totalScore >= ACHIEVEMENT_THRESHOLDS.silver, 
-                unlockedAt: findUnlockDate('silver')
-              },
-              gold: { 
-                unlocked: totalScore >= ACHIEVEMENT_THRESHOLDS.gold, 
-                unlockedAt: findUnlockDate('gold')
-              }
-            }
-          }
+            timesPlayed: p?.timesPlayed ?? 0,
+            lastPlayed: p?.lastPlayedAt ? new Date(p.lastPlayedAt) : new Date(),
+            tiers: {
+              bronze: { unlocked: totalScore >= THRESHOLDS.bronze, unlockedAt: findUnlockDate("bronze") },
+              silver: { unlocked: totalScore >= THRESHOLDS.silver, unlockedAt: findUnlockDate("silver") },
+              gold:   { unlocked: totalScore >= THRESHOLDS.gold,   unlockedAt: findUnlockDate("gold") },
+            },
+          };
         })
-        .filter((ga: GameAchievement) => ga.totalScore > 0) // Only show games with progress
+        .filter((ga) => ga.totalScore > 0);
 
-      setGameAchievements(gameAchievementsData)
+      setItems(data);
     } catch (error) {
-      console.error('Failed to load achievements:', error)
+      console.error("Failed to load achievements:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [router])
+  }, [router]);
 
   useEffect(() => {
-    loadUserAndAchievements()
-  }, [loadUserAndAchievements])
+    void load();
+  }, [load]);
 
   const handleNavigate = (page: string) => {
-    switch (page) {
-      case 'home':
-        router.push('/')
-        break
-      case 'profile':
-        // Could open user dialog or navigate to profile page
-        router.push('/')
-        break
-      case 'achievements':
-        // Already on achievements page
-        break
-      case 'settings':
-        // Navigate to settings when implemented
-        router.push('/')
-        break
-      default:
-        router.push('/')
-        break
-    }
-  }
+    play("tap");
+    if (page === "home") router.push("/");
+    else if (page === "profile") router.push("/");
+    else if (page === "settings") router.push("/");
+    // achievements: stay on this page
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-        <Header currentUser={currentUser} onNavigate={handleNavigate} />
-        <div className="flex items-center justify-center" style={{ minHeight: '60vh' }}>
-          <LoadingSkeleton message="Loading your achievements..." subMessage="Gathering your accomplishments" />
-        </div>
-      </div>
-    )
+      <LoadingScreen
+        tone="loading"
+        message="Polishing your trophies…"
+        subMessage="Buddy is counting your stars."
+        fullscreen
+      />
+    );
   }
 
-  const totalAchievements = gameAchievements.reduce((total, ga: GameAchievement) => {
-    return total + Object.values(ga.achievements).filter(a => a.unlocked).length
-  }, 0)
-
-  const totalScore = gameAchievements.reduce((total, ga: GameAchievement) => total + ga.totalScore, 0)
+  const totalUnlocked = items.reduce(
+    (sum, ga) => sum + Object.values(ga.tiers).filter((t) => t.unlocked).length,
+    0,
+  );
+  const totalScore = items.reduce((sum, ga) => sum + ga.totalScore, 0);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+    <div className="bg-arcade min-h-screen">
       <Header currentUser={currentUser} onNavigate={handleNavigate} />
-      
-      <div className="max-w-6xl mx-auto p-4">
-        {/* Page Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <Trophy className="w-8 h-8 text-yellow-500" />
-            <h1 className="text-4xl font-bold text-gray-800">Achievements</h1>
-            <Award className="w-8 h-8 text-purple-500" />
+
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-4 pb-12">
+        {/* Hero */}
+        <section className="surface-card cat-gold relative overflow-hidden p-5 sm:p-8 mb-6 sm:mb-8">
+          <div className="grid sm:grid-cols-[auto_1fr] gap-5 sm:gap-8 items-center">
+            <div className="hidden sm:block"><Buddy mood="celebrate" size="lg" /></div>
+            <div className="sm:hidden flex justify-center"><Buddy mood="celebrate" size="md" /></div>
+            <div className="text-center sm:text-left">
+              <p className="text-xs uppercase tracking-[0.22em] font-display" style={{ color: "var(--joy-gold)" }}>
+                Your trophy room
+              </p>
+              <h1 className="mt-1 font-display text-3xl sm:text-5xl text-arcade-strong leading-[1.05]">
+                Achievements
+              </h1>
+              <p className="mt-2 text-arcade-mid">
+                Every star you earn fills a trophy. Keep playing to unlock them all.
+              </p>
+
+              <div className="mt-4 flex flex-wrap gap-2 justify-center sm:justify-start">
+                <span className="chip chip-gold">
+                  <TrophyIcon className="w-4 h-4" aria-hidden />
+                  <span className="font-display">{totalUnlocked}</span>
+                  <span className="text-sm opacity-80">unlocked</span>
+                </span>
+                <span className="chip">
+                  <Coins className="w-4 h-4" style={{ color: "var(--joy-gold)" }} aria-hidden />
+                  <span className="font-display">{totalScore}</span>
+                  <span className="text-sm opacity-80">stars</span>
+                </span>
+                <span className="chip">
+                  <Sparkles className="w-4 h-4" style={{ color: "var(--cat-music)" }} aria-hidden />
+                  <span className="font-display">{items.length}</span>
+                  <span className="text-sm opacity-80">games</span>
+                </span>
+              </div>
+            </div>
           </div>
-          <p className="text-gray-600 text-lg">Your learning journey and accomplishments</p>
-        </div>
+        </section>
 
-        {/* Summary Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <Card>
-            <CardContent className="p-6 text-center">
-              <Trophy className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-gray-800">{totalAchievements}</div>
-              <div className="text-gray-600">Achievements Unlocked</div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-6 text-center">
-              <Star className="w-8 h-8 text-blue-500 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-gray-800">{totalScore}</div>
-              <div className="text-gray-600">Total Score</div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-6 text-center">
-              <Award className="w-8 h-8 text-purple-500 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-gray-800">{gameAchievements.length}</div>
-              <div className="text-gray-600">Games Played</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Game Achievements */}
-        {gameAchievements.length === 0 ? (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <Trophy className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-600 mb-2">No achievements yet!</h3>
-              <p className="text-gray-500 mb-6">Start playing games to unlock your first achievements.</p>
-              <button 
-                onClick={() => router.push('/')}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-medium"
-              >
-                Start Playing
-              </button>
-            </CardContent>
-          </Card>
+        {/* Empty state */}
+        {items.length === 0 ? (
+          <div className="surface-card cat-music p-8 sm:p-12 text-center max-w-xl mx-auto">
+            <div className="flex justify-center mb-4"><Buddy mood="wave" size="lg" /></div>
+            <h2 className="font-display text-2xl sm:text-3xl text-arcade-strong mb-2">
+              No trophies yet — let&apos;s change that!
+            </h2>
+            <p className="text-arcade-mid mb-6">
+              Play any game to earn your first stars. Bronze unlocks at 10, silver at 50, gold at 100.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                play("whoosh");
+                router.push("/");
+              }}
+              className="font-display text-lg px-6 py-3 rounded-full
+                         text-[var(--ink-on-color)]
+                         bg-[var(--cat-music)]
+                         hover:brightness-105 active:scale-[0.97]
+                         shadow-[0_8px_22px_-10px_var(--cat-music-glow),inset_0_1px_0_oklch(1_0_0_/_0.4)]
+                         border border-[oklch(0.45_0.10_160)]"
+            >
+              Start playing
+            </button>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {gameAchievements.map((gameAchievement) => (
-              <Card key={gameAchievement.game.id} className="overflow-hidden">
-                <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
-                  <CardTitle className="flex items-center gap-3">
-                    <span className="text-2xl">{gameAchievement.game.icon}</span>
-                    <div>
-                      <div className="text-xl">{gameAchievement.game.title}</div>
-                      <div className="text-blue-100 text-sm">Total Score: {gameAchievement.totalScore}</div>
-                    </div>
-                  </CardTitle>
-                </CardHeader>
-                
-                <CardContent className="p-6">
-                  {/* Achievement Trophies */}
-                  <div className="grid grid-cols-3 gap-4 mb-6">
-                    {/* Bronze Trophy */}
-                    <div className="text-center">
-                      <TrophyCup 
-                        level="bronze" 
-                        unlocked={gameAchievement.achievements.bronze.unlocked}
-                        progress={Math.min((gameAchievement.totalScore / 10) * 100, 100)}
-                      />
-                      <div className="mt-2">
-                        <Badge variant={gameAchievement.achievements.bronze.unlocked ? "default" : "secondary"}>
-                          Bronze
-                        </Badge>
-                        <div className="text-xs text-gray-500 mt-1">10 points</div>
-                        {gameAchievement.achievements.bronze.unlocked && gameAchievement.achievements.bronze.unlockedAt && (
-                          <div className="text-xs text-green-600 mt-1 flex items-center justify-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            {gameAchievement.achievements.bronze.unlockedAt.toLocaleDateString()}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Silver Trophy */}
-                    <div className="text-center">
-                      <TrophyCup 
-                        level="silver" 
-                        unlocked={gameAchievement.achievements.silver.unlocked}
-                        progress={Math.min((gameAchievement.totalScore / 50) * 100, 100)}
-                      />
-                      <div className="mt-2">
-                        <Badge variant={gameAchievement.achievements.silver.unlocked ? "default" : "secondary"}>
-                          Silver
-                        </Badge>
-                        <div className="text-xs text-gray-500 mt-1">50 points</div>
-                        {gameAchievement.achievements.silver.unlocked && gameAchievement.achievements.silver.unlockedAt && (
-                          <div className="text-xs text-green-600 mt-1 flex items-center justify-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            {gameAchievement.achievements.silver.unlockedAt.toLocaleDateString()}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Gold Trophy */}
-                    <div className="text-center">
-                      <TrophyCup 
-                        level="gold" 
-                        unlocked={gameAchievement.achievements.gold.unlocked}
-                        progress={Math.min((gameAchievement.totalScore / 100) * 100, 100)}
-                      />
-                      <div className="mt-2">
-                        <Badge variant={gameAchievement.achievements.gold.unlocked ? "default" : "secondary"}>
-                          Gold
-                        </Badge>
-                        <div className="text-xs text-gray-500 mt-1">100 points</div>
-                        {gameAchievement.achievements.gold.unlocked && gameAchievement.achievements.gold.unlockedAt && (
-                          <div className="text-xs text-green-600 mt-1 flex items-center justify-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            {gameAchievement.achievements.gold.unlockedAt.toLocaleDateString()}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Progress Info */}
-                  <div className="space-y-2 text-sm text-gray-600">
-                    <div className="flex justify-between">
-                      <span>Times Played:</span>
-                      <span className="font-medium">{gameAchievement.timesPlayed}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Last Played:</span>
-                      <span className="font-medium">{gameAchievement.lastPlayed.toLocaleDateString()}</span>
-                    </div>
-                  </div>
-
-                  {/* Next Achievement Progress */}
-                  {!gameAchievement.achievements.gold.unlocked && (
-                    <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                      <div className="text-sm font-medium text-gray-700 mb-2">
-                        Next Achievement: {
-                          !gameAchievement.achievements.bronze.unlocked ? 'Bronze (10 points)' :
-                          !gameAchievement.achievements.silver.unlocked ? 'Silver (50 points)' :
-                          'Gold (100 points)'
-                        }
-                      </div>
-                      <div className="text-xs text-gray-600">
-                        {
-                          !gameAchievement.achievements.bronze.unlocked 
-                            ? `${10 - gameAchievement.totalScore} points to go!`
-                            : !gameAchievement.achievements.silver.unlocked 
-                            ? `${50 - gameAchievement.totalScore} points to go!`
-                            : `${100 - gameAchievement.totalScore} points to go!`
-                        }
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {items.map((ga) => (
+              <GameAchievementCard key={ga.game.id} ga={ga} />
             ))}
           </div>
         )}
-      </div>
+      </main>
     </div>
-  )
+  );
+}
+
+function GameAchievementCard({ ga }: { ga: GameAchievement }) {
+  const cat = CATEGORIES[toCategoryKey(ga.game.category)];
+
+  const nextTier =
+    !ga.tiers.bronze.unlocked ? "bronze"
+    : !ga.tiers.silver.unlocked ? "silver"
+    : !ga.tiers.gold.unlocked ? "gold"
+    : null;
+  const nextThreshold = nextTier ? THRESHOLDS[nextTier] : null;
+  const remaining = nextThreshold !== null ? Math.max(0, nextThreshold - ga.totalScore) : 0;
+
+  // Progress for the next-tier ring (locked tiers can show a visible fill).
+  const tierProgress = (tier: TrophyTier) =>
+    Math.min(100, Math.round((ga.totalScore / THRESHOLDS[tier]) * 100));
+
+  return (
+    <article className={`surface-card cat-${cat.key} overflow-hidden`}>
+      {/* Header strip */}
+      <div
+        className="relative px-5 sm:px-6 py-4 flex items-center gap-4 border-b border-[var(--arcade-edge)]"
+        style={{
+          background: `linear-gradient(180deg, var(${cat.cssGlowVar}) 0%, transparent 100%)`,
+        }}
+      >
+        <span
+          aria-hidden
+          className="grid place-items-center text-3xl w-12 h-12 rounded-2xl
+                     bg-[oklch(0.20_0.06_285_/_0.6)]
+                     border border-[var(--arcade-edge)]"
+        >
+          {ga.game.icon}
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="text-[0.7rem] uppercase tracking-[0.18em] font-display"
+             style={{ color: `var(${cat.cssVar})` }}>
+            {cat.label}
+          </p>
+          <h2 className="font-display text-xl sm:text-2xl text-arcade-strong truncate">
+            {ga.game.title}
+          </h2>
+        </div>
+        <span className="chip chip-gold shrink-0">
+          <Coins className="w-4 h-4" aria-hidden />
+          <span className="font-display">{ga.totalScore}</span>
+        </span>
+      </div>
+
+      {/* Trophies */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-4 p-5 sm:p-6">
+        {(["bronze", "silver", "gold"] as TrophyTier[]).map((tier) => (
+          <div key={tier} className="text-center">
+            <Trophy
+              tier={tier}
+              unlocked={ga.tiers[tier].unlocked}
+              progress={tierProgress(tier)}
+              size={88}
+              className="mx-auto"
+            />
+            <div className="mt-2 font-display text-arcade-strong capitalize">
+              {tier}
+            </div>
+            <div className="text-xs text-arcade-soft">
+              {THRESHOLDS[tier]} stars
+            </div>
+            {ga.tiers[tier].unlocked && ga.tiers[tier].unlockedAt && (
+              <div className="text-[0.7rem] mt-1 inline-flex items-center gap-1 text-arcade-soft">
+                <Calendar className="w-3 h-3" aria-hidden />
+                {ga.tiers[tier].unlockedAt!.toLocaleDateString()}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Footer */}
+      <div className="px-5 sm:px-6 pb-5 sm:pb-6 flex items-center justify-between gap-3 text-sm">
+        <div className="text-arcade-soft">
+          Played <span className="font-display text-arcade-mid">{ga.timesPlayed}</span>{" "}
+          · Last <span className="font-display text-arcade-mid">{ga.lastPlayed.toLocaleDateString()}</span>
+        </div>
+        {nextTier ? (
+          <div className="text-arcade-mid font-display">
+            {remaining} <span className="text-arcade-soft text-xs uppercase tracking-wide">to {nextTier}</span>
+          </div>
+        ) : (
+          <div className="font-display" style={{ color: "var(--joy-gold)" }}>
+            All trophies earned!
+          </div>
+        )}
+      </div>
+    </article>
+  );
 }

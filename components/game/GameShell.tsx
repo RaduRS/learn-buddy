@@ -26,6 +26,9 @@ interface GameShellProps {
   showScoreChip?: boolean;
   /** When false, paints children directly without arcade backdrop. */
   withBackdrop?: boolean;
+  /** When false, hides the category-tinted hero strip. Useful while a game still
+   * renders its own internal title/header. Default true. */
+  showHero?: boolean;
   className?: string;
   children: ReactNode;
 }
@@ -46,6 +49,7 @@ export function GameShell({
   progress,
   showScoreChip = true,
   withBackdrop = true,
+  showHero = true,
   className,
   children,
 }: GameShellProps) {
@@ -120,28 +124,30 @@ export function GameShell({
         </div>
       </header>
 
-      <section
-        aria-hidden
-        className="relative overflow-hidden"
-        style={{
-          background: `linear-gradient(180deg, var(${meta.cssGlowVar}) 0%, transparent 100%)`,
-        }}
-      >
-        <div className="max-w-6xl mx-auto px-4 sm:px-8 py-4 sm:py-6 flex items-end gap-4">
-          <Buddy mood="wave" size="md" />
-          <div className="flex-1">
-            <p
-              className="text-xs uppercase tracking-[0.18em] font-display"
-              style={{ color: `var(${meta.cssVar})` }}
-            >
-              {meta.label}
-            </p>
-            <h2 className="font-display text-2xl sm:text-3xl text-arcade-strong leading-tight">
-              {title}
-            </h2>
+      {showHero && (
+        <section
+          aria-hidden
+          className="relative overflow-hidden"
+          style={{
+            background: `linear-gradient(180deg, var(${meta.cssGlowVar}) 0%, transparent 100%)`,
+          }}
+        >
+          <div className="max-w-6xl mx-auto px-4 sm:px-8 py-4 sm:py-6 flex items-end gap-4">
+            <Buddy mood="wave" size="md" />
+            <div className="flex-1">
+              <p
+                className="text-xs uppercase tracking-[0.18em] font-display"
+                style={{ color: `var(${meta.cssVar})` }}
+              >
+                {meta.label}
+              </p>
+              <h2 className="font-display text-2xl sm:text-3xl text-arcade-strong leading-tight">
+                {title}
+              </h2>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       <main className="max-w-6xl mx-auto px-3 sm:px-6 pb-12 pt-4">
         {children}

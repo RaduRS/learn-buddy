@@ -1,101 +1,104 @@
-'use client'
+"use client";
 
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Check, Trophy, Star, User as UserIcon, Smile, Heart, Zap, Crown, Sparkles, Sun, Moon, Coffee } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import type { UserCardProps } from '@/types'
+import {
+  Check,
+  Coffee,
+  Crown,
+  Heart,
+  Moon,
+  Sparkles,
+  Star,
+  Sun,
+  User as UserIcon,
+  Smile,
+  Trophy,
+  Zap,
+} from "lucide-react";
+import type { ComponentType, CSSProperties } from "react";
+import { cn } from "@/lib/utils";
+import type { UserCardProps } from "@/types";
 
-const AVATAR_ICON_MAP = {
-  smile: { icon: Smile, color: 'text-yellow-500' },
-  heart: { icon: Heart, color: 'text-red-500' },
-  star: { icon: Star, color: 'text-blue-500' },
-  zap: { icon: Zap, color: 'text-purple-500' },
-  crown: { icon: Crown, color: 'text-amber-500' },
-  sparkles: { icon: Sparkles, color: 'text-pink-500' },
-  sun: { icon: Sun, color: 'text-orange-500' },
-  moon: { icon: Moon, color: 'text-indigo-500' },
-  coffee: { icon: Coffee, color: 'text-brown-500' },
-  user: { icon: UserIcon, color: 'text-gray-500' },
-}
+const AVATAR_ICONS: Record<
+  string,
+  { Icon: ComponentType<{ className?: string; style?: CSSProperties }>; tint: string }
+> = {
+  smile:    { Icon: Smile,    tint: "var(--joy-gold)" },
+  heart:    { Icon: Heart,    tint: "var(--cat-spatial)" },
+  star:     { Icon: Star,     tint: "var(--cat-math)" },
+  zap:      { Icon: Zap,      tint: "var(--cat-default)" },
+  crown:    { Icon: Crown,    tint: "var(--joy-gold)" },
+  sparkles: { Icon: Sparkles, tint: "var(--cat-memory)" },
+  sun:      { Icon: Sun,      tint: "var(--cat-reading)" },
+  moon:     { Icon: Moon,     tint: "var(--cat-default)" },
+  coffee:   { Icon: Coffee,   tint: "var(--cat-spatial)" },
+  user:     { Icon: UserIcon, tint: "var(--ink-soft)" },
+};
 
 export function UserCard({ user, onSelect, isSelected = false, className }: UserCardProps) {
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(word => word[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2)
-  }
+  const avatar =
+    (user.avatar ? AVATAR_ICONS[user.avatar] : undefined) ?? AVATAR_ICONS.user;
+  const Icon = avatar.Icon;
 
-  const totalGamesPlayed = user.gameProgress?.length || 0
-  const totalAchievements = user.achievements?.length || 0
-  const totalScore = user.gameProgress?.reduce((sum, progress) => sum + progress.bestScore, 0) || 0
+  const totalStars =
+    user.gameProgress?.reduce((sum, p) => sum + (p.totalScore ?? 0), 0) ?? 0;
+  const totalGames = user.gameProgress?.length ?? 0;
 
   return (
-    <Card 
-      className={cn(
-        'group cursor-pointer transition-all duration-300 hover:shadow-lg',
-        'hover:scale-105 active:scale-95 relative',
-        isSelected && 'ring-2 ring-blue-500 shadow-lg',
-        className
-      )}
+    <button
+      type="button"
       onClick={() => onSelect(user.id)}
+      aria-pressed={isSelected}
+      aria-label={`Select profile ${user.name}`}
+      className={cn(
+        "relative surface-card cat-default text-left p-5 sm:p-6",
+        "min-h-[10rem] flex flex-col gap-3",
+        "active:scale-[0.985] transition-transform",
+        className,
+      )}
+      style={
+        isSelected
+          ? ({
+              outline: "2px solid var(--joy-gold)",
+              outlineOffset: "-2px",
+            } as CSSProperties)
+          : undefined
+      }
     >
       {isSelected && (
-        <div className="absolute -top-2 -right-2 bg-blue-500 text-white rounded-full p-1 z-10">
+        <span className="absolute -top-2 -right-2 grid place-items-center w-7 h-7 rounded-full bg-[var(--joy-gold)] text-[var(--ink-on-color)] shadow-[0_4px_10px_-4px_var(--joy-gold-glow)]">
           <Check className="w-4 h-4" />
-        </div>
+        </span>
       )}
 
-      <CardContent className="p-6 text-center">
-        <div className="mb-4">
-          <Avatar className="w-16 h-16 mx-auto mb-3 ring-2 ring-gray-200 group-hover:ring-blue-300 transition-colors">
-            <AvatarFallback className="text-lg font-bold bg-gradient-to-br from-blue-400 to-purple-500 text-white">
-              {user.avatar && AVATAR_ICON_MAP[user.avatar as keyof typeof AVATAR_ICON_MAP] ? (
-                (() => {
-                  const avatarConfig = AVATAR_ICON_MAP[user.avatar as keyof typeof AVATAR_ICON_MAP]
-                  const IconComponent = avatarConfig.icon
-                  return <IconComponent className={`h-8 w-8 ${avatarConfig.color}`} />
-                })()
-              ) : (
-                getInitials(user.name)
-              )}
-            </AvatarFallback>
-          </Avatar>
-          
-          <h3 className="font-bold text-lg text-gray-800 group-hover:text-blue-600 transition-colors">
-            {user.name}
-          </h3>
-          
-          {user.age && (
-            <Badge variant="outline" className="mt-1 text-xs">
-              Age {user.age}
-            </Badge>
-          )}
-        </div>
+      <div className="flex items-start gap-4">
+        <span
+          aria-hidden
+          className="grid place-items-center w-14 h-14 rounded-2xl shrink-0 bg-[oklch(0.20_0.06_285_/_0.6)] border border-[var(--arcade-edge)] shadow-[inset_0_1px_0_oklch(1_0_0_/_0.12)]"
+        >
+          <Icon className="w-7 h-7" style={{ color: avatar.tint }} />
+        </span>
 
-        <div className="space-y-2">
-          <div className="flex items-center justify-center gap-4 text-sm text-gray-600">
-            <div className="flex items-center gap-1">
-              <Star className="w-4 h-4 text-yellow-500" />
-              <span>{totalGamesPlayed} games</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Trophy className="w-4 h-4 text-orange-500" />
-              <span>{totalAchievements} badges</span>
-            </div>
+        <div className="flex-1 min-w-0">
+          <div className="font-display text-xl text-arcade-strong truncate">
+            {user.name}
           </div>
-          
-          {totalScore > 0 && (
-            <div className="text-xs text-gray-500">
-              Total Score: {totalScore.toLocaleString()}
-            </div>
+          {user.age && (
+            <div className="mt-1 text-xs text-arcade-soft">Age {user.age}</div>
           )}
         </div>
-      </CardContent>
-    </Card>
-  )
+      </div>
+
+      <div className="mt-auto flex items-center gap-2 flex-wrap">
+        <span className="chip">
+          <Star className="w-4 h-4" style={{ color: "var(--joy-gold)" }} aria-hidden />
+          <span className="font-display">{totalStars}</span>
+        </span>
+        <span className="chip">
+          <Trophy className="w-4 h-4" style={{ color: "var(--cat-math)" }} aria-hidden />
+          <span className="font-display">{totalGames}</span>
+          <span className="text-sm opacity-70">games</span>
+        </span>
+      </div>
+    </button>
+  );
 }

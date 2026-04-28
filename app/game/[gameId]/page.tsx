@@ -2,13 +2,12 @@
 
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Header } from "@/components/layout/Header";
-import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
-import { LoadingScreen } from "@/components/game/LoadingScreen";
 import { ArrowLeft } from "lucide-react";
+import { GameShell } from "@/components/game/GameShell";
+import { LoadingScreen } from "@/components/game/LoadingScreen";
 import { resolveGameEntry } from "@/lib/games/registry";
+import { Buddy } from "@/components/mascot/Buddy";
+import { CATEGORIES, toCategoryKey } from "@/lib/games/categories";
 import type { Game, User } from "@/types";
 
 export default function GamePage() {
@@ -75,8 +74,8 @@ export default function GamePage() {
   }, [router]);
 
   useEffect(() => {
-    loadGameData();
-    loadCurrentUser();
+    void loadGameData();
+    void loadCurrentUser();
   }, [gameId, loadGameData, loadCurrentUser]);
 
   const handleGameComplete = useCallback(
@@ -103,95 +102,90 @@ export default function GamePage() {
     [currentUser, game],
   );
 
-  const handleNavigate = useCallback(
-    (page: string) => {
-      switch (page) {
-        case "home":
-          router.push("/");
-          break;
-        case "achievements":
-          router.push("/achievements");
-          break;
-        case "profile":
-        case "settings":
-        default:
-          router.push("/");
-      }
-    },
-    [router],
-  );
-
   const handleExit = useCallback(() => router.push("/"), [router]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
-        <LoadingSkeleton message="Loading game..." subMessage="Getting everything ready" />
-      </div>
+      <LoadingScreen
+        tone="loading"
+        message="Loading game…"
+        subMessage="Buddy is rolling out the dice."
+        fullscreen
+      />
     );
   }
 
   if (!game) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
-        <Card className="w-full max-w-md mx-auto">
-          <CardContent className="text-center p-6">
-            <h1 className="text-xl font-semibold mb-4">Game not found</h1>
-            <Button onClick={() => router.push("/")}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Home
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <NotFoundShell title="Game not found" onHome={handleExit} />;
   }
 
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-xl font-semibold text-gray-600">
-            Redirecting to homepage...
-          </div>
-        </div>
-      </div>
+      <LoadingScreen
+        tone="thinking"
+        message="Heading home…"
+        subMessage="Looking for your profile."
+        fullscreen
+      />
     );
   }
 
   const entry = resolveGameEntry(game);
   if (!entry) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
-        <Card className="w-full max-w-md mx-auto">
-          <CardContent className="text-center p-6">
-            <h1 className="text-xl font-semibold mb-4">Game not available</h1>
-            <Button onClick={() => router.push("/")}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Home
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <NotFoundShell title="Game not available" onHome={handleExit} />;
   }
 
+  const category = entry.category ?? toCategoryKey(game.category);
+  const meta = CATEGORIES[category];
   const { Component } = entry;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      <Header currentUser={currentUser} onNavigate={handleNavigate} />
+    <GameShell
+      title={game.title}
+      kicker={meta.label}
+      category={category}
+      backHref="/"
+      // The wrapped game still owns its own internal header (score/progress).
+      // Hide the shell's hero strip until each game adopts GameShell in Phase 3.
+      showHero={false}
+    >
+      <Suspense fallback={<LoadingScreen tone="loading" />}>
+        <Component
+          userId={currentUser.id}
+          gameId={game.id}
+          userAge={currentUser.age ?? 6}
+          onGameComplete={handleGameComplete}
+          onExit={handleExit}
+        />
+      </Suspense>
+    </GameShell>
+  );
+}
 
-      <div className="max-w-4xl mx-auto p-4">
-        <Suspense fallback={<LoadingScreen tone="loading" />}>
-          <Component
-            userId={currentUser.id}
-            gameId={game.id}
-            userAge={currentUser.age ?? 6}
-            onGameComplete={handleGameComplete}
-            onExit={handleExit}
-          />
-        </Suspense>
+function NotFoundShell({ title, onHome }: { title: string; onHome: () => void }) {
+  return (
+    <div className="bg-arcade min-h-screen flex items-center justify-center p-4">
+      <div className="surface-card cat-spatial p-8 max-w-md w-full text-center">
+        <div className="flex justify-center mb-4">
+          <Buddy mood="sad" size="lg" />
+        </div>
+        <h1 className="font-display text-2xl text-arcade-strong">{title}</h1>
+        <p className="mt-2 text-arcade-mid">
+          Buddy looked everywhere but couldn&apos;t find that game.
+        </p>
+        <button
+          type="button"
+          onClick={onHome}
+          className="mt-6 inline-flex items-center gap-2 font-display px-6 py-3 rounded-full
+                     text-[var(--ink-on-color)]
+                     bg-[var(--cat-music)]
+                     border border-[oklch(0.45_0.10_160)]
+                     shadow-[0_8px_22px_-10px_var(--cat-music-glow),inset_0_1px_0_oklch(1_0_0_/_0.4)]
+                     active:scale-[0.97]"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back home
+        </button>
       </div>
     </div>
   );

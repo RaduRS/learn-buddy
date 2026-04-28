@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
@@ -14,13 +13,14 @@ import {
   Home,
   User as UserIcon,
   Trophy,
-  Settings,
   Coins,
-  Crown,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Logo } from "@/components/ui/logo";
+import { Buddy } from "@/components/mascot/Buddy";
 import { useScore } from "@/hooks/useScore";
+import { useSfx } from "@/components/sound/SoundProvider";
 import type { User } from "@/types";
 
 interface HeaderProps {
@@ -29,128 +29,189 @@ interface HeaderProps {
   className?: string;
 }
 
+const MENU_ITEMS = [
+  { id: "home", label: "Home", icon: Home },
+  { id: "profile", label: "My Profile", icon: UserIcon },
+  { id: "achievements", label: "Achievements", icon: Trophy },
+] as const;
+
+/**
+ * App-shell Header used by Home and Achievements.
+ * Game routes use <GameShell> which carries its own header.
+ *
+ * Single wordmark (no duplicated title/subtitle), sticky, arcade-tinted,
+ * with a mute toggle, gold score chip and a profile pill that opens the
+ * profile dialog. Hamburger sheet on small screens.
+ */
 export function Header({ currentUser, onNavigate, className }: HeaderProps) {
   const { totalScore, scoreLoaded } = useScore();
+  const { muted, toggleMute, play } = useSfx();
 
-  const menuItems = [
-    { id: "home", label: "Home", icon: Home },
-    { id: "profile", label: "My Profile", icon: UserIcon },
-    { id: "achievements", label: "Achievements", icon: Trophy },
-    { id: "settings", label: "Settings", icon: Settings },
-  ];
+  const handleNav = (id: string) => {
+    play("tap");
+    onNavigate(id);
+  };
 
   return (
     <header
       className={cn(
-        "bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-50",
-        "backdrop-blur-sm bg-white/95",
+        "sticky top-0 z-50 px-3 sm:px-6 pt-3 pb-3",
+        "backdrop-blur-md bg-[oklch(0.18_0.07_285_/_0.65)]",
+        "border-b border-[var(--arcade-edge)]",
         className,
       )}
     >
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
-        {/* Logo and Title */}
-        <div className="flex items-center gap-3">
-          <Logo size="md" className="text-blue-600" />
-          <div>
-            <h1 className="text-xl font-bold text-gray-800">Learn Buddy</h1>
-            <p className="text-xs text-gray-500 hidden sm:block">
-              Fun Learning Games for Kids
-            </p>
-          </div>
-        </div>
+      <div className="max-w-6xl mx-auto flex items-center gap-3">
+        {/* Wordmark */}
+        <button
+          type="button"
+          onClick={() => handleNav("home")}
+          className="flex items-center gap-2 sm:gap-3 group"
+          aria-label="Go to home"
+        >
+          <span className="hidden sm:inline-flex">
+            <Buddy mood="wave" size="sm" still />
+          </span>
+          <span className="sm:hidden">
+            <Buddy mood="idle" size="xs" still />
+          </span>
+          <span className="font-display text-xl sm:text-2xl text-arcade-strong leading-none">
+            Learn{" "}
+            <span style={{ color: "var(--cat-music)" }}>Buddy</span>
+          </span>
+        </button>
 
-        {/* Total Score Display — hidden until loaded to avoid flashing 0 */}
+        <span className="flex-1" />
+
+        {/* Score chip */}
         {currentUser && scoreLoaded && (
-          <div className="flex items-center gap-2 bg-gradient-to-r from-yellow-100 to-amber-100 px-3 py-2 rounded-full border border-yellow-200">
-            <Coins className="w-5 h-5 text-yellow-600" />
-            <span className="font-bold text-yellow-800">{totalScore}</span>
-          </div>
+          <span className="chip chip-gold" aria-label={`Total score: ${totalScore}`}>
+            <Coins className="w-4 h-4" aria-hidden />
+            <span className="font-display text-base leading-none">{totalScore}</span>
+          </span>
         )}
 
-        {/* User Info and Menu */}
-        <div className="flex items-center gap-3">
-          {currentUser && (
-            <div className="hidden sm:flex items-center gap-2">
-              <div className="text-sm">
-                <div className="font-medium text-gray-800">
-                  {currentUser.name}
-                </div>
-              </div>
-              <div className="w-7 h-7 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center">
-                <Crown className="w-4 h-4 text-amber-600" />
-              </div>
-            </div>
-          )}
+        {/* Mute */}
+        <button
+          type="button"
+          onClick={() => {
+            play("tap");
+            toggleMute();
+          }}
+          aria-pressed={muted}
+          aria-label={muted ? "Unmute sound" : "Mute sound"}
+          className="h-10 w-10 grid place-items-center rounded-full
+                     bg-[var(--arcade-card-soft)] text-arcade-strong
+                     border border-[var(--arcade-edge)]
+                     shadow-[inset_0_1px_0_oklch(1_0_0_/_0.10)]
+                     active:scale-[0.94]"
+        >
+          {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+        </button>
 
-          {/* Mobile/Tablet Menu — visible on anything below lg breakpoint */}
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="sm" className="lg:hidden">
-                <Menu className="w-4 h-4" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-80">
-              <SheetHeader>
-                <SheetTitle className="flex items-center gap-2">
-                  <Logo size="sm" className="text-blue-600" />
-                  Learn Buddy
-                </SheetTitle>
-                <SheetDescription>Fun Learning Games for Kids</SheetDescription>
-              </SheetHeader>
+        {/* Profile pill (tablet+) */}
+        {currentUser && (
+          <button
+            type="button"
+            onClick={() => handleNav("profile")}
+            className="hidden sm:flex items-center gap-2 chip"
+            aria-label={`Switch profile, current: ${currentUser.name}`}
+          >
+            <span className="grid place-items-center w-7 h-7 rounded-full bg-[oklch(0.85_0.16_88_/_0.20)] border border-[oklch(0.85_0.16_88_/_0.4)]">
+              <UserIcon className="w-4 h-4" style={{ color: "var(--joy-gold)" }} />
+            </span>
+            <span className="font-display text-sm">{currentUser.name}</span>
+          </button>
+        )}
 
-              <div className="mt-6 space-y-4">
-                {currentUser && (
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="flex-1">
-                      <div className="font-medium text-gray-800">
-                        {currentUser.name}
-                      </div>
-                    </div>
-                    <div className="w-8 h-8 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center">
-                      <Crown className="w-4 h-4 text-amber-600" />
-                    </div>
-                  </div>
-                )}
+        {/* Mobile menu */}
+        <Sheet>
+          <SheetTrigger asChild>
+            <button
+              type="button"
+              aria-label="Open menu"
+              className="lg:hidden h-10 w-10 grid place-items-center rounded-full
+                         bg-[var(--arcade-card-soft)] text-arcade-strong
+                         border border-[var(--arcade-edge)]
+                         shadow-[inset_0_1px_0_oklch(1_0_0_/_0.10)]
+                         active:scale-[0.94]"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          </SheetTrigger>
+          <SheetContent
+            side="right"
+            className="w-80 bg-arcade text-arcade-mid border-l border-[var(--arcade-edge)]"
+          >
+            <SheetHeader className="border-b border-[var(--arcade-edge)] pb-4">
+              <SheetTitle className="flex items-center gap-3 text-arcade-strong font-display">
+                <Buddy mood="wave" size="sm" still />
+                Menu
+              </SheetTitle>
+              <SheetDescription className="text-arcade-soft">
+                Where to next?
+              </SheetDescription>
+            </SheetHeader>
 
-                <nav className="space-y-2">
-                  {menuItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <Button
-                        key={item.id}
-                        variant="ghost"
-                        className="w-full justify-start"
-                        onClick={() => onNavigate(item.id)}
-                      >
-                        <Icon className="w-4 h-4 mr-3" />
-                        {item.label}
-                      </Button>
-                    );
-                  })}
-                </nav>
-              </div>
-            </SheetContent>
-          </Sheet>
-
-          {/* Desktop Menu — visible from lg breakpoint and up */}
-          <nav className="hidden lg:flex items-center gap-2">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Button
-                  key={item.id}
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onNavigate(item.id)}
-                  className="flex items-center gap-2"
+            <div className="mt-6 space-y-2 px-1">
+              {currentUser && (
+                <button
+                  type="button"
+                  onClick={() => handleNav("profile")}
+                  className="w-full flex items-center gap-3 p-3 rounded-2xl
+                             surface-card cat-default
+                             text-arcade-strong text-left"
                 >
-                  <Icon className="w-4 h-4" />
-                  {item.label}
-                </Button>
-              );
-            })}
-          </nav>
-        </div>
+                  <span className="grid place-items-center w-9 h-9 rounded-full bg-[oklch(0.85_0.16_88_/_0.20)] border border-[oklch(0.85_0.16_88_/_0.4)]">
+                    <UserIcon className="w-4 h-4" style={{ color: "var(--joy-gold)" }} />
+                  </span>
+                  <span className="flex-1 font-display">{currentUser.name}</span>
+                  <span className="text-arcade-soft text-sm">Switch</span>
+                </button>
+              )}
+
+              <nav className="space-y-2 pt-2">
+                {MENU_ITEMS.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => handleNav(item.id)}
+                      className="w-full flex items-center gap-3 p-3 rounded-2xl
+                                 bg-[var(--arcade-card-soft)] text-arcade-strong
+                                 border border-[var(--arcade-edge)]
+                                 active:scale-[0.98]"
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span className="font-display">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+          </SheetContent>
+        </Sheet>
+
+        {/* Desktop nav */}
+        <nav className="hidden lg:flex items-center gap-1.5">
+          {MENU_ITEMS.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => handleNav(item.id)}
+                className="h-10 inline-flex items-center gap-2 px-3 rounded-full
+                           text-arcade-mid hover:text-arcade-strong
+                           hover:bg-[oklch(1_0_0_/_0.06)]"
+              >
+                <Icon className="w-4 h-4" />
+                <span className="font-display text-sm">{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
       </div>
     </header>
   );
