@@ -4,6 +4,7 @@ import type { CSSProperties } from "react";
 import { Lock, Play, Star, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CATEGORIES, toCategoryKey } from "@/lib/games/categories";
+import { levelFromScore } from "@/lib/games/levels";
 import { useSfx } from "@/components/sound/SoundProvider";
 import type { GameCardProps } from "@/types";
 
@@ -115,7 +116,19 @@ export function GameCard({ game, progress, onPlay, className }: GameCardProps) {
       {/* Progress / play row */}
       <div className="mt-5 flex items-center justify-between gap-3">
         {progress ? (
-          <div className="flex items-center gap-3 text-sm">
+          <div className="flex items-center gap-2 sm:gap-3 text-sm flex-wrap">
+            <span
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-display border"
+              style={{
+                color: `var(${cat.cssVar})`,
+                borderColor: `var(${cat.cssVar})`,
+                background: "oklch(0.20 0.06 285 / 0.55)",
+              }}
+              aria-label={`Level ${levelFromScore(progress.totalScore).level}: ${levelFromScore(progress.totalScore).label}`}
+            >
+              <span>Lv {levelFromScore(progress.totalScore).level}</span>
+              <span className="opacity-80">· {levelFromScore(progress.totalScore).label}</span>
+            </span>
             <span className="inline-flex items-center gap-1.5 text-arcade-mid">
               <Star className="w-4 h-4" style={{ color: "var(--joy-gold)" }} />
               <span className="font-display">{progress.totalScore}</span>

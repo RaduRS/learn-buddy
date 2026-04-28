@@ -21,35 +21,15 @@ export function ScoreProvider({ children }: ScoreProviderProps) {
   const [totalScore, setTotalScore] = useState<number>(0);
   const [scoreLoaded, setScoreLoaded] = useState(false);
 
-  const incrementScore = async (gameId: string, points: number = 1) => {
-    const currentUserId = localStorage.getItem("selectedUserId");
-    if (!currentUserId) return;
-
-    // Optimistically update local state immediately
+  // Optimistic-only: bump the local total so the header chip feels live
+  // during play. The server-side total is updated once at game end via
+  // POST /api/game-progress in the game page's onGameComplete handler.
+  // We intentionally don't fire an extra POST per point — that path used
+  // to double-count totals because the round-end save adds the same
+  // score on top.
+  const incrementScore = (gameId: string, points: number = 1) => {
+    void gameId;
     setTotalScore((prev) => prev + points);
-
-    try {
-      // Update score in database
-      const response = await fetch("/api/game-progress/update-total", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId: currentUserId,
-          gameId: gameId,
-          pointsToAdd: points,
-        }),
-      });
-
-      if (!response.ok) {
-        // Revert on failure
-        setTotalScore((prev) => prev - points);
-      }
-    } catch (error) {
-      console.error("Failed to increment score:", error);
-      // Already optimistically updated, no revert for network errors
-    }
   };
 
   const loadUserScore = async (userId: string) => {
