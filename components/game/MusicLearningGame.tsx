@@ -144,7 +144,10 @@ export default function MusicLearningGame({
   const speakName = useCallback((noteKey: string) => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(NOTE_LABEL[noteKey] ?? noteKey);
+    // Lowercase: iOS / VoiceOver otherwise announces a single capital
+    // letter as "capital B" instead of just "bee".
+    const letter = (NOTE_LABEL[noteKey] ?? noteKey).toLowerCase();
+    const u = new SpeechSynthesisUtterance(letter);
     u.rate = 0.85;
     u.pitch = 1.15;
     window.speechSynthesis.speak(u);
