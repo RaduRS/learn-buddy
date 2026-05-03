@@ -1,4 +1,4 @@
-import type { SizeKey, TextSizeKey } from "./constants";
+import type { TextSizeKey } from "./constants";
 
 export type Tool =
   | "brush"
@@ -22,14 +22,16 @@ export type Command =
   | {
       kind: "stroke";
       tool: "brush" | "pencil" | "eraser";
-      size: SizeKey;
+      /** Absolute brush width in canvas pixels (post-tool ratio). */
+      size: number;
       color: string;
       points: Point[];
     }
   | {
       kind: "shape";
       shape: "line" | "rect" | "ellipse";
-      size: SizeKey;
+      /** Absolute line width in canvas pixels. */
+      size: number;
       color: string;
       from: Point;
       to: Point;
@@ -57,7 +59,8 @@ export type Command =
 /** Active toolbar selection. Persisted in component state (not on disk). */
 export interface ToolState {
   tool: Tool;
-  brushSize: SizeKey;
+  /** Stroke size in pixels (the slider value). */
+  strokeSize: number;
   textSize: TextSizeKey;
   color: string;
   stickerId: string;

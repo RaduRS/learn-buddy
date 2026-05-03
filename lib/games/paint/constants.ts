@@ -15,16 +15,17 @@ export const ZOOM_STEP = 0.25;
 export const AUTOSAVE_DEBOUNCE_MS = 800;
 
 /**
- * Brush / pencil / eraser line widths. Pencil is half the width of brush
- * for a sharper, technical-pen feel; eraser matches brush.
+ * Stroke size is a free-form number (px). The slider lets the user pick
+ * anywhere in this range. Pencil renders thinner and eraser thicker
+ * (see PENCIL_RATIO / ERASER_RATIO) so one slider feels right for all
+ * three tools.
  */
-export const SIZE_PIXELS = {
-  small: { brush: 6,  pencil: 3,  eraser: 18 },
-  medium:{ brush: 14, pencil: 6,  eraser: 36 },
-  large: { brush: 28, pencil: 12, eraser: 64 },
-} as const;
+export const STROKE_MIN_PX = 2;
+export const STROKE_MAX_PX = 80;
+export const STROKE_DEFAULT_PX = 14;
 
-export type SizeKey = keyof typeof SIZE_PIXELS;
+export const PENCIL_RATIO = 0.5;
+export const ERASER_RATIO = 2.5;
 
 /** Twelve kid-friendly preset swatches. */
 export const PRESET_COLORS: readonly string[] = [
@@ -42,10 +43,14 @@ export const PRESET_COLORS: readonly string[] = [
   "#fbcaa3", // skin / peach
 ];
 
+/**
+ * Sizes are absolute canvas pixels (canvas is 1200×800), so "large" is
+ * roughly a fifth of canvas height — a real headline.
+ */
 export const TEXT_SIZES = {
-  small: 32,
-  medium: 56,
-  large: 96,
+  small: 56,
+  medium: 110,
+  large: 180,
 } as const;
 
 export type TextSizeKey = keyof typeof TEXT_SIZES;

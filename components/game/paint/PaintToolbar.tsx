@@ -16,17 +16,17 @@ import {
   Undo2,
   type LucideIcon,
 } from "lucide-react";
-import type { SizeKey } from "@/lib/games/paint/constants";
 import type { Tool } from "@/lib/games/paint/types";
+import { PaintSizeControl } from "./PaintSizeControl";
 import { cn } from "@/lib/utils";
 
 interface PaintToolbarProps {
   tool: Tool;
-  brushSize: SizeKey;
+  strokeSize: number;
   canUndo: boolean;
   canRedo: boolean;
   onToolChange: (tool: Tool) => void;
-  onSizeChange: (size: SizeKey) => void;
+  onStrokeSizeChange: (size: number) => void;
   onUndo: () => void;
   onRedo: () => void;
   onNew: () => void;
@@ -45,12 +45,6 @@ const TOOLS: { id: Tool; label: string; Icon: LucideIcon }[] = [
   { id: "sticker", label: "Sticker", Icon: StickerIcon },
 ];
 
-const SIZES: { id: SizeKey; label: string; dot: number }[] = [
-  { id: "small",  label: "Small",  dot: 6 },
-  { id: "medium", label: "Medium", dot: 14 },
-  { id: "large",  label: "Large",  dot: 24 },
-];
-
 const SIZE_AWARE: ReadonlySet<Tool> = new Set([
   "brush",
   "pencil",
@@ -62,11 +56,11 @@ const SIZE_AWARE: ReadonlySet<Tool> = new Set([
 
 export function PaintToolbar({
   tool,
-  brushSize,
+  strokeSize,
   canUndo,
   canRedo,
   onToolChange,
-  onSizeChange,
+  onStrokeSizeChange,
   onUndo,
   onRedo,
   onNew,
@@ -77,6 +71,7 @@ export function PaintToolbar({
   return (
     <div
       className="surface-card cat-creative p-3 flex flex-wrap items-center gap-3"
+      style={{ overflow: "visible" }}
       role="toolbar"
       aria-label="Paint tools"
     >
@@ -94,42 +89,11 @@ export function PaintToolbar({
 
       <Divider />
 
-      <div
-        className={cn(
-          "flex items-center gap-1.5 transition-opacity",
-          showSizes ? "opacity-100" : "opacity-30 pointer-events-none",
-        )}
-        aria-label="Brush size"
-      >
-        {SIZES.map(({ id, label, dot }) => {
-          const active = brushSize === id;
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => onSizeChange(id)}
-              aria-label={`${label} size`}
-              aria-pressed={active}
-              className={cn(
-                "w-12 h-12 rounded-2xl grid place-items-center border-2 transition-transform active:scale-90",
-                active
-                  ? "bg-[var(--cat-creative)] border-[var(--cat-creative)] text-[var(--ink-on-color)]"
-                  : "bg-[var(--arcade-card-soft)] border-[var(--arcade-edge)] text-arcade-strong",
-              )}
-            >
-              <span
-                aria-hidden
-                className="rounded-full"
-                style={{
-                  width: dot,
-                  height: dot,
-                  background: active ? "var(--ink-on-color)" : "var(--ink-strong)",
-                }}
-              />
-            </button>
-          );
-        })}
-      </div>
+      <PaintSizeControl
+        size={strokeSize}
+        onSizeChange={onStrokeSizeChange}
+        disabled={!showSizes}
+      />
 
       <Divider />
 

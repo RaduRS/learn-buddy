@@ -203,14 +203,14 @@ export const PaintCanvas = forwardRef<PaintCanvasFullHandle, PaintCanvasProps>(
       if (!drawingRef.current) return;
       if (pointerIdRef.current !== ev.pointerId) return;
       const at = eventToCanvasPoint(ev);
-      const { tool, color, brushSize } = toolStateRef.current;
+      const { tool, color, strokeSize } = toolStateRef.current;
 
       if (tool === "brush" || tool === "pencil" || tool === "eraser") {
         strokePointsRef.current.push(at);
         const vctx = visibleCtx();
         if (!vctx) return;
         renderVisible();
-        const path = strokePath(strokePointsRef.current, tool, brushSize);
+        const path = strokePath(strokePointsRef.current, tool, strokeSize);
         vctx.save();
         vctx.fillStyle = tool === "eraser" ? "#ffffff" : color;
         vctx.fill(path);
@@ -221,7 +221,7 @@ export const PaintCanvas = forwardRef<PaintCanvasFullHandle, PaintCanvasProps>(
         const vctx = visibleCtx();
         if (!vctx) return;
         renderVisible();
-        drawShapePreview(vctx, tool, brushSize, color, from, at);
+        drawShapePreview(vctx, tool, strokeSize, color, from, at);
       }
     };
 
@@ -229,7 +229,7 @@ export const PaintCanvas = forwardRef<PaintCanvasFullHandle, PaintCanvasProps>(
       if (!drawingRef.current) return;
       if (pointerIdRef.current !== ev.pointerId) return;
       const at = eventToCanvasPoint(ev);
-      const { tool, color, brushSize } = toolStateRef.current;
+      const { tool, color, strokeSize } = toolStateRef.current;
       drawingRef.current = false;
       pointerIdRef.current = null;
 
@@ -242,7 +242,7 @@ export const PaintCanvas = forwardRef<PaintCanvasFullHandle, PaintCanvasProps>(
         commitCommand({
           kind: "stroke",
           tool,
-          size: brushSize,
+          size: strokeSize,
           color,
           points,
         });
@@ -258,7 +258,7 @@ export const PaintCanvas = forwardRef<PaintCanvasFullHandle, PaintCanvasProps>(
         commitCommand({
           kind: "shape",
           shape: tool,
-          size: brushSize,
+          size: strokeSize,
           color,
           from,
           to: at,

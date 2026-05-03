@@ -1,5 +1,5 @@
 import { getStroke, type StrokeOptions } from "perfect-freehand";
-import { SIZE_PIXELS, type SizeKey } from "./constants";
+import { ERASER_RATIO, PENCIL_RATIO } from "./constants";
 import type { Point } from "./types";
 
 /**
@@ -8,19 +8,24 @@ import type { Point } from "./types";
  *
  * `tool` controls the stroke "feel":
  *   - brush  → soft tapered ends, slightly thicker
- *   - pencil → tight, jitter-free, harder edges
- *   - eraser → uniform width, no taper (a hard wipe)
+ *   - pencil → tight, jitter-free, harder edges (renders thinner)
+ *   - eraser → uniform width, no taper (renders thicker, hard wipe)
+ *
+ * `strokeSize` is the user-picked slider value in canvas pixels.
  */
 export function strokePath(
   points: Point[],
   tool: "brush" | "pencil" | "eraser",
-  size: SizeKey,
+  strokeSize: number,
 ): Path2D {
   if (points.length === 0) return new Path2D();
 
-  const widths = SIZE_PIXELS[size];
   const baseSize =
-    tool === "brush" ? widths.brush : tool === "pencil" ? widths.pencil : widths.eraser;
+    tool === "brush"
+      ? strokeSize
+      : tool === "pencil"
+      ? Math.max(1, strokeSize * PENCIL_RATIO)
+      : strokeSize * ERASER_RATIO;
 
   const opts: StrokeOptions =
     tool === "eraser"

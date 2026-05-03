@@ -373,6 +373,37 @@ button, [role="button"], a, .cursor-pointer {
   100% { transform: translate3d(0, 110vh, 0) rotate(540deg); opacity: 0; }
 }
 
+/* Stroke-size slider — chunky, finger-friendly thumb. */
+.paint-size-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--arcade-card-soft);
+  border: 1px solid var(--arcade-edge);
+  outline: none;
+}
+.paint-size-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--cat-creative);
+  border: 2px solid var(--ink-strong);
+  box-shadow: 0 4px 12px -4px var(--cat-creative-glow);
+  cursor: pointer;
+}
+.paint-size-slider::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--cat-creative);
+  border: 2px solid var(--ink-strong);
+  box-shadow: 0 4px 12px -4px var(--cat-creative-glow);
+  cursor: pointer;
+}
+
 /* Color helpers usable as text / bg */
 .text-arcade-strong { color: var(--ink-strong); }
 .text-arcade-mid    { color: var(--ink-mid); }

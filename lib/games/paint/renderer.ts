@@ -1,4 +1,4 @@
-import { SIZE_PIXELS, TEXT_SIZES } from "./constants";
+import { TEXT_SIZES } from "./constants";
 import { strokePath } from "./strokes";
 import { floodFill } from "./floodFill";
 import type { Command, Point } from "./types";
@@ -56,11 +56,9 @@ function drawShape(
   ctx: CanvasRenderingContext2D,
   cmd: Extract<Command, { kind: "shape" }>,
 ): void {
-  const widths = SIZE_PIXELS[cmd.size];
-  const lineWidth = widths.brush;
   ctx.save();
   ctx.strokeStyle = cmd.color;
-  ctx.lineWidth = lineWidth;
+  ctx.lineWidth = cmd.size;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
 
@@ -104,13 +102,31 @@ function drawText(
   ctx.save();
   ctx.fillStyle = cmd.color;
   ctx.textBaseline = "top";
-  ctx.font = `bold ${px}px var(--font-fredoka), system-ui, sans-serif`;
-  // Word-wrap is nice-to-have but kids type short labels — single line
-  // is fine. We do split on \n in case the keyboard inserts one.
+  // Canvas `font` can't parse CSS `var(...)`. Probe a real `.font-display`
+  // element (rendered by the page header) for its resolved font-family
+  // so we draw with Fredoka instead of silently falling back to 10px
+  // sans-serif. Cached after first lookup — next/font names are stable
+  // for the page lifetime.
+  ctx.font = `bold ${px}px ${getDisplayFontFamily()}`;
   cmd.text.split("\n").forEach((line, i) => {
     ctx.fillText(line, cmd.at.x, cmd.at.y + i * px * 1.1);
   });
   ctx.restore();
+}
+
+let cachedDisplayFontFamily: string | null = null;
+
+function getDisplayFontFamily(): string {
+  if (cachedDisplayFontFamily) return cachedDisplayFontFamily;
+  const probe = document.querySelector(".font-display");
+  if (probe) {
+    const ff = window.getComputedStyle(probe).fontFamily;
+    if (ff) {
+      cachedDisplayFontFamily = ff;
+      return ff;
+    }
+  }
+  return "system-ui, sans-serif";
 }
 
 function drawSticker(

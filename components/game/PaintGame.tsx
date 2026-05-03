@@ -5,7 +5,9 @@ import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
   PRESET_COLORS,
-  type SizeKey,
+  STROKE_DEFAULT_PX,
+  STROKE_MAX_PX,
+  STROKE_MIN_PX,
   type TextSizeKey,
 } from "@/lib/games/paint/constants";
 import type { Point, Tool, ToolState } from "@/lib/games/paint/types";
@@ -36,7 +38,7 @@ export default function PaintGame({ userId }: PaintGameProps) {
 
   const [toolState, setToolState] = useState<ToolState>({
     tool: "brush",
-    brushSize: "medium",
+    strokeSize: STROKE_DEFAULT_PX,
     textSize: "medium",
     color: PRESET_COLORS[0],
     stickerId: "star",
@@ -59,13 +61,10 @@ export default function PaintGame({ userId }: PaintGameProps) {
     [play],
   );
 
-  const setBrushSize = useCallback(
-    (brushSize: SizeKey) => {
-      play("tap");
-      setToolState((s) => ({ ...s, brushSize }));
-    },
-    [play],
-  );
+  const setStrokeSize = useCallback((strokeSize: number) => {
+    const clamped = Math.max(STROKE_MIN_PX, Math.min(STROKE_MAX_PX, strokeSize));
+    setToolState((s) => ({ ...s, strokeSize: clamped }));
+  }, []);
 
   const setColor = useCallback(
     (color: string) => {
@@ -112,15 +111,38 @@ export default function PaintGame({ userId }: PaintGameProps) {
     play("ding");
     try {
       const blob = await handle.exportBlob();
-      const url = URL.createObjectURL(blob);
       const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+      const filename = `learn-buddy-painting-${stamp}.png`;
+
+      // Prefer Web Share API on touch devices — iOS Safari surfaces "Save
+      // to Photos" in the share sheet. The download-link fallback below
+      // never triggers Photos on iOS because Safari ignores `download`.
+      const file = new File([blob], filename, { type: "image/png" });
+      const nav = navigator as Navigator & {
+        canShare?: (data: { files?: File[] }) => boolean;
+        share?: (data: { files?: File[]; title?: string }) => Promise<void>;
+      };
+      if (nav.canShare?.({ files: [file] }) && nav.share) {
+        try {
+          await nav.share({ files: [file], title: "My painting" });
+          return;
+        } catch (err) {
+          // User cancelled the share sheet — that's a normal flow.
+          if ((err as { name?: string })?.name === "AbortError") return;
+          // Otherwise fall through to download.
+          console.warn("Paint: share failed, falling back to download", err);
+        }
+      }
+
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `learn-buddy-painting-${stamp}.png`;
+      a.download = filename;
+      a.rel = "noopener";
+      a.target = "_blank";
       document.body.appendChild(a);
       a.click();
       a.remove();
-      // Defer revoke so iOS Safari has time to grab the blob.
       window.setTimeout(() => URL.revokeObjectURL(url), 4000);
     } catch (err) {
       console.error("Paint: save-to-photos failed", err);
@@ -172,11 +194,11 @@ export default function PaintGame({ userId }: PaintGameProps) {
     <div className="flex flex-col gap-3 h-[calc(100vh-9rem)] min-h-[520px]">
       <PaintToolbar
         tool={toolState.tool}
-        brushSize={toolState.brushSize}
+        strokeSize={toolState.strokeSize}
         canUndo={canUndo}
         canRedo={canRedo}
         onToolChange={setTool}
-        onSizeChange={setBrushSize}
+        onStrokeSizeChange={setStrokeSize}
         onUndo={handleUndo}
         onRedo={handleRedo}
         onNew={handleNewRequest}
