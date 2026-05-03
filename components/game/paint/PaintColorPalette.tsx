@@ -9,9 +9,15 @@ import { cn } from "@/lib/utils";
 interface PaintColorPaletteProps {
   color: string;
   onChange: (color: string) => void;
+  /** "vertical" (default) stacks swatches in a 2-col grid for a side panel. */
+  layout?: "vertical" | "horizontal";
 }
 
-export function PaintColorPalette({ color, onChange }: PaintColorPaletteProps) {
+export function PaintColorPalette({
+  color,
+  onChange,
+  layout = "vertical",
+}: PaintColorPaletteProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement | null>(null);
 
@@ -27,9 +33,25 @@ export function PaintColorPalette({ color, onChange }: PaintColorPaletteProps) {
     return () => document.removeEventListener("pointerdown", handler);
   }, [pickerOpen]);
 
+  const isVertical = layout === "vertical";
+
   return (
-    <div className="flex items-center gap-2">
-      <div className="flex items-center gap-1.5 flex-wrap">
+    <div
+      className={cn(
+        "surface-card cat-creative p-2 self-stretch",
+        isVertical ? "flex flex-col items-center gap-1.5" : "flex items-center gap-2 flex-wrap",
+      )}
+      style={{ overflow: "visible" }}
+      role="group"
+      aria-label="Color palette"
+    >
+      <div
+        className={cn(
+          isVertical
+            ? "grid grid-cols-2 gap-1.5"
+            : "flex items-center gap-1.5 flex-wrap",
+        )}
+      >
         {PRESET_COLORS.map((preset) => {
           const active = preset.toLowerCase() === color.toLowerCase();
           return (
@@ -40,7 +62,7 @@ export function PaintColorPalette({ color, onChange }: PaintColorPaletteProps) {
               aria-label={`Color ${preset}`}
               aria-pressed={active}
               className={cn(
-                "w-10 h-10 rounded-full border-2 transition-transform active:scale-90",
+                "w-10 h-10 rounded-full border-2 transition-transform active:scale-90 shrink-0",
                 active
                   ? "border-[var(--ink-strong)] scale-110 shadow-[0_0_0_3px_var(--cat-creative)]"
                   : "border-[oklch(0_0_0_/_0.25)]",
@@ -68,7 +90,10 @@ export function PaintColorPalette({ color, onChange }: PaintColorPaletteProps) {
 
         {pickerOpen && (
           <div
-            className="absolute z-50 top-12 right-0 surface-card cat-creative p-3"
+            className={cn(
+              "absolute z-50 surface-card cat-creative p-3",
+              isVertical ? "top-0 right-12" : "top-12 right-0",
+            )}
             role="dialog"
             aria-label="Pick a color"
           >

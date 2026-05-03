@@ -50,6 +50,7 @@ export default function PaintGame({ userId }: PaintGameProps) {
   const [textRequestAt, setTextRequestAt] = useState<Point | null>(null);
   const [confirmNew, setConfirmNew] = useState(false);
   const [confettiTrigger, setConfettiTrigger] = useState(0);
+  const [fullscreen, setFullscreen] = useState(false);
 
   /* ─── Tool state setters ────────────────────────────────── */
 
@@ -96,6 +97,11 @@ export default function PaintGame({ userId }: PaintGameProps) {
   const handleNewRequest = useCallback(() => {
     play("tap");
     setConfirmNew(true);
+  }, [play]);
+
+  const handleToggleFullscreen = useCallback(() => {
+    play("tap");
+    setFullscreen((v) => !v);
   }, [play]);
 
   const handleNewConfirm = useCallback(async () => {
@@ -190,64 +196,77 @@ export default function PaintGame({ userId }: PaintGameProps) {
 
   const showStickerTray = toolState.tool === "sticker";
 
+  // In fullscreen, escape the GameShell wrapper by overlaying the entire
+  // viewport. The page header stays underneath but is fully covered.
+  // Note: avoid bg-arcade here — it sets `position: relative`, which
+  // would override Tailwind's `fixed`.
+  const rootClass = fullscreen
+    ? "fixed inset-0 z-50 flex gap-3 p-3"
+    : "flex gap-3 h-[calc(100vh-9rem)] min-h-[520px]";
+
   return (
-    <div className="flex flex-col gap-3 h-[calc(100vh-9rem)] min-h-[520px]">
+    <div
+      className={rootClass}
+      style={fullscreen ? { background: "var(--arcade-bg)" } : undefined}
+    >
       <PaintToolbar
         tool={toolState.tool}
         strokeSize={toolState.strokeSize}
         canUndo={canUndo}
         canRedo={canRedo}
+        fullscreen={fullscreen}
         onToolChange={setTool}
         onStrokeSizeChange={setStrokeSize}
         onUndo={handleUndo}
         onRedo={handleRedo}
         onNew={handleNewRequest}
         onSave={handleSave}
+        onToggleFullscreen={handleToggleFullscreen}
       />
 
-      <div className="flex items-center gap-3 flex-wrap">
-        <PaintColorPalette color={toolState.color} onChange={setColor} />
-      </div>
+      <div className="flex flex-col gap-3 flex-1 min-w-0">
+        {showStickerTray && (
+          <PaintStickerTray
+            stickerId={toolState.stickerId}
+            onStickerChange={setSticker}
+          />
+        )}
 
-      {showStickerTray && (
-        <PaintStickerTray
-          stickerId={toolState.stickerId}
-          onStickerChange={setSticker}
-        />
-      )}
-
-      <div
-        ref={scrollerRef}
-        className="relative flex-1 min-h-0 surface-card cat-creative p-2 overflow-auto"
-        style={{ touchAction: "pan-x pan-y pinch-zoom" }}
-      >
         <div
-          className="mx-auto bg-white rounded-xl shadow-[0_8px_30px_-12px_oklch(0_0_0_/_0.5)]"
-          style={{
-            width: CANVAS_WIDTH * zoom,
-            height: CANVAS_HEIGHT * zoom,
-            maxWidth: zoom <= 1 ? "100%" : undefined,
-          }}
+          ref={scrollerRef}
+          className="relative flex-1 min-h-0 surface-card cat-creative p-2 overflow-auto"
+          style={{ touchAction: "pan-x pan-y pinch-zoom" }}
         >
-          <PaintCanvas
-            ref={canvasRef}
-            userId={userId}
-            toolState={toolState}
-            onTextRequest={handleTextRequest}
-            paused={!!textRequestAt || confirmNew}
-            onHistoryChange={onHistoryChange}
-            onReady={() => onHistoryChange(false, false)}
-          />
-        </div>
+          <div
+            className="mx-auto bg-white rounded-xl shadow-[0_8px_30px_-12px_oklch(0_0_0_/_0.5)]"
+            style={{
+              width: CANVAS_WIDTH * zoom,
+              height: CANVAS_HEIGHT * zoom,
+              maxWidth: zoom <= 1 ? "100%" : undefined,
+            }}
+          >
+            <PaintCanvas
+              ref={canvasRef}
+              userId={userId}
+              toolState={toolState}
+              onTextRequest={handleTextRequest}
+              paused={!!textRequestAt || confirmNew}
+              onHistoryChange={onHistoryChange}
+              onReady={() => onHistoryChange(false, false)}
+            />
+          </div>
 
-        <div className="absolute bottom-3 right-3">
-          <PaintZoomBar
-            zoom={zoom}
-            onZoomChange={handleZoomChange}
-            onFit={handleFit}
-          />
+          <div className="absolute bottom-3 right-3">
+            <PaintZoomBar
+              zoom={zoom}
+              onZoomChange={handleZoomChange}
+              onFit={handleFit}
+            />
+          </div>
         </div>
       </div>
+
+      <PaintColorPalette color={toolState.color} onChange={setColor} />
 
       <PaintTextDialog
         open={textRequestAt !== null}

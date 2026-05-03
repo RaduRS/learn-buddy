@@ -4,6 +4,8 @@ import {
   Brush,
   Circle,
   Eraser,
+  Maximize2,
+  Minimize2,
   Minus,
   PaintBucket,
   Pencil,
@@ -25,24 +27,26 @@ interface PaintToolbarProps {
   strokeSize: number;
   canUndo: boolean;
   canRedo: boolean;
+  fullscreen: boolean;
   onToolChange: (tool: Tool) => void;
   onStrokeSizeChange: (size: number) => void;
   onUndo: () => void;
   onRedo: () => void;
   onNew: () => void;
   onSave: () => void;
+  onToggleFullscreen: () => void;
 }
 
 const TOOLS: { id: Tool; label: string; Icon: LucideIcon }[] = [
-  { id: "brush",   label: "Brush",   Icon: Brush },
-  { id: "pencil",  label: "Pencil",  Icon: Pencil },
-  { id: "eraser",  label: "Eraser",  Icon: Eraser },
-  { id: "fill",    label: "Fill",    Icon: PaintBucket },
-  { id: "line",    label: "Line",    Icon: Minus },
+  { id: "brush",   label: "Brush",     Icon: Brush },
+  { id: "pencil",  label: "Pencil",    Icon: Pencil },
+  { id: "eraser",  label: "Eraser",    Icon: Eraser },
+  { id: "fill",    label: "Fill",      Icon: PaintBucket },
+  { id: "line",    label: "Line",      Icon: Minus },
   { id: "rect",    label: "Rectangle", Icon: RectangleHorizontal },
-  { id: "ellipse", label: "Ellipse", Icon: Circle },
-  { id: "text",    label: "Text",    Icon: Type },
-  { id: "sticker", label: "Sticker", Icon: StickerIcon },
+  { id: "ellipse", label: "Ellipse",   Icon: Circle },
+  { id: "text",    label: "Text",      Icon: Type },
+  { id: "sticker", label: "Sticker",   Icon: StickerIcon },
 ];
 
 const SIZE_AWARE: ReadonlySet<Tool> = new Set([
@@ -54,38 +58,44 @@ const SIZE_AWARE: ReadonlySet<Tool> = new Set([
   "ellipse",
 ]);
 
+/**
+ * Vertical toolbar — pinned to the left side of the canvas. Tablets in
+ * landscape have plenty of width but tight height once the page header
+ * and color palette are accounted for; stacking the tools vertically
+ * gives the canvas back ~140px of vertical real estate.
+ */
 export function PaintToolbar({
   tool,
   strokeSize,
   canUndo,
   canRedo,
+  fullscreen,
   onToolChange,
   onStrokeSizeChange,
   onUndo,
   onRedo,
   onNew,
   onSave,
+  onToggleFullscreen,
 }: PaintToolbarProps) {
   const showSizes = SIZE_AWARE.has(tool);
 
   return (
     <div
-      className="surface-card cat-creative p-3 flex flex-wrap items-center gap-3"
+      className="surface-card cat-creative p-2 flex flex-col items-center gap-1.5 self-stretch"
       style={{ overflow: "visible" }}
       role="toolbar"
       aria-label="Paint tools"
     >
-      <div className="flex items-center gap-1.5">
-        {TOOLS.map(({ id, label, Icon }) => (
-          <ToolButton
-            key={id}
-            label={label}
-            Icon={Icon}
-            active={tool === id}
-            onClick={() => onToolChange(id)}
-          />
-        ))}
-      </div>
+      {TOOLS.map(({ id, label, Icon }) => (
+        <ToolButton
+          key={id}
+          label={label}
+          Icon={Icon}
+          active={tool === id}
+          onClick={() => onToolChange(id)}
+        />
+      ))}
 
       <Divider />
 
@@ -93,16 +103,20 @@ export function PaintToolbar({
         size={strokeSize}
         onSizeChange={onStrokeSizeChange}
         disabled={!showSizes}
+        direction="right"
       />
 
       <Divider />
 
-      <div className="flex items-center gap-1.5">
-        <ToolButton label="Undo" Icon={Undo2} disabled={!canUndo} onClick={onUndo} />
-        <ToolButton label="Redo" Icon={Redo2} disabled={!canRedo} onClick={onRedo} />
-      </div>
+      <ToolButton label="Undo" Icon={Undo2} disabled={!canUndo} onClick={onUndo} />
+      <ToolButton label="Redo" Icon={Redo2} disabled={!canRedo} onClick={onRedo} />
 
-      <div className="ml-auto flex items-center gap-1.5">
+      <div className="mt-auto flex flex-col items-center gap-1.5 pt-1.5">
+        <ToolButton
+          label={fullscreen ? "Exit fullscreen" : "Fullscreen"}
+          Icon={fullscreen ? Minimize2 : Maximize2}
+          onClick={onToggleFullscreen}
+        />
         <ToolButton
           label="Save to photos"
           Icon={Save}
@@ -146,7 +160,7 @@ function ToolButton({
       aria-pressed={active}
       title={label}
       className={cn(
-        "w-12 h-12 rounded-2xl grid place-items-center border-2 transition-transform active:scale-90",
+        "w-12 h-12 rounded-2xl grid place-items-center border-2 transition-transform active:scale-90 shrink-0",
         disabled && "opacity-30 cursor-not-allowed",
         !disabled && !active && tone === "default" &&
           "bg-[var(--arcade-card-soft)] border-[var(--arcade-edge)] text-arcade-strong",
@@ -167,8 +181,7 @@ function Divider() {
   return (
     <span
       aria-hidden
-      className="self-stretch w-px bg-[var(--arcade-edge)] mx-1"
+      className="self-stretch h-px bg-[var(--arcade-edge)] my-1"
     />
   );
 }
-

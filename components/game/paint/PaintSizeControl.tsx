@@ -12,6 +12,8 @@ interface PaintSizeControlProps {
   onSizeChange: (size: number) => void;
   /** Disabled visual state when the active tool ignores size (fill, text). */
   disabled?: boolean;
+  /** Where the popover opens. Defaults to "down" (below the button). */
+  direction?: "down" | "right" | "left";
 }
 
 /**
@@ -24,6 +26,7 @@ export function PaintSizeControl({
   size,
   onSizeChange,
   disabled,
+  direction = "down",
 }: PaintSizeControlProps) {
   const [open, setOpen] = useState(false);
   const popRef = useRef<HTMLDivElement | null>(null);
@@ -78,7 +81,12 @@ export function PaintSizeControl({
         <div
           role="dialog"
           aria-label="Stroke size"
-          className="absolute z-50 top-14 left-0 surface-card cat-creative p-4 w-72"
+          className={cn(
+            "absolute z-50 surface-card cat-creative p-4 w-72",
+            direction === "down"  && "top-14 left-0",
+            direction === "right" && "top-0 left-14",
+            direction === "left"  && "top-0 right-14",
+          )}
         >
           <div className="flex items-center justify-between mb-3">
             <span className="font-display text-sm uppercase tracking-wider text-arcade-mid">
