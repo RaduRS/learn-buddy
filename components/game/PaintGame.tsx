@@ -14,6 +14,7 @@ import type { Point, Tool, ToolState } from "@/lib/games/paint/types";
 import { useSfx } from "@/components/sound/SoundProvider";
 import { PaintCanvas, type PaintCanvasFullHandle } from "./paint/PaintCanvas";
 import { PaintToolbar } from "./paint/PaintToolbar";
+import { PaintActionStack } from "./paint/PaintActionStack";
 import { PaintColorPalette } from "./paint/PaintColorPalette";
 import { PaintZoomBar } from "./paint/PaintZoomBar";
 import { PaintStickerTray } from "./paint/PaintStickerTray";
@@ -212,16 +213,8 @@ export default function PaintGame({ userId }: PaintGameProps) {
       <PaintToolbar
         tool={toolState.tool}
         strokeSize={toolState.strokeSize}
-        canUndo={canUndo}
-        canRedo={canRedo}
-        fullscreen={fullscreen}
         onToolChange={setTool}
         onStrokeSizeChange={setStrokeSize}
-        onUndo={handleUndo}
-        onRedo={handleRedo}
-        onNew={handleNewRequest}
-        onSave={handleSave}
-        onToggleFullscreen={handleToggleFullscreen}
       />
 
       <div className="flex flex-col gap-3 flex-1 min-w-0">
@@ -266,7 +259,19 @@ export default function PaintGame({ userId }: PaintGameProps) {
         </div>
       </div>
 
-      <PaintColorPalette color={toolState.color} onChange={setColor} />
+      <div className="flex flex-col gap-3">
+        <PaintColorPalette color={toolState.color} onChange={setColor} />
+        <PaintActionStack
+          canUndo={canUndo}
+          canRedo={canRedo}
+          fullscreen={fullscreen}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          onToggleFullscreen={handleToggleFullscreen}
+          onSave={handleSave}
+          onNew={handleNewRequest}
+        />
+      </div>
 
       <PaintTextDialog
         open={textRequestAt !== null}
