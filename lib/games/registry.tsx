@@ -35,6 +35,7 @@ const MusicLearningGame  = lazy(() => import("@/components/game/MusicLearningGam
 const ShapesGame         = lazy(() => import("@/components/game/ShapesGame"));
 const ReadingHelperGame  = lazy(() => import("@/components/game/ReadingHelperGame"));
 const MathSparkGame      = lazy(() => import("@/components/game/MathSparkGame"));
+const PaintGame          = lazy(() => import("@/components/game/PaintGame"));
 
 interface MemoryGridConfig {
   rows: number;
@@ -125,6 +126,11 @@ function MathSparkAdapter(ctx: GameContext) {
   );
 }
 
+function PaintAdapter(ctx: GameContext) {
+  // Paint is open-ended — it never calls onGameComplete or returns a score.
+  return <PaintGame userId={ctx.userId} />;
+}
+
 /** Memory Match shows a grid-size picker before the game. */
 function MemoryMatchAdapter(ctx: GameContext) {
   const [config, setConfig] = useState<MemoryGridConfig | null>(null);
@@ -165,6 +171,7 @@ export const REGISTRY: Record<string, RegistryEntry> = {
   "shapes":         { title: "Shapes",         category: "spatial", Component: ShapesAdapter },
   "reading-helper": { title: "Reading Helper", category: "reading", Component: ReadingHelperAdapter },
   "true-false":     { title: "True or False",  category: "math",    Component: TrueFalseAdapter },
+  "paint":          { title: "Paint",          category: "creative",Component: PaintAdapter },
 };
 
 /**

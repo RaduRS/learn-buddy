@@ -84,6 +84,17 @@ export default [
     },
   },
   {
+    // Paint engine modules touch the canvas / DOM APIs directly. They live
+    // under lib/ so the canvas component can pull in pure helpers without
+    // a circular dep, but they're browser-only by nature.
+    files: ["lib/games/paint/**/*.{js,ts,tsx}"],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+      },
+    },
+  },
+  {
     files: ["**/*.{ts,tsx}"],
     languageOptions: {
       parser: tsParser,

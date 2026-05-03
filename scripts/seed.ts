@@ -76,6 +76,14 @@ const initialGames = [
     difficulty: 3,
     isActive: true,
   },
+  {
+    title: "Paint",
+    description: "A blank canvas — paint, stamp and write whatever you imagine. Saves automatically.",
+    icon: "palette",
+    category: "creative",
+    difficulty: 1,
+    isActive: true,
+  },
 ];
 
 async function seedDatabase() {

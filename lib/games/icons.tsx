@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Eye,
   Music,
+  Palette,
   Puzzle,
   Shapes as ShapesIcon,
   Sparkles,
@@ -29,6 +30,7 @@ const ICONS: Record<string, LucideIcon> = {
   "read-aloud-camera": BookOpenText,
   "true-false":        CheckCircle2,
   "true-or-false":     CheckCircle2,
+  "paint":             Palette,
 };
 
 /**
@@ -79,5 +81,6 @@ export function getGameIconAndCategory(title: string): {
   else if (slug.includes("read") || slug.includes("letter")) category = "reading";
   else if (slug.includes("puzzle") || slug.includes("shape") || slug.includes("spatial")) category = "spatial";
   else if (slug.includes("true") || slug.includes("false")) category = "math";
+  else if (slug.includes("paint") || slug.includes("draw") || slug.includes("art")) category = "creative";
   return { Icon, category };
 }

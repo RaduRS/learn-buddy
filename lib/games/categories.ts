@@ -13,6 +13,7 @@ export type CategoryKey =
   | "reading"
   | "music"
   | "spatial"
+  | "creative"
   | "default";
 
 export interface CategoryMeta {
@@ -32,6 +33,7 @@ export const CATEGORIES: Record<CategoryKey, CategoryMeta> = {
   reading: { key: "reading", label: "Reading", cssVar: "--cat-reading", cssGlowVar: "--cat-reading-glow", swatch: "#f0a644" },
   music:   { key: "music",   label: "Music",   cssVar: "--cat-music",   cssGlowVar: "--cat-music-glow",   swatch: "#52cba0" },
   spatial: { key: "spatial", label: "Puzzle",  cssVar: "--cat-spatial", cssGlowVar: "--cat-spatial-glow", swatch: "#ec7a5e" },
+  creative:{ key: "creative",label: "Creative",cssVar: "--cat-creative",cssGlowVar:"--cat-creative-glow",swatch: "#c179f0" },
   default: { key: "default", label: "Game",    cssVar: "--cat-default", cssGlowVar: "--cat-default-glow", swatch: "#8b80f0" },
 };
 
@@ -60,6 +62,11 @@ const ALIAS_MAP: Record<string, CategoryKey> = {
   puzzles: "spatial",
   shapes: "spatial",
   visual: "spatial",
+
+  creative: "creative",
+  art: "creative",
+  paint: "creative",
+  drawing: "creative",
 };
 
 /** Map any category string (case-insensitive) to a known CategoryKey. */

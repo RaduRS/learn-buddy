@@ -206,6 +206,10 @@ button, [role="button"], a, .cursor-pointer {
   --cat-spatial-glow:    oklch(0.72 0.20 25 / 0.55);
   --cat-spatial-ink:     oklch(0.93 0.14 25);
 
+  --cat-creative:        oklch(0.74 0.22 305);
+  --cat-creative-glow:   oklch(0.74 0.22 305 / 0.55);
+  --cat-creative-ink:    oklch(0.93 0.14 305);
+
   --cat-default:         oklch(0.70 0.18 290);
   --cat-default-glow:    oklch(0.70 0.18 290 / 0.55);
   --cat-default-ink:     oklch(0.92 0.10 290);
@@ -347,7 +351,27 @@ button, [role="button"], a, .cursor-pointer {
 .cat-reading { --surface-tint: var(--cat-reading-glow); }
 .cat-music   { --surface-tint: var(--cat-music-glow); }
 .cat-spatial { --surface-tint: var(--cat-spatial-glow); }
+.cat-creative{ --surface-tint: var(--cat-creative-glow); }
 .cat-gold    { --surface-tint: var(--joy-gold-glow); }
+
+/* ============================================================
+   Paint game — confetti burst on "New" button
+   ============================================================ */
+.paint-confetti-piece {
+  position: absolute;
+  top: -5%;
+  width: 10px;
+  height: 16px;
+  border-radius: 2px;
+  opacity: 0.92;
+  transform: rotate(var(--rot, 0deg));
+  pointer-events: none;
+}
+
+@keyframes paint-confetti-fall {
+  0%   { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 1; }
+  100% { transform: translate3d(0, 110vh, 0) rotate(540deg); opacity: 0; }
+}
 
 /* Color helpers usable as text / bg */
 .text-arcade-strong { color: var(--ink-strong); }

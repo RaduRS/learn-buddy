@@ -73,6 +73,21 @@ async function updateGames() {
       console.log('Shapes game already exists')
     }
 
+    const paintGame = existingGames.find(game => game.title === 'Paint')
+    if (!paintGame) {
+      await DatabaseService.createGame({
+        title: 'Paint',
+        description: 'A blank canvas — paint, stamp and write whatever you imagine. Saves automatically.',
+        icon: 'palette',
+        category: 'creative',
+        difficulty: 1,
+        isActive: true,
+      })
+      console.log('Added new Paint game')
+    } else {
+      console.log('Paint game already exists')
+    }
+
     const readingHelperGame = existingGames.find(game => game.title === 'Read Aloud Camera')
     if (!readingHelperGame) {
       await DatabaseService.createGame({
