@@ -255,8 +255,17 @@ export default function PaintGame({ userId }: PaintGameProps) {
             className="relative mx-auto bg-white rounded-xl shadow-[0_8px_30px_-12px_oklch(0_0_0_/_0.5)]"
             style={{
               width: CANVAS_WIDTH * zoom,
-              height: CANVAS_HEIGHT * zoom,
               maxWidth: zoom <= 1 ? "100%" : undefined,
+              // Lock the wrapper's aspect ratio so a width-constrained
+              // viewport doesn't keep the wrapper at full canvas height.
+              // Without this the canvas's 1200×800 bitmap gets squashed
+              // horizontally on smaller tablets — text and stamps end up
+              // visibly narrow after they bake into pixels.
+              aspectRatio: `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}`,
+              // Lets the pending-text overlay scale via cqw units,
+              // matching whatever screen size the canvas actually
+              // renders at.
+              containerType: "inline-size",
             }}
           >
             <PaintCanvas
@@ -275,7 +284,6 @@ export default function PaintGame({ userId }: PaintGameProps) {
                 size={pendingText.size}
                 color={pendingText.color}
                 at={pendingText.at}
-                zoom={zoom}
                 resetKey={pendingTextResetKey}
                 onMove={movePendingText}
                 onCommit={finalisePendingText}

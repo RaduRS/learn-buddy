@@ -9,11 +9,17 @@ import {
 } from "react";
 import { Check } from "lucide-react";
 import {
+  CANVAS_HEIGHT,
   CANVAS_WIDTH,
   TEXT_SIZES,
   type TextSizeKey,
 } from "@/lib/games/paint/constants";
 import type { Point } from "@/lib/games/paint/types";
+
+// Local alias: the canvas's logical height in pixels, used as the
+// denominator for the overlay's `top` percentage so the position
+// follows the wrapper's aspect-ratio-locked height.
+const TEXT_SIZES_REF_HEIGHT = CANVAS_HEIGHT;
 
 interface PaintPendingTextProps {
   text: string;
@@ -22,7 +28,6 @@ interface PaintPendingTextProps {
   /** Canvas-space position. Updated only on pointerup; during the drag
    * we move the overlay via direct DOM transforms (smoother). */
   at: Point;
-  zoom: number;
   /** Bumped when the parent resets the placement target so we drop any
    * leftover drag state. */
   resetKey: number;
@@ -52,7 +57,6 @@ export function PaintPendingText({
   size,
   color,
   at,
-  zoom,
   resetKey,
   onMove,
   onCommit,
@@ -114,12 +118,21 @@ export function PaintPendingText({
       if (wrapperRef.current) wrapperRef.current.style.transform = "";
       return;
     }
+    // Convert CSS-pixel delta to canvas-logical delta using the
+    // wrapper's *actual* rendered size, not the zoom factor — the
+    // wrapper can be smaller than CANVAS_WIDTH * zoom on tablets
+    // where maxWidth: 100% kicks in.
+    const parent = wrapperRef.current?.parentElement;
+    const scaleX = parent ? parent.clientWidth / CANVAS_WIDTH : 1;
+    const scaleY = parent
+      ? parent.clientHeight / TEXT_SIZES_REF_HEIGHT
+      : 1;
     // Leave the transform applied so the overlay stays put visually
     // while React re-renders with the new `at`. The layout effect
     // below resets the transform after left/top have been written.
     onMove({
-      x: at.x + dxCss / zoom,
-      y: at.y + dyCss / zoom,
+      x: at.x + dxCss / scaleX,
+      y: at.y + dyCss / scaleY,
     });
   };
 
@@ -134,18 +147,22 @@ export function PaintPendingText({
   const fontFamily =
     familyResolved ?? "var(--font-fredoka), system-ui, sans-serif";
 
-  const cssLeft = at.x * zoom;
-  const cssTop = at.y * zoom;
-  const cssFont = px * zoom;
+  // Position and size are expressed relative to the canvas wrapper,
+  // which has aspect-ratio + container-type: inline-size set on it.
+  // Percentages map at.x/y onto the wrapper's actual width/height,
+  // and cqw scales the font with the wrapper exactly the way the
+  // canvas's logical-pixel `fillText` will be displayed.
+  const leftPct = (at.x / CANVAS_WIDTH) * 100;
+  const topPct = (at.y / TEXT_SIZES_REF_HEIGHT) * 100;
+  const fontCqw = (px / CANVAS_WIDTH) * 100;
 
   return (
     <div
       ref={wrapperRef}
       className="absolute z-30"
       style={{
-        left: cssLeft,
-        top: cssTop,
-        maxWidth: CANVAS_WIDTH * zoom - cssLeft,
+        left: `${leftPct}%`,
+        top: `${topPct}%`,
         // willChange hints the compositor to keep this layer ready.
         willChange: "transform",
       }}
@@ -164,7 +181,7 @@ export function PaintPendingText({
           style={{
             fontFamily,
             fontWeight: 700,
-            fontSize: cssFont,
+            fontSize: `${fontCqw}cqw`,
             lineHeight: 1.1,
             color,
             whiteSpace: "pre",
