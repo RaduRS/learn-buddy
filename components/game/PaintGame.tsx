@@ -198,6 +198,11 @@ export default function PaintGame({ userId }: PaintGameProps) {
     setPendingText((p) => (p ? { ...p, at } : p));
   }, []);
 
+  const discardPendingText = useCallback(() => {
+    setPendingText(null);
+    play("tap");
+  }, [play]);
+
   /* ─── Zoom ─────────────────────────────────────────────── */
 
   const handleZoomChange = useCallback((next: number) => {
@@ -287,6 +292,7 @@ export default function PaintGame({ userId }: PaintGameProps) {
                 resetKey={pendingTextResetKey}
                 onMove={movePendingText}
                 onCommit={finalisePendingText}
+                onDiscard={discardPendingText}
               />
             )}
           </div>

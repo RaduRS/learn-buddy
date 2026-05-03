@@ -7,7 +7,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { Check } from "lucide-react";
+import { Check, X } from "lucide-react";
 import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
@@ -33,6 +33,7 @@ interface PaintPendingTextProps {
   resetKey: number;
   onMove: (at: Point) => void;
   onCommit: () => void;
+  onDiscard: () => void;
 }
 
 /**
@@ -60,6 +61,7 @@ export function PaintPendingText({
   resetKey,
   onMove,
   onCommit,
+  onDiscard,
 }: PaintPendingTextProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const dragHandleRef = useRef<HTMLDivElement | null>(null);
@@ -193,18 +195,32 @@ export function PaintPendingText({
           {text}
         </div>
 
-        <button
-          type="button"
-          onClick={onCommit}
-          aria-label="Place text"
-          title="Place text"
-          className="shrink-0 w-12 h-12 rounded-2xl grid place-items-center
-                     bg-[var(--joy-correct)] text-[var(--ink-on-color)]
-                     border-2 border-[oklch(0.45_0.20_145)]
-                     active:scale-90"
-        >
-          <Check className="w-6 h-6" strokeWidth={2.2} />
-        </button>
+        <div className="shrink-0 flex flex-col gap-1.5">
+          <button
+            type="button"
+            onClick={onCommit}
+            aria-label="Place text"
+            title="Place text"
+            className="w-12 h-12 rounded-2xl grid place-items-center
+                       bg-[var(--joy-correct)] text-[var(--ink-on-color)]
+                       border-2 border-[oklch(0.45_0.20_145)]
+                       active:scale-90"
+          >
+            <Check className="w-6 h-6" strokeWidth={2.2} />
+          </button>
+          <button
+            type="button"
+            onClick={onDiscard}
+            aria-label="Discard text"
+            title="Discard text"
+            className="w-12 h-12 rounded-2xl grid place-items-center
+                       bg-[var(--joy-wrong)] text-[var(--ink-on-color)]
+                       border-2 border-[oklch(0.45_0.20_25)]
+                       active:scale-90"
+          >
+            <X className="w-6 h-6" strokeWidth={2.2} />
+          </button>
+        </div>
       </div>
     </div>
   );
