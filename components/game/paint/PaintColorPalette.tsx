@@ -38,7 +38,7 @@ export function PaintColorPalette({
   return (
     <div
       className={cn(
-        "surface-card cat-creative p-2 self-stretch",
+        "surface-card cat-creative p-2 self-stretch shrink-0",
         isVertical ? "flex flex-col items-center gap-1.5" : "flex items-center gap-2 flex-wrap",
       )}
       style={{ overflow: "visible" }}

@@ -26,7 +26,7 @@ export function PaintActionStack({
 }: PaintActionStackProps) {
   return (
     <div
-      className="surface-card cat-creative p-2 flex flex-col items-center gap-1.5"
+      className="surface-card cat-creative p-2 flex flex-col items-center gap-1.5 shrink-0"
       role="group"
       aria-label="Painting actions"
     >
