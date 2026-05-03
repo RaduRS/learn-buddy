@@ -293,7 +293,7 @@ export default function PaintGame({ userId }: PaintGameProps) {
         </div>
       </div>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 min-h-0 paint-panel-scroll">
         <PaintColorPalette color={toolState.color} onChange={setColor} />
         <PaintActionStack
           canUndo={canUndo}

@@ -373,6 +373,26 @@ button, [role="button"], a, .cursor-pointer {
   100% { transform: translate3d(0, 110vh, 0) rotate(540deg); opacity: 0; }
 }
 
+/* Side panels (toolbar + palette/actions) — scroll vertically when
+   their content overflows the available height. The !important is
+   needed to win against `surface-card { overflow: hidden }`. */
+.paint-panel-scroll {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-width: thin;
+  scrollbar-color: var(--cat-creative) transparent;
+}
+.paint-panel-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.paint-panel-scroll::-webkit-scrollbar-thumb {
+  background: var(--cat-creative);
+  border-radius: 999px;
+}
+.paint-panel-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 /* Stroke-size slider — chunky, finger-friendly thumb. */
 .paint-size-slider {
   -webkit-appearance: none;

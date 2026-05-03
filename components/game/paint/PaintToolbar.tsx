@@ -79,7 +79,7 @@ export function PaintToolbar({
 
   return (
     <div
-      className="surface-card cat-creative p-2 flex flex-col items-center gap-1.5 w-[112px] relative z-30"
+      className="surface-card cat-creative p-2 flex flex-col items-center gap-1.5 w-[112px] relative z-30 min-h-0 paint-panel-scroll"
       role="toolbar"
       aria-label="Paint tools"
     >
