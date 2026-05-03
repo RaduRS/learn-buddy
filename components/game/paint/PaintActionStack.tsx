@@ -1,37 +1,26 @@
 "use client";
 
-import {
-  Maximize2,
-  Minimize2,
-  Redo2,
-  RotateCcw,
-  Save,
-  Undo2,
-} from "lucide-react";
+import { Redo2, RotateCcw, Save, Undo2 } from "lucide-react";
 import { PaintToolButton } from "./PaintToolButton";
 
 interface PaintActionStackProps {
   canUndo: boolean;
   canRedo: boolean;
-  fullscreen: boolean;
   onUndo: () => void;
   onRedo: () => void;
-  onToggleFullscreen: () => void;
   onSave: () => void;
   onNew: () => void;
 }
 
 /**
- * Right-side action column — sits under the color palette so the left
- * toolbar can be just-tools and fit on shorter tablet viewports.
+ * Right-side action column under the color palette: undo, redo,
+ * save, new. Fullscreen lives on the left toolbar.
  */
 export function PaintActionStack({
   canUndo,
   canRedo,
-  fullscreen,
   onUndo,
   onRedo,
-  onToggleFullscreen,
   onSave,
   onNew,
 }: PaintActionStackProps) {
@@ -46,11 +35,6 @@ export function PaintActionStack({
 
       <span aria-hidden className="self-stretch h-px bg-[var(--arcade-edge)] my-1" />
 
-      <PaintToolButton
-        label={fullscreen ? "Exit fullscreen" : "Fullscreen"}
-        Icon={fullscreen ? Minimize2 : Maximize2}
-        onClick={onToggleFullscreen}
-      />
       <PaintToolButton
         label="Save to photos"
         Icon={Save}

@@ -213,8 +213,10 @@ export default function PaintGame({ userId }: PaintGameProps) {
       <PaintToolbar
         tool={toolState.tool}
         strokeSize={toolState.strokeSize}
+        fullscreen={fullscreen}
         onToolChange={setTool}
         onStrokeSizeChange={setStrokeSize}
+        onToggleFullscreen={handleToggleFullscreen}
       />
 
       <div className="flex flex-col gap-3 flex-1 min-w-0">
@@ -264,10 +266,8 @@ export default function PaintGame({ userId }: PaintGameProps) {
         <PaintActionStack
           canUndo={canUndo}
           canRedo={canRedo}
-          fullscreen={fullscreen}
           onUndo={handleUndo}
           onRedo={handleRedo}
-          onToggleFullscreen={handleToggleFullscreen}
           onSave={handleSave}
           onNew={handleNewRequest}
         />
