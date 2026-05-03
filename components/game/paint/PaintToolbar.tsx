@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Brush,
   Circle,
@@ -18,6 +20,7 @@ import {
   STROKE_MAX_PX,
   STROKE_MIN_PX,
 } from "@/lib/games/paint/constants";
+import { STICKERS } from "@/lib/games/paint/stickers";
 import type { Tool } from "@/lib/games/paint/types";
 import { PaintToolButton } from "./PaintToolButton";
 import { cn } from "@/lib/utils";
@@ -26,8 +29,10 @@ interface PaintToolbarProps {
   tool: Tool;
   strokeSize: number;
   fullscreen: boolean;
+  stickerId: string;
   onToolChange: (tool: Tool) => void;
   onStrokeSizeChange: (size: number) => void;
+  onStickerChange: (id: string) => void;
   onToggleFullscreen: () => void;
 }
 
@@ -62,8 +67,10 @@ export function PaintToolbar({
   tool,
   strokeSize,
   fullscreen,
+  stickerId,
   onToolChange,
   onStrokeSizeChange,
+  onStickerChange,
   onToggleFullscreen,
 }: PaintToolbarProps) {
   const sizeActive = SIZE_AWARE.has(tool);
@@ -72,7 +79,7 @@ export function PaintToolbar({
 
   return (
     <div
-      className="surface-card cat-creative p-2 flex flex-col items-center gap-1.5 w-[112px]"
+      className="surface-card cat-creative p-2 flex flex-col items-center gap-1.5 w-[112px] relative z-30"
       role="toolbar"
       aria-label="Paint tools"
     >
@@ -110,15 +117,30 @@ export function PaintToolbar({
 
       <span aria-hidden className="self-stretch h-px bg-[var(--arcade-edge)] my-1" />
 
-      {TOOLS.map(({ id, label, Icon }) => (
-        <PaintToolButton
-          key={id}
-          label={label}
-          Icon={Icon}
-          active={tool === id}
-          onClick={() => onToolChange(id)}
-        />
-      ))}
+      {TOOLS.map(({ id, label, Icon }) => {
+        if (id === "sticker") {
+          return (
+            <StickerToolItem
+              key={id}
+              label={label}
+              Icon={Icon}
+              active={tool === id}
+              stickerId={stickerId}
+              onClick={() => onToolChange(id)}
+              onStickerChange={onStickerChange}
+            />
+          );
+        }
+        return (
+          <PaintToolButton
+            key={id}
+            label={label}
+            Icon={Icon}
+            active={tool === id}
+            onClick={() => onToolChange(id)}
+          />
+        );
+      })}
 
       <span aria-hidden className="self-stretch h-px bg-[var(--arcade-edge)] my-1" />
 
@@ -128,5 +150,115 @@ export function PaintToolbar({
         onClick={onToggleFullscreen}
       />
     </div>
+  );
+}
+
+interface StickerToolItemProps {
+  label: string;
+  Icon: LucideIcon;
+  active: boolean;
+  stickerId: string;
+  onClick: () => void;
+  onStickerChange: (id: string) => void;
+}
+
+/**
+ * Sticker tool button + a sticker-grid flyout that escapes the toolbar
+ * via React portal. The portal sidesteps stacking-context contention
+ * with the canvas-wrapper sibling, which renders later in DOM order
+ * and would otherwise paint on top of an in-tree popover.
+ */
+function StickerToolItem({
+  label,
+  Icon,
+  active,
+  stickerId,
+  onClick,
+  onStickerChange,
+}: StickerToolItemProps) {
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const [coords, setCoords] = useState<{ left: number; bottom: number } | null>(
+    null,
+  );
+  const [mounted, setMounted] = useState(false);
+
+  // Portals only work after hydration — wait for the document to exist.
+  useEffect(() => setMounted(true), []);
+
+  // Recompute fixed-position coords whenever the flyout opens, the
+  // viewport resizes, or the user scrolls.
+  useLayoutEffect(() => {
+    if (!active) return;
+    const update = () => {
+      const btn = buttonRef.current;
+      if (!btn) return;
+      const r = btn.getBoundingClientRect();
+      setCoords({
+        left: r.right + 8,
+        bottom: window.innerHeight - r.bottom,
+      });
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [active]);
+
+  return (
+    <>
+      <PaintToolButton
+        ref={buttonRef}
+        label={label}
+        Icon={Icon}
+        active={active}
+        onClick={onClick}
+      />
+      {active &&
+        mounted &&
+        coords &&
+        createPortal(
+          <div
+            role="group"
+            aria-label="Sticker picker"
+            className="surface-card cat-creative p-2"
+            style={{
+              position: "fixed",
+              left: coords.left,
+              bottom: coords.bottom,
+              zIndex: 60,
+              overflow: "visible",
+              width: "max-content",
+            }}
+          >
+            <div className="grid grid-cols-3 gap-1.5">
+              {STICKERS.map((s) => {
+                const isActive = s.id === stickerId;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => onStickerChange(s.id)}
+                    aria-label={s.label}
+                    aria-pressed={isActive}
+                    title={s.label}
+                    className={cn(
+                      "w-12 h-12 rounded-2xl grid place-items-center border-2 transition-transform active:scale-90",
+                      isActive
+                        ? "bg-[var(--cat-creative)] border-[var(--cat-creative)] text-[var(--ink-on-color)]"
+                        : "bg-[var(--arcade-card-soft)] border-[var(--arcade-edge)] text-arcade-strong",
+                    )}
+                  >
+                    <s.Icon className="w-6 h-6" strokeWidth={1.8} />
+                  </button>
+                );
+              })}
+            </div>
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }

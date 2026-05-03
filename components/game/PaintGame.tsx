@@ -17,8 +17,8 @@ import { PaintToolbar } from "./paint/PaintToolbar";
 import { PaintActionStack } from "./paint/PaintActionStack";
 import { PaintColorPalette } from "./paint/PaintColorPalette";
 import { PaintZoomBar } from "./paint/PaintZoomBar";
-import { PaintStickerTray } from "./paint/PaintStickerTray";
 import { PaintTextDialog } from "./paint/PaintTextDialog";
+import { PaintPendingText } from "./paint/PaintPendingText";
 import { PaintNewConfirm } from "./paint/PaintNewConfirm";
 import { PaintConfetti } from "./paint/PaintConfetti";
 import { RotateNudge } from "./paint/RotateNudge";
@@ -49,6 +49,13 @@ export default function PaintGame({ userId }: PaintGameProps) {
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const [textRequestAt, setTextRequestAt] = useState<Point | null>(null);
+  const [pendingText, setPendingText] = useState<{
+    text: string;
+    size: TextSizeKey;
+    color: string;
+    at: Point;
+  } | null>(null);
+  const [pendingTextResetKey, setPendingTextResetKey] = useState(0);
   const [confirmNew, setConfirmNew] = useState(false);
   const [confettiTrigger, setConfettiTrigger] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
@@ -162,15 +169,34 @@ export default function PaintGame({ userId }: PaintGameProps) {
     setTextRequestAt(at);
   }, []);
 
+  // Dialog "Add text" → seed a draggable preview over the canvas. The
+  // user repositions, then taps the green ✓ to bake into pixels.
   const handleTextCommit = useCallback(
     (text: string, size: TextSizeKey) => {
       const at = textRequestAt;
       setTextRequestAt(null);
       if (!at) return;
-      canvasRef.current?.commitText(at, text, size, toolState.color);
+      setPendingText({ text, size, color: toolState.color, at });
+      setPendingTextResetKey((k) => k + 1);
     },
     [textRequestAt, toolState.color],
   );
+
+  const finalisePendingText = useCallback(() => {
+    if (!pendingText) return;
+    canvasRef.current?.commitText(
+      pendingText.at,
+      pendingText.text,
+      pendingText.size,
+      pendingText.color,
+    );
+    setPendingText(null);
+    play("ding");
+  }, [pendingText, play]);
+
+  const movePendingText = useCallback((at: Point) => {
+    setPendingText((p) => (p ? { ...p, at } : p));
+  }, []);
 
   /* ─── Zoom ─────────────────────────────────────────────── */
 
@@ -195,8 +221,6 @@ export default function PaintGame({ userId }: PaintGameProps) {
 
   /* ─── Render ──────────────────────────────────────────── */
 
-  const showStickerTray = toolState.tool === "sticker";
-
   // In fullscreen, escape the GameShell wrapper by overlaying the entire
   // viewport. The page header stays underneath but is fully covered.
   // Note: avoid bg-arcade here — it sets `position: relative`, which
@@ -214,26 +238,21 @@ export default function PaintGame({ userId }: PaintGameProps) {
         tool={toolState.tool}
         strokeSize={toolState.strokeSize}
         fullscreen={fullscreen}
+        stickerId={toolState.stickerId}
         onToolChange={setTool}
         onStrokeSizeChange={setStrokeSize}
+        onStickerChange={setSticker}
         onToggleFullscreen={handleToggleFullscreen}
       />
 
       <div className="flex flex-col gap-3 flex-1 min-w-0">
-        {showStickerTray && (
-          <PaintStickerTray
-            stickerId={toolState.stickerId}
-            onStickerChange={setSticker}
-          />
-        )}
-
         <div
           ref={scrollerRef}
           className="relative flex-1 min-h-0 surface-card cat-creative p-2 overflow-auto"
           style={{ touchAction: "pan-x pan-y pinch-zoom" }}
         >
           <div
-            className="mx-auto bg-white rounded-xl shadow-[0_8px_30px_-12px_oklch(0_0_0_/_0.5)]"
+            className="relative mx-auto bg-white rounded-xl shadow-[0_8px_30px_-12px_oklch(0_0_0_/_0.5)]"
             style={{
               width: CANVAS_WIDTH * zoom,
               height: CANVAS_HEIGHT * zoom,
@@ -245,10 +264,23 @@ export default function PaintGame({ userId }: PaintGameProps) {
               userId={userId}
               toolState={toolState}
               onTextRequest={handleTextRequest}
-              paused={!!textRequestAt || confirmNew}
+              paused={!!textRequestAt || !!pendingText || confirmNew}
               onHistoryChange={onHistoryChange}
               onReady={() => onHistoryChange(false, false)}
             />
+
+            {pendingText && (
+              <PaintPendingText
+                text={pendingText.text}
+                size={pendingText.size}
+                color={pendingText.color}
+                at={pendingText.at}
+                zoom={zoom}
+                resetKey={pendingTextResetKey}
+                onMove={movePendingText}
+                onCommit={finalisePendingText}
+              />
+            )}
           </div>
 
           <div className="absolute bottom-3 right-3">
