@@ -158,6 +158,7 @@ interface StickerToolItemProps {
   Icon: LucideIcon;
   active: boolean;
   stickerId: string;
+  /** Select the sticker tool (does not control flyout visibility). */
   onClick: () => void;
   onStickerChange: (id: string) => void;
 }
@@ -167,6 +168,11 @@ interface StickerToolItemProps {
  * via React portal. The portal sidesteps stacking-context contention
  * with the canvas-wrapper sibling, which renders later in DOM order
  * and would otherwise paint on top of an in-tree popover.
+ *
+ * Flyout visibility is its own state (not tied to `active`) so it
+ * behaves like a normal dropdown: picking a stamp retracts it, tapping
+ * the tool button toggles it, and tapping outside closes it. Otherwise
+ * it would sit open over the canvas and swallow stamp taps.
  */
 function StickerToolItem({
   label,
@@ -177,18 +183,43 @@ function StickerToolItem({
   onStickerChange,
 }: StickerToolItemProps) {
   const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const flyoutRef = useRef<HTMLDivElement | null>(null);
   const [coords, setCoords] = useState<{ left: number; bottom: number } | null>(
     null,
   );
   const [mounted, setMounted] = useState(false);
+  const [flyoutOpen, setFlyoutOpen] = useState(false);
 
   // Portals only work after hydration — wait for the document to exist.
   useEffect(() => setMounted(true), []);
 
+  // Switching to a different tool retracts the picker.
+  useEffect(() => {
+    if (!active) setFlyoutOpen(false);
+  }, [active]);
+
+  // Tapping the tool button opens the picker when first selecting the
+  // sticker tool, then toggles it open/closed on subsequent taps.
+  const handleButtonClick = () => {
+    if (!active) {
+      onClick();
+      setFlyoutOpen(true);
+    } else {
+      setFlyoutOpen((v) => !v);
+    }
+  };
+
+  // Picking a stamp retracts the flyout so it stops covering the canvas;
+  // the sticker tool stays active so the next tap stamps the choice.
+  const handlePick = (id: string) => {
+    onStickerChange(id);
+    setFlyoutOpen(false);
+  };
+
   // Recompute fixed-position coords whenever the flyout opens, the
   // viewport resizes, or the user scrolls.
   useLayoutEffect(() => {
-    if (!active) return;
+    if (!flyoutOpen) return;
     const update = () => {
       const btn = buttonRef.current;
       if (!btn) return;
@@ -205,7 +236,22 @@ function StickerToolItem({
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
     };
-  }, [active]);
+  }, [flyoutOpen]);
+
+  // Close on outside tap. Ignore taps on the tool button — those toggle
+  // via handleButtonClick and would otherwise immediately re-close.
+  useEffect(() => {
+    if (!flyoutOpen) return;
+    const handler = (e: PointerEvent) => {
+      const t = e.target as Node | null;
+      if (!t) return;
+      if (buttonRef.current?.contains(t)) return;
+      if (flyoutRef.current?.contains(t)) return;
+      setFlyoutOpen(false);
+    };
+    document.addEventListener("pointerdown", handler);
+    return () => document.removeEventListener("pointerdown", handler);
+  }, [flyoutOpen]);
 
   return (
     <>
@@ -214,13 +260,14 @@ function StickerToolItem({
         label={label}
         Icon={Icon}
         active={active}
-        onClick={onClick}
+        onClick={handleButtonClick}
       />
-      {active &&
+      {flyoutOpen &&
         mounted &&
         coords &&
         createPortal(
           <div
+            ref={flyoutRef}
             role="group"
             aria-label="Sticker picker"
             className="surface-card cat-creative p-2"
@@ -240,7 +287,7 @@ function StickerToolItem({
                   <button
                     key={s.id}
                     type="button"
-                    onClick={() => onStickerChange(s.id)}
+                    onClick={() => handlePick(s.id)}
                     aria-label={s.label}
                     aria-pressed={isActive}
                     title={s.label}

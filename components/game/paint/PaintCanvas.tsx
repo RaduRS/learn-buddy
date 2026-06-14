@@ -160,6 +160,10 @@ export const PaintCanvas = forwardRef<PaintCanvasFullHandle, PaintCanvasProps>(
 
     const handlePointerDown = (ev: PointerReact) => {
       if (paused) return;
+      // Ignore extra fingers landing mid-gesture — a palm or second touch
+      // would otherwise hijack the in-progress stroke (overwriting the
+      // tracked pointer and wiping the points buffer).
+      if (drawingRef.current) return;
       // Only respond to primary button / single touch — pinch & pan are
       // handled by the wrapper (two-finger gestures don't reach us).
       if (ev.pointerType === "mouse" && ev.button !== 0) return;
