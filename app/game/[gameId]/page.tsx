@@ -159,6 +159,7 @@ export default function GamePage() {
           userId={currentUser.id}
           gameId={game.id}
           userAge={currentUser.age ?? 6}
+          userName={currentUser.name}
           onGameComplete={handleGameComplete}
           onExit={handleExit}
         />

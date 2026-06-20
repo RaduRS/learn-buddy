@@ -6,7 +6,7 @@ import { ResultsScreen } from "@/components/game/ResultsScreen";
 import { ProgressStrip } from "@/components/game/ProgressStrip";
 import { useScore } from "@/hooks/useScore";
 import { useSfx } from "@/components/sound/SoundProvider";
-import { cn } from "@/lib/utils";
+import { cn, isEasyMathChild, EASY_MATH_MAX } from "@/lib/utils";
 
 interface MathProblem {
   id: number;
@@ -20,16 +20,35 @@ interface NumberFunGameProps {
   userId?: string;
   gameId?: string;
   userAge: number;
+  userName?: string;
   onGameComplete: (score: number, totalQuestions: number) => void;
 }
 
 const TOTAL_QUESTIONS = 10;
 
-function createProblem(id: number): MathProblem {
+function rand(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function createProblem(id: number, easy = false): MathProblem {
   const operation = Math.random() < 0.5 ? "+" : "-";
   let firstNumber: number;
   let secondNumber: number;
   let correctAnswer: number;
+
+  if (easy) {
+    // Add & subtract only, answer capped at EASY_MATH_MAX (e.g. Eddie).
+    if (operation === "+") {
+      firstNumber = rand(1, EASY_MATH_MAX - 1);
+      secondNumber = rand(1, EASY_MATH_MAX - firstNumber);
+      correctAnswer = firstNumber + secondNumber;
+    } else {
+      firstNumber = rand(2, EASY_MATH_MAX);
+      secondNumber = rand(1, firstNumber);
+      correctAnswer = firstNumber - secondNumber;
+    }
+    return { id, firstNumber, secondNumber, operation, correctAnswer };
+  }
 
   if (operation === "+") {
     correctAnswer = Math.floor(Math.random() * 90) + 10;
@@ -43,13 +62,16 @@ function createProblem(id: number): MathProblem {
   return { id, firstNumber, secondNumber, operation, correctAnswer };
 }
 
-function createAnswerChoices(correct: number): number[] {
+function createAnswerChoices(correct: number, easy = false): number[] {
+  const min = easy ? 0 : 1;
+  const max = easy ? EASY_MATH_MAX : 100;
+  const maxOffset = easy ? 5 : 20;
   const choices = [correct];
   while (choices.length < 4) {
-    const offset = Math.floor(Math.random() * 20) + 1;
+    const offset = rand(1, maxOffset);
     const direction = Math.random() < 0.5 ? -1 : 1;
     let wrong = correct + direction * offset;
-    if (wrong < 1 || wrong > 100) wrong = Math.floor(Math.random() * 100) + 1;
+    if (wrong < min || wrong > max) wrong = rand(min, max);
     if (!choices.includes(wrong)) choices.push(wrong);
   }
   return choices.sort(() => Math.random() - 0.5);
@@ -57,12 +79,14 @@ function createAnswerChoices(correct: number): number[] {
 
 export default function NumberFunGame({
   gameId,
+  userName,
   onGameComplete,
 }: NumberFunGameProps) {
   const { incrementScore } = useScore();
   const { play } = useSfx();
+  const easy = isEasyMathChild(userName);
 
-  const [currentProblem, setCurrentProblem] = useState<MathProblem>(() => createProblem(1));
+  const [currentProblem, setCurrentProblem] = useState<MathProblem>(() => createProblem(1, easy));
   const [questionIndex, setQuestionIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
@@ -73,8 +97,8 @@ export default function NumberFunGame({
 
   // Stable per-question answer choices.
   const answerChoices = useMemo(
-    () => createAnswerChoices(currentProblem.correctAnswer),
-    [currentProblem],
+    () => createAnswerChoices(currentProblem.correctAnswer, easy),
+    [currentProblem, easy],
   );
 
   const handleAnswer = (answer: number) => {
@@ -107,7 +131,7 @@ export default function NumberFunGame({
       return;
     }
     setQuestionIndex((i) => i + 1);
-    setCurrentProblem(createProblem(questionIndex + 2));
+    setCurrentProblem(createProblem(questionIndex + 2, easy));
   };
 
   const restart = () => {
@@ -119,7 +143,7 @@ export default function NumberFunGame({
     setIsCorrect(null);
     setShowResult(false);
     setGameCompleted(false);
-    setCurrentProblem(createProblem(1));
+    setCurrentProblem(createProblem(1, easy));
   };
 
   const speakProblem = () => {

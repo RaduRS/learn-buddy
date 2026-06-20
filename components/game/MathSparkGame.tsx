@@ -5,7 +5,7 @@ import { CheckCircle, XCircle } from "lucide-react";
 import { ResultsScreen } from "@/components/game/ResultsScreen";
 import { useScore } from "@/hooks/useScore";
 import { useSfx } from "@/components/sound/SoundProvider";
-import { cn } from "@/lib/utils";
+import { cn, isEasyMathChild, EASY_MATH_MAX } from "@/lib/utils";
 
 type ProblemType =
   | "add"
@@ -28,6 +28,7 @@ interface MathProblem {
 
 interface MathSparkGameProps {
   gameId?: string;
+  userName?: string;
   onGameComplete: (score: number, totalQuestions: number) => void;
 }
 
@@ -109,13 +110,41 @@ function generateProblem(type: ProblemType): MathProblem | null {
   return { id: Math.random(), question, answer, type };
 }
 
-function generateRound(): MathProblem[] {
+// Easy mode (e.g. Eddie): add & subtract only, every answer capped at EASY_MATH_MAX.
+function generateEasyProblem(type: "add" | "sub"): MathProblem {
+  let question: string;
+  let answer: number;
+
+  if (type === "add") {
+    const a = rand(1, EASY_MATH_MAX - 1);
+    const b = rand(1, EASY_MATH_MAX - a);
+    question = `${a} + ${b} = ?`;
+    answer = a + b;
+  } else {
+    const a = rand(2, EASY_MATH_MAX);
+    const b = rand(1, a);
+    question = `${a} - ${b} = ?`;
+    answer = a - b;
+  }
+
+  return { id: Math.random(), question, answer, type };
+}
+
+function generateRound(easy = false): MathProblem[] {
+  const problems: MathProblem[] = [];
+  if (easy) {
+    const easyTypes: ("add" | "sub")[] = ["add", "sub"];
+    while (problems.length < TOTAL) {
+      problems.push(generateEasyProblem(easyTypes[rand(0, easyTypes.length - 1)]));
+    }
+    return problems;
+  }
+
   const types: ProblemType[] = [
     "add", "sub", "mul",
     "chain_add_mul", "chain_mul_add",
     "blank_add", "blank_sub", "blank_mul",
   ];
-  const problems: MathProblem[] = [];
   while (problems.length < TOTAL) {
     const type = types[rand(0, types.length - 1)];
     const p = generateProblem(type);
@@ -126,11 +155,13 @@ function generateRound(): MathProblem[] {
 
 export default function MathSparkGame({
   gameId,
+  userName,
   onGameComplete,
 }: MathSparkGameProps) {
   const { incrementScore } = useScore();
   const { play } = useSfx();
-  const [problems, setProblems] = useState<MathProblem[]>(() => generateRound());
+  const easy = isEasyMathChild(userName);
+  const [problems, setProblems] = useState<MathProblem[]>(() => generateRound(easy));
   const [submitted, setSubmitted] = useState(false);
   const [revealIndex, setRevealIndex] = useState<number | null>(null);
   const [score, setScore] = useState(0);
@@ -168,7 +199,7 @@ export default function MathSparkGame({
 
   const restart = () => {
     play("tap");
-    setProblems(generateRound());
+    setProblems(generateRound(easy));
     setSubmitted(false);
     setRevealIndex(null);
     setScore(0);
@@ -217,7 +248,9 @@ export default function MathSparkGame({
             Solve all 10 — then submit
           </h2>
           <p className="text-arcade-mid text-sm mt-1">
-            Mix of sums, differences, products, and missing numbers.
+            {easy
+              ? "Friendly sums and differences up to 10."
+              : "Mix of sums, differences, products, and missing numbers."}
           </p>
         </div>
         <span className="chip">

@@ -12,6 +12,8 @@ export interface GameContext {
   userId: string;
   gameId: string;
   userAge: number;
+  /** Selected child's display name — used for per-child tuning (e.g. easy math for Eddie). */
+  userName: string;
   onGameComplete: (score: number, totalQuestions: number) => void;
   onExit: () => void;
 }
@@ -82,6 +84,7 @@ function NumberFunAdapter(ctx: GameContext) {
       userId={ctx.userId}
       gameId={ctx.gameId}
       userAge={ctx.userAge}
+      userName={ctx.userName}
       onGameComplete={ctx.onGameComplete}
     />
   );
@@ -122,7 +125,11 @@ function ReadingHelperAdapter(ctx: GameContext) {
 
 function MathSparkAdapter(ctx: GameContext) {
   return (
-    <MathSparkGame gameId={ctx.gameId} onGameComplete={ctx.onGameComplete} />
+    <MathSparkGame
+      gameId={ctx.gameId}
+      userName={ctx.userName}
+      onGameComplete={ctx.onGameComplete}
+    />
   );
 }
 
