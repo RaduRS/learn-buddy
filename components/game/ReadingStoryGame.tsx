@@ -1,7 +1,7 @@
 // components/game/ReadingStoryGame.tsx
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   ChevronLeft,
@@ -54,6 +54,15 @@ export default function ReadingStoryGame({
   const { incrementScore } = useScore();
   const { play } = useSfx();
   const recorder = useAudioRecorder();
+  const stopRef = useRef(recorder.stop);
+  stopRef.current = recorder.stop;
+
+  // Stop the mic if the player leaves mid-recording.
+  useEffect(() => {
+    return () => {
+      void stopRef.current();
+    };
+  }, []);
 
   const [phase, setPhase] = useState<Phase>("theme");
   const [story, setStory] = useState<Story | null>(null);
@@ -386,7 +395,7 @@ export default function ReadingStoryGame({
           </button>
           {!allAnswered && (
             <p className="text-arcade-soft text-sm mt-2">
-              Answer all three questions to finish.
+              Answer all {STORY_QUESTION_COUNT} questions to finish.
             </p>
           )}
         </div>
