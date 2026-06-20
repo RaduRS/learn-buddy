@@ -37,6 +37,7 @@ const MusicLearningGame  = lazy(() => import("@/components/game/MusicLearningGam
 const ShapesGame         = lazy(() => import("@/components/game/ShapesGame"));
 const ReadingHelperGame  = lazy(() => import("@/components/game/ReadingHelperGame"));
 const MathSparkGame      = lazy(() => import("@/components/game/MathSparkGame"));
+const ReadingStoryGame   = lazy(() => import("@/components/game/ReadingStoryGame"));
 const PaintGame          = lazy(() => import("@/components/game/PaintGame"));
 
 interface MemoryGridConfig {
@@ -133,6 +134,17 @@ function MathSparkAdapter(ctx: GameContext) {
   );
 }
 
+function ReadingStoryAdapter(ctx: GameContext) {
+  return (
+    <ReadingStoryGame
+      userId={ctx.userId}
+      gameId={ctx.gameId}
+      userAge={ctx.userAge}
+      onGameComplete={ctx.onGameComplete}
+    />
+  );
+}
+
 function PaintAdapter(ctx: GameContext) {
   // Paint is open-ended — it never calls onGameComplete or returns a score.
   return <PaintGame userId={ctx.userId} />;
@@ -177,6 +189,7 @@ export const REGISTRY: Record<string, RegistryEntry> = {
   "music-maker":    { title: "Music Maker",    category: "music",   Component: MusicAdapter },
   "shapes":         { title: "Shapes",         category: "spatial", Component: ShapesAdapter },
   "reading-helper": { title: "Reading Helper", category: "reading", Component: ReadingHelperAdapter },
+  "story-time":     { title: "Story Time",     category: "reading", Component: ReadingStoryAdapter },
   "true-false":     { title: "True or False",  category: "math",    Component: TrueFalseAdapter },
   "paint":          { title: "Paint",          category: "creative",Component: PaintAdapter },
 };
