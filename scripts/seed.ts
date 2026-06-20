@@ -69,6 +69,14 @@ const initialGames = [
     isActive: true,
   },
   {
+    title: "Story Time",
+    description: "Read a fun story and answer questions out loud!",
+    icon: "📚",
+    category: "reading",
+    difficulty: 2,
+    isActive: true,
+  },
+  {
     title: "MathSpark",
     description: "10 math problems: add, subtract, multiply & more!",
     icon: "⚡",

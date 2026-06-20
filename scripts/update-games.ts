@@ -102,7 +102,22 @@ async function updateGames() {
     } else {
       console.log('Read Aloud Camera game already exists')
     }
-    
+
+    const storyTimeGame = existingGames.find(game => game.title === 'Story Time')
+    if (!storyTimeGame) {
+      await DatabaseService.createGame({
+        title: 'Story Time',
+        description: 'Read a fun story and answer questions out loud!',
+        icon: '📚',
+        category: 'reading',
+        difficulty: 2,
+        isActive: true,
+      })
+      console.log('Added new Story Time game')
+    } else {
+      console.log('Story Time game already exists')
+    }
+
     console.log('Games update completed successfully!')
     
   } catch (error) {
