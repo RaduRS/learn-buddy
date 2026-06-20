@@ -1,6 +1,7 @@
 // components/game/ReadingStoryGame.tsx
 "use client";
 
+import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
@@ -512,10 +513,17 @@ export default function ReadingStoryGame({
             key={theme.id}
             type="button"
             onClick={() => pickTheme(theme)}
-            className="surface-card cat-reading p-5 text-left active:scale-[0.985] transition-transform"
+            className="surface-card cat-reading p-5 sm:p-6 text-left active:scale-[0.985] transition-transform
+                       flex items-center gap-4"
           >
-            <div className="text-4xl leading-none">{theme.emoji}</div>
-            <div className="font-display text-arcade-strong mt-2">
+            <Image
+              src={theme.image}
+              alt=""
+              width={96}
+              height={96}
+              className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl shrink-0 bg-white/90 ring-1 ring-[var(--arcade-edge)]"
+            />
+            <div className="font-display text-lg sm:text-xl text-arcade-strong">
               {theme.label}
             </div>
           </button>
