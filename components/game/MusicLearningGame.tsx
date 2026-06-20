@@ -51,7 +51,77 @@ const NOTE_LABEL: Record<string, string> = {
   C: "C", D: "D", E: "E", F: "F", G: "G", A: "A", B: "B", C2: "C",
 };
 
-const TWINKLE = ["C", "C", "G", "G", "A", "A", "G"];
+interface Song {
+  id: string;
+  title: string;
+  emoji: string;
+  notes: string[];
+}
+
+// Popular, very-easy melodies arranged within the single-octave white keys
+// (C D E F G A B) so the kid just follows the glowing key.
+const SONGS: Song[] = [
+  {
+    id: "twinkle",
+    title: "Twinkle Twinkle",
+    emoji: "⭐",
+    notes: ["C", "C", "G", "G", "A", "A", "G", "F", "F", "E", "E", "D", "D", "C"],
+  },
+  {
+    id: "mary",
+    title: "Mary Had a Little Lamb",
+    emoji: "🐑",
+    notes: ["E", "D", "C", "D", "E", "E", "E", "D", "D", "D", "E", "G", "G"],
+  },
+  {
+    id: "hot-cross-buns",
+    title: "Hot Cross Buns",
+    emoji: "🥐",
+    notes: ["E", "D", "C", "E", "D", "C", "C", "C", "C", "D", "D", "D", "D", "E", "D", "C"],
+  },
+  {
+    id: "old-macdonald",
+    title: "Old MacDonald",
+    emoji: "🐮",
+    notes: ["G", "G", "G", "D", "E", "E", "D", "B", "B", "A", "A", "G"],
+  },
+  {
+    id: "row-your-boat",
+    title: "Row Your Boat",
+    emoji: "🚣",
+    notes: ["C", "C", "C", "D", "E", "E", "D", "E", "F", "G"],
+  },
+  {
+    id: "jingle-bells",
+    title: "Jingle Bells",
+    emoji: "🔔",
+    notes: ["E", "E", "E", "E", "E", "E", "E", "G", "C", "D", "E"],
+  },
+  {
+    id: "london-bridge",
+    title: "London Bridge",
+    emoji: "🌉",
+    notes: ["G", "A", "G", "F", "E", "F", "G", "D", "E", "F", "E", "F", "G"],
+  },
+  {
+    id: "itsy-bitsy-spider",
+    title: "Itsy Bitsy Spider",
+    emoji: "🕷️",
+    notes: ["G", "C", "C", "C", "D", "E", "E", "E", "D", "C", "D", "E", "C"],
+  },
+  {
+    id: "happy-birthday",
+    title: "Happy Birthday",
+    emoji: "🎂",
+    notes: ["C", "C", "D", "C", "F", "E", "C", "C", "D", "C", "G", "F"],
+  },
+  {
+    id: "ode-to-joy",
+    title: "Ode to Joy",
+    emoji: "🎼",
+    notes: ["E", "E", "F", "G", "G", "F", "E", "D", "C", "C", "D", "E", "E", "D", "D"],
+  },
+];
 const RHYTHM_PATTERNS: number[][] = [
   [1, 1, 1, 1],
   [1, 1, 2],
@@ -248,7 +318,7 @@ export default function MusicLearningGame({
         <LessonTile
           id="song"
           title="3 · Play a Song"
-          subtitle="Twinkle Twinkle"
+          subtitle={`${SONGS.length} easy songs`}
           done={progress.song}
           active={activeLesson === "song"}
           locked={!progress.rhythm}
@@ -613,11 +683,65 @@ function SongLesson({
   sfx: (sound: "tap" | "correct" | "wrong" | "levelup") => void;
   onComplete: () => void;
 }) {
+  const [selected, setSelected] = useState<Song | null>(null);
   const [step, setStep] = useState(0);
   const [done, setDone] = useState(false);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
 
-  const expected = TWINKLE[step];
+  const pickSong = (song: Song) => {
+    sfx("tap");
+    setSelected(song);
+    setStep(0);
+    setDone(false);
+    setFeedback(null);
+  };
+
+  const backToSongs = () => {
+    sfx("tap");
+    setSelected(null);
+    setStep(0);
+    setDone(false);
+    setFeedback(null);
+  };
+
+  // Song picker
+  if (!selected) {
+    return (
+      <div className="space-y-4">
+        <div className="surface-card cat-music p-5">
+          <p className="text-xs uppercase tracking-[0.18em] font-display" style={{ color: "var(--cat-music)" }}>
+            Lesson 3 · Play a Song
+          </p>
+          <h3 className="font-display text-xl sm:text-2xl text-arcade-strong mt-1">
+            Pick a song to learn
+          </h3>
+          <p className="text-arcade-mid text-sm mt-1">
+            Tap a song, then follow the glowing keys. {SONGS.length} easy songs to try!
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {SONGS.map((song) => (
+            <button
+              key={song.id}
+              type="button"
+              onClick={() => pickSong(song)}
+              className="surface-card cat-music p-4 text-left active:scale-[0.985] transition-transform"
+            >
+              <div className="text-3xl leading-none">{song.emoji}</div>
+              <div className="font-display text-arcade-strong mt-2 text-sm leading-tight">
+                {song.title}
+              </div>
+              <div className="text-arcade-mid text-xs mt-1">{song.notes.length} notes</div>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const notes = selected.notes;
+  const expected = notes[step];
   const expectedKey = WHITE_KEYS.find((k) => k.note === expected);
 
   const handleKey = (key: PianoKey) => {
@@ -629,7 +753,7 @@ function SongLesson({
       setFeedback("correct");
       setTimeout(() => {
         setFeedback(null);
-        if (step + 1 >= TWINKLE.length) {
+        if (step + 1 >= notes.length) {
           setDone(true);
           sfx("levelup");
           onComplete();
@@ -646,32 +770,58 @@ function SongLesson({
 
   if (done) {
     return (
-      <ResultsScreen
-        score={TWINKLE.length}
-        total={TWINKLE.length}
-        category="music"
-        headline="You played a song!"
-        message="Twinkle Twinkle is officially in your hands. Free play is unlocked."
-        onPlayAgain={() => {
-          setStep(0);
-          setDone(false);
-        }}
-      />
+      <div className="space-y-4">
+        <ResultsScreen
+          score={notes.length}
+          total={notes.length}
+          category="music"
+          headline="You played a song!"
+          message={`${selected.title} is officially in your hands. Free play is unlocked.`}
+          onPlayAgain={() => {
+            setStep(0);
+            setDone(false);
+          }}
+        />
+        <div className="text-center">
+          <button
+            type="button"
+            onClick={backToSongs}
+            className="font-display inline-flex items-center gap-2 px-5 py-2.5 rounded-full
+                       bg-[var(--arcade-card-soft)] text-arcade-strong
+                       border border-[var(--arcade-edge)] active:scale-[0.97]"
+          >
+            Pick another song
+          </button>
+        </div>
+      </div>
     );
   }
 
   return (
     <div className="space-y-4">
       <div className="surface-card cat-music p-5">
-        <p className="text-xs uppercase tracking-[0.18em] font-display" style={{ color: "var(--cat-music)" }}>
-          Lesson 3 · Twinkle Twinkle
-        </p>
-        <h3 className="font-display text-xl sm:text-2xl text-arcade-strong mt-1">
-          Tap the glowing key
-        </h3>
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <p className="text-xs uppercase tracking-[0.18em] font-display" style={{ color: "var(--cat-music)" }}>
+              Lesson 3 · {selected.emoji} {selected.title}
+            </p>
+            <h3 className="font-display text-xl sm:text-2xl text-arcade-strong mt-1">
+              Tap the glowing key
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={backToSongs}
+            className="font-display inline-flex items-center gap-2 px-4 py-2 rounded-full
+                       bg-[var(--arcade-card-soft)] text-arcade-strong
+                       border border-[var(--arcade-edge)] active:scale-[0.97]"
+          >
+            ← Songs
+          </button>
+        </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          {TWINKLE.map((n, i) => (
+          {notes.map((n, i) => (
             <span
               key={i}
               className={cn(
