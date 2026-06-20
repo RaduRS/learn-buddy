@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { GameShell } from "@/components/game/GameShell";
 import { LoadingScreen } from "@/components/game/LoadingScreen";
 import { resolveGameEntry, slugifyTitle } from "@/lib/games/registry";
+import { canSeeGame } from "@/lib/games/visibility";
 import { Buddy } from "@/components/mascot/Buddy";
 import { CATEGORIES, toCategoryKey } from "@/lib/games/categories";
 import type { Game, User } from "@/types";
@@ -137,6 +138,10 @@ export default function GamePage() {
 
   const entry = resolveGameEntry(game);
   if (!entry) {
+    return <NotFoundShell title="Game not available" onHome={handleExit} />;
+  }
+
+  if (!canSeeGame(game.title, currentUser.name)) {
     return <NotFoundShell title="Game not available" onHome={handleExit} />;
   }
 

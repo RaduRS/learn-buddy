@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Sparkles } from "lucide-react";
 import { GameCard } from "@/components/game/GameCard";
+import { canSeeGame } from "@/lib/games/visibility";
 import { Header } from "@/components/layout/Header";
 import { UserSelectionDialog } from "@/components/user/UserSelectionDialog";
 import { LoadingScreen } from "@/components/game/LoadingScreen";
@@ -230,12 +231,17 @@ export default function Home() {
             <h2 className="font-display text-2xl sm:text-3xl text-arcade-strong mb-4 sm:mb-6 flex items-baseline gap-2">
               Choose your game
               <span className="text-sm font-display text-arcade-soft">
-                {games.filter((g) => g.isActive).length} ready to play
+                {games.filter(
+                  (g) => g.isActive && canSeeGame(g.title, currentUser?.name),
+                ).length}{" "}
+                ready to play
               </span>
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-              {games.map((game) => {
+              {games
+                .filter((game) => canSeeGame(game.title, currentUser?.name))
+                .map((game) => {
                 const progress = currentUser?.gameProgress?.find(
                   (p) => p.gameId === game.id,
                 );
