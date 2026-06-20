@@ -65,61 +65,105 @@ const SONGS: Song[] = [
     id: "twinkle",
     title: "Twinkle Twinkle",
     emoji: "⭐",
-    notes: ["C", "C", "G", "G", "A", "A", "G", "F", "F", "E", "E", "D", "D", "C"],
+    // Full verse: twinkle… / up above… / twinkle…
+    notes: [
+      "C", "C", "G", "G", "A", "A", "G", "F", "F", "E", "E", "D", "D", "C",
+      "G", "G", "F", "F", "E", "E", "D", "G", "G", "F", "F", "E", "E", "D",
+      "C", "C", "G", "G", "A", "A", "G", "F", "F", "E", "E", "D", "D", "C",
+    ],
   },
   {
     id: "mary",
     title: "Mary Had a Little Lamb",
     emoji: "🐑",
-    notes: ["E", "D", "C", "D", "E", "E", "E", "D", "D", "D", "E", "G", "G"],
+    // Full verse incl. "its fleece was white as snow"
+    notes: [
+      "E", "D", "C", "D", "E", "E", "E", "D", "D", "D", "E", "G", "G",
+      "E", "D", "C", "D", "E", "E", "E", "E", "D", "D", "E", "D", "C",
+    ],
   },
   {
     id: "hot-cross-buns",
     title: "Hot Cross Buns",
     emoji: "🥐",
-    notes: ["E", "D", "C", "E", "D", "C", "C", "C", "C", "D", "D", "D", "D", "E", "D", "C"],
+    // Both verses
+    notes: [
+      "E", "D", "C", "E", "D", "C", "C", "C", "C", "D", "D", "D", "D", "E", "D", "C",
+      "E", "D", "C", "E", "D", "C", "C", "C", "C", "D", "D", "D", "D", "E", "D", "C",
+    ],
   },
   {
     id: "old-macdonald",
     title: "Old MacDonald",
     emoji: "🐮",
-    notes: ["G", "G", "G", "D", "E", "E", "D", "B", "B", "A", "A", "G"],
+    // "had a farm, E-I-E-I-O" twice
+    notes: [
+      "G", "G", "G", "D", "E", "E", "D", "B", "B", "A", "A", "G",
+      "G", "G", "G", "D", "E", "E", "D", "B", "B", "A", "A", "G",
+    ],
   },
   {
     id: "row-your-boat",
     title: "Row Your Boat",
     emoji: "🚣",
-    notes: ["C", "C", "C", "D", "E", "E", "D", "E", "F", "G"],
+    // Complete round
+    notes: [
+      "C", "C", "C", "D", "E", "E", "D", "E", "F", "G",
+      "C2", "C2", "C2", "G", "G", "G", "E", "E", "E", "C", "C", "C",
+      "G", "F", "E", "D", "C",
+    ],
   },
   {
     id: "jingle-bells",
     title: "Jingle Bells",
     emoji: "🔔",
-    notes: ["E", "E", "E", "E", "E", "E", "E", "G", "C", "D", "E"],
+    // Full chorus
+    notes: [
+      "E", "E", "E", "E", "E", "E", "E", "G", "C", "D", "E",
+      "F", "F", "F", "F", "F", "E", "E", "E", "G", "G", "F", "D", "C",
+    ],
   },
   {
     id: "london-bridge",
     title: "London Bridge",
     emoji: "🌉",
-    notes: ["G", "A", "G", "F", "E", "F", "G", "D", "E", "F", "E", "F", "G"],
+    // Both lines incl. "my fair lady"
+    notes: [
+      "G", "A", "G", "F", "E", "F", "G", "D", "E", "F", "E", "F", "G",
+      "G", "A", "G", "F", "E", "F", "G", "D", "G", "E", "C",
+    ],
   },
   {
     id: "itsy-bitsy-spider",
     title: "Itsy Bitsy Spider",
     emoji: "🕷️",
-    notes: ["G", "C", "C", "C", "D", "E", "E", "E", "D", "C", "D", "E", "C"],
+    // Verse + "down came the rain…"
+    notes: [
+      "C", "C", "C", "D", "E", "E", "E", "D", "C", "D", "E", "C",
+      "E", "E", "F", "G", "G", "G", "F", "E", "F", "G", "E",
+    ],
   },
   {
     id: "happy-birthday",
     title: "Happy Birthday",
     emoji: "🎂",
-    notes: ["C", "C", "D", "C", "F", "E", "C", "C", "D", "C", "G", "F"],
+    // All four lines (B used where the tune wants a black key)
+    notes: [
+      "C", "C", "D", "C", "F", "E",
+      "C", "C", "D", "C", "G", "F",
+      "C", "C", "C2", "A", "F", "E", "D",
+      "B", "B", "A", "F", "G", "F",
+    ],
   },
   {
     id: "ode-to-joy",
     title: "Ode to Joy",
     emoji: "🎼",
-    notes: ["E", "E", "F", "G", "G", "F", "E", "D", "C", "C", "D", "E", "E", "D", "D"],
+    // Full main theme
+    notes: [
+      "E", "E", "F", "G", "G", "F", "E", "D", "C", "C", "D", "E", "E", "D", "D",
+      "E", "E", "F", "G", "G", "F", "E", "D", "C", "C", "D", "E", "D", "C",
+    ],
   },
 ];
 const RHYTHM_PATTERNS: number[][] = [
@@ -196,27 +240,39 @@ export default function MusicLearningGame({
       const ctx = ensureCtx();
       if (!ctx) return;
       const now = ctx.currentTime;
-      const stop = now + duration + 0.1;
+      // Piano notes ring out past the "key" length — let the tail breathe.
+      const release = Math.max(duration, 1.4);
+      const stop = now + release + 0.2;
 
+      // Percussive piano envelope: snappy attack, fast initial drop, long tail.
       const master = ctx.createGain();
       master.gain.setValueAtTime(0.0001, now);
-      master.gain.exponentialRampToValueAtTime(0.32, now + 0.006);
-      master.gain.exponentialRampToValueAtTime(0.0001, stop);
+      master.gain.exponentialRampToValueAtTime(0.5, now + 0.004);
+      master.gain.exponentialRampToValueAtTime(0.16, now + 0.16);
+      master.gain.exponentialRampToValueAtTime(0.0001, now + release);
       master.connect(ctx.destination);
 
+      // Brightness decays over time, like a real string being damped.
       const filter = ctx.createBiquadFilter();
       filter.type = "lowpass";
-      filter.frequency.value = Math.min(8000, freq * 10);
-      filter.Q.value = 0.4;
+      filter.frequency.setValueAtTime(Math.min(12000, freq * 14), now);
+      filter.frequency.exponentialRampToValueAtTime(
+        Math.max(700, freq * 2.5),
+        now + release,
+      );
+      filter.Q.value = 0.6;
       filter.connect(master);
 
+      // Slightly stretched (inharmonic) partials; upper ones quieter and
+      // decaying faster — this is what makes it read as "piano" not "organ".
       const partials: Array<{ mult: number; amp: number; decay: number }> = [
         { mult: 1, amp: 1.0, decay: 1.0 },
-        { mult: 2, amp: 0.45, decay: 0.7 },
-        { mult: 3, amp: 0.22, decay: 0.5 },
-        { mult: 4, amp: 0.12, decay: 0.4 },
-        { mult: 5, amp: 0.07, decay: 0.3 },
-        { mult: 6, amp: 0.04, decay: 0.25 },
+        { mult: 2.001, amp: 0.5, decay: 0.82 },
+        { mult: 3.004, amp: 0.32, decay: 0.62 },
+        { mult: 4.008, amp: 0.17, decay: 0.48 },
+        { mult: 5.014, amp: 0.1, decay: 0.36 },
+        { mult: 6.02, amp: 0.055, decay: 0.27 },
+        { mult: 7.03, amp: 0.03, decay: 0.2 },
       ];
       for (const { mult, amp, decay } of partials) {
         const osc = ctx.createOscillator();
@@ -224,12 +280,36 @@ export default function MusicLearningGame({
         osc.type = "sine";
         osc.frequency.value = freq * mult;
         g.gain.setValueAtTime(0.0001, now);
-        g.gain.exponentialRampToValueAtTime(amp, now + 0.004);
-        g.gain.exponentialRampToValueAtTime(0.0001, now + duration * decay);
+        g.gain.exponentialRampToValueAtTime(amp, now + 0.003);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + release * decay + 0.08);
         osc.connect(g).connect(filter);
         osc.start(now);
         osc.stop(stop);
       }
+
+      // Hammer "thunk" — a short filtered noise burst at the onset adds the
+      // attack transient a pure-tone synth is missing.
+      const noiseDur = 0.05;
+      const noiseBuf = ctx.createBuffer(
+        1,
+        Math.max(1, Math.ceil(ctx.sampleRate * noiseDur)),
+        ctx.sampleRate,
+      );
+      const data = noiseBuf.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+      const noise = ctx.createBufferSource();
+      noise.buffer = noiseBuf;
+      const noiseFilter = ctx.createBiquadFilter();
+      noiseFilter.type = "bandpass";
+      noiseFilter.frequency.value = Math.min(7000, freq * 4);
+      noiseFilter.Q.value = 0.8;
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.0001, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.1, now + 0.002);
+      noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + noiseDur);
+      noise.connect(noiseFilter).connect(noiseGain).connect(ctx.destination);
+      noise.start(now);
+      noise.stop(now + noiseDur);
     },
     [ensureCtx],
   );
