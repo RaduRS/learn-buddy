@@ -829,7 +829,7 @@ function SongLesson({
                 i < step
                   ? "bg-[oklch(0.30_0.10_145_/_0.5)] text-[oklch(0.92_0.13_145)] border-[oklch(0.55_0.16_145)]"
                   : i === step
-                    ? "bg-[var(--cat-music)] text-[var(--ink-on-color)] border-[oklch(0.45_0.10_160)] sparkle"
+                    ? "bg-[var(--cat-music)] text-[var(--ink-on-color)] border-[oklch(0.45_0.10_160)] ring-2 ring-[var(--joy-gold)] scale-110"
                     : "bg-[var(--arcade-card-soft)] text-arcade-mid border-[var(--arcade-edge)]",
               )}
             >
