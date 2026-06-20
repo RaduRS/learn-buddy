@@ -115,7 +115,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const data = await response.json();
+    let data = await response.json();
+
+    // `Prefer: wait` only holds the connection for ~60s and then returns the
+    // prediction in whatever state it's in. On cold starts / queueing it comes
+    // back as "starting" with no output, so poll until it actually finishes.
+    const isTerminal = (s?: string) =>
+      s === "succeeded" || s === "failed" || s === "canceled";
+    const pollUrl: string | undefined = data?.urls?.get;
+    const deadline = Date.now() + 90_000;
+    while (pollUrl && !isTerminal(data?.status)) {
+      if (Date.now() > deadline) {
+        console.error("Replicate prediction timed out:", data?.status);
+        return NextResponse.json(
+          { error: "Image generation timed out, please try again" },
+          { status: 504 },
+        );
+      }
+      await new Promise((r) => setTimeout(r, 1200));
+      const poll = await fetch(pollUrl, {
+        headers: { Authorization: `Bearer ${replicateApiKey}` },
+      });
+      if (!poll.ok) break;
+      data = await poll.json();
+    }
+
+    if (data?.status === "failed" || data?.status === "canceled") {
+      console.error("Replicate prediction failed:", data?.error ?? data?.status);
+      return NextResponse.json(
+        { error: "Image generation failed, please try again" },
+        { status: 502 },
+      );
+    }
+
     const outputUrl: string | undefined = Array.isArray(data?.output)
       ? data.output[0]
       : data?.output;

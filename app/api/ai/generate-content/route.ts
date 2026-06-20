@@ -201,7 +201,31 @@ ULTRA STRICT NO-TEXT REQUIREMENTS:
       throw new Error('Failed to generate image')
     }
 
-    const replicateData = await replicateResponse.json()
+    let replicateData = await replicateResponse.json()
+
+    // `Prefer: wait` only holds the connection for ~60s and then returns the
+    // prediction in whatever state it's in. On cold starts / queueing it comes
+    // back as "starting" with no output, so poll until it actually finishes.
+    const isTerminal = (s?: string) =>
+      s === 'succeeded' || s === 'failed' || s === 'canceled'
+    const pollUrl: string | undefined = replicateData?.urls?.get
+    const deadline = Date.now() + 90_000
+    while (pollUrl && !isTerminal(replicateData?.status)) {
+      if (Date.now() > deadline) {
+        throw new Error('Image generation timed out')
+      }
+      await new Promise((r) => setTimeout(r, 1200))
+      const poll = await fetch(pollUrl, {
+        headers: { Authorization: `Bearer ${replicateApiKey}` },
+      })
+      if (!poll.ok) break
+      replicateData = await poll.json()
+    }
+
+    if (replicateData?.status === 'failed' || replicateData?.status === 'canceled') {
+      throw new Error('Image generation failed')
+    }
+
     const outputUrl: string | undefined = Array.isArray(replicateData?.output)
       ? replicateData.output[0]
       : replicateData?.output
