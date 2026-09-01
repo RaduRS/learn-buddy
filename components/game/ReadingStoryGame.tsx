@@ -21,10 +21,43 @@ import { cn } from "@/lib/utils";
 import {
   STORY_THEMES,
   STORY_QUESTION_COUNT,
+  STORY_HISTORY_SIZE,
   type Story,
   type JudgeResult,
   type StoryTheme,
 } from "@/lib/games/storyTime";
+
+// Rolling memory of past stories (per device) so new ones stay fresh.
+const HISTORY_KEY = "story-time-history-v1";
+
+interface StoryHistoryEntry {
+  title: string;
+  character: string;
+}
+
+function readHistory(): StoryHistoryEntry[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (e): e is StoryHistoryEntry =>
+        e && typeof e.title === "string" && typeof e.character === "string",
+    );
+  } catch {
+    return [];
+  }
+}
+
+function rememberStory(entry: StoryHistoryEntry) {
+  try {
+    const next = [...readHistory(), entry].slice(-STORY_HISTORY_SIZE);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+  } catch {
+    // Storage unavailable — variety just falls back to the prompt's randomness.
+  }
+}
 
 interface ReadingStoryGameProps {
   userId: string;
@@ -37,6 +70,7 @@ type Phase =
   | "theme"
   | "loading"
   | "reading"
+  | "facts"
   | "questions"
   | "judging"
   | "results"
@@ -80,13 +114,21 @@ export default function ReadingStoryGame({
       setPhase("loading");
       setErrorMsg("");
       try {
+        const history = readHistory();
         const res = await fetch("/api/ai/generate-story", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ theme: theme.prompt, age: userAge }),
+          body: JSON.stringify({
+            theme: theme.prompt,
+            factTopic: theme.factTopic,
+            age: userAge,
+            avoidTitles: history.map((h) => h.title),
+            avoidCharacters: history.map((h) => h.character),
+          }),
         });
         if (!res.ok) throw new Error("generate failed");
         const data = (await res.json()) as Story;
+        rememberStory({ title: data.title, character: data.mainCharacter });
         setStory(data);
         setPageIndex(0);
         setAnswers(
@@ -279,6 +321,60 @@ export default function ReadingStoryGame({
     );
   }
 
+  if (phase === "facts" && story) {
+    return (
+      <div className="space-y-4">
+        <div className="surface-card cat-reading p-5 sm:p-7 flex items-center gap-5">
+          <div className="hidden sm:block">
+            <Buddy mood="cheer" size="md" />
+          </div>
+          <div>
+            <p
+              className="text-xs uppercase tracking-[0.22em] font-display"
+              style={{ color: "var(--cat-reading)" }}
+            >
+              {story.title}
+            </p>
+            <h3 className="font-display text-2xl sm:text-3xl text-arcade-strong">
+              Did you know?
+            </h3>
+            <p className="mt-1 text-arcade-mid text-sm">
+              These bits of your story are really true!
+            </p>
+          </div>
+        </div>
+
+        {story.facts.map((fact, i) => (
+          <div
+            key={i}
+            className="surface-card cat-reading p-6 sm:p-8 flex items-start gap-4"
+          >
+            <span className="text-3xl" aria-hidden>
+              ✨
+            </span>
+            <p className="font-display text-xl sm:text-2xl leading-snug text-arcade-strong">
+              {fact}
+            </p>
+          </div>
+        ))}
+
+        <div className="text-center">
+          <button
+            type="button"
+            onClick={() => {
+              play("tap");
+              setPhase("questions");
+            }}
+            className="font-display inline-flex items-center gap-2 text-lg px-8 py-3 rounded-full
+                       text-[var(--ink-on-color)] bg-[var(--cat-reading)] active:scale-[0.97]"
+          >
+            Questions <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (phase === "questions" && story) {
     const allAnswered = answers.every(
       (a) => a.transcript && a.transcript.trim() !== "",
@@ -462,12 +558,13 @@ export default function ReadingStoryGame({
               type="button"
               onClick={() => {
                 play("tap");
-                setPhase("questions");
+                setPhase(story.facts?.length ? "facts" : "questions");
               }}
               className="font-display inline-flex items-center gap-2 px-6 py-2.5 rounded-full
                          text-[var(--ink-on-color)] bg-[var(--cat-reading)] active:scale-[0.97]"
             >
-              Questions <ChevronRight className="w-5 h-5" />
+              {story.facts?.length ? "Did you know?" : "Questions"}{" "}
+              <ChevronRight className="w-5 h-5" />
             </button>
           ) : (
             <button

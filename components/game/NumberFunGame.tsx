@@ -62,6 +62,30 @@ function createProblem(id: number, easy = false): MathProblem {
   return { id, firstNumber, secondNumber, operation, correctAnswer };
 }
 
+// Commutative pairs collapse to one identity, so 3 + 5 and 5 + 3 collide.
+function problemKey(p: MathProblem): string {
+  if (p.operation === "+") {
+    const lo = Math.min(p.firstNumber, p.secondNumber);
+    const hi = Math.max(p.firstNumber, p.secondNumber);
+    return `+:${lo}:${hi}`;
+  }
+  return `-:${p.firstNumber}:${p.secondNumber}`;
+}
+
+// No repeats within a round: retry until the problem is new, then record it.
+function createUniqueProblem(
+  id: number,
+  easy: boolean,
+  seen: Set<string>,
+): MathProblem {
+  let problem = createProblem(id, easy);
+  for (let attempt = 0; attempt < 40 && seen.has(problemKey(problem)); attempt++) {
+    problem = createProblem(id, easy);
+  }
+  seen.add(problemKey(problem));
+  return problem;
+}
+
 function createAnswerChoices(correct: number, easy = false): number[] {
   const min = easy ? 0 : 1;
   const max = easy ? EASY_MATH_MAX : 100;
@@ -86,7 +110,10 @@ export default function NumberFunGame({
   const { play } = useSfx();
   const easy = isEasyMathChild(userName);
 
-  const [currentProblem, setCurrentProblem] = useState<MathProblem>(() => createProblem(1, easy));
+  const seenRef = useRef(new Set<string>());
+  const [currentProblem, setCurrentProblem] = useState<MathProblem>(() =>
+    createUniqueProblem(1, easy, seenRef.current),
+  );
   const [questionIndex, setQuestionIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
@@ -131,7 +158,7 @@ export default function NumberFunGame({
       return;
     }
     setQuestionIndex((i) => i + 1);
-    setCurrentProblem(createProblem(questionIndex + 2, easy));
+    setCurrentProblem(createUniqueProblem(questionIndex + 2, easy, seenRef.current));
   };
 
   const restart = () => {
@@ -143,7 +170,8 @@ export default function NumberFunGame({
     setIsCorrect(null);
     setShowResult(false);
     setGameCompleted(false);
-    setCurrentProblem(createProblem(1, easy));
+    seenRef.current = new Set();
+    setCurrentProblem(createUniqueProblem(1, easy, seenRef.current));
   };
 
   const speakProblem = () => {

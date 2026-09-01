@@ -5,26 +5,12 @@ import { CheckCircle, XCircle } from "lucide-react";
 import { ResultsScreen } from "@/components/game/ResultsScreen";
 import { useScore } from "@/hooks/useScore";
 import { useSfx } from "@/components/sound/SoundProvider";
-import { cn, isEasyMathChild, EASY_MATH_MAX } from "@/lib/utils";
-
-type ProblemType =
-  | "add"
-  | "sub"
-  | "mul"
-  | "chain_add_mul"
-  | "chain_mul_add"
-  | "blank_add"
-  | "blank_sub"
-  | "blank_mul";
-
-interface MathProblem {
-  id: number;
-  question: string;
-  answer: number;
-  type: ProblemType;
-  userAnswer?: string;
-  isCorrect?: boolean;
-}
+import { cn, isEasyMathChild } from "@/lib/utils";
+import {
+  generateRound,
+  MATH_ROUND_SIZE,
+  type MathProblem,
+} from "@/lib/games/mathProblems";
 
 interface MathSparkGameProps {
   gameId?: string;
@@ -32,126 +18,7 @@ interface MathSparkGameProps {
   onGameComplete: (score: number, totalQuestions: number) => void;
 }
 
-const TOTAL = 10;
-const MAX_RESULT = 100;
-
-function rand(min: number, max: number): number {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-function generateProblem(type: ProblemType): MathProblem | null {
-  let question: string;
-  let answer: number;
-
-  switch (type) {
-    case "add": {
-      const a = rand(10, 90);
-      const b = rand(1, MAX_RESULT - a);
-      question = `${a} + ${b} = ?`;
-      answer = a + b;
-      break;
-    }
-    case "sub": {
-      const a = rand(10, MAX_RESULT);
-      const b = rand(1, a);
-      question = `${a} - ${b} = ?`;
-      answer = a - b;
-      break;
-    }
-    case "mul": {
-      const a = rand(2, 5);
-      const b = rand(2, 5);
-      question = `${a} × ${b} = ?`;
-      answer = a * b;
-      break;
-    }
-    case "chain_add_mul": {
-      const mulA = rand(2, 5);
-      const mulB = rand(2, 5);
-      const mulResult = mulA * mulB;
-      const addC = rand(1, MAX_RESULT - mulResult);
-      question = `${mulA} × ${mulB} + ${addC} = ?`;
-      answer = mulResult + addC;
-      break;
-    }
-    case "chain_mul_add": {
-      const addA = rand(10, 90);
-      const mulB = rand(2, 5);
-      const maxMulC = Math.min(5, Math.floor((MAX_RESULT - addA) / mulB));
-      if (maxMulC < 2) return null;
-      const mulC = rand(2, maxMulC);
-      question = `${addA} + ${mulB} × ${mulC} = ?`;
-      answer = addA + mulB * mulC;
-      break;
-    }
-    case "blank_add": {
-      const total = rand(20, MAX_RESULT);
-      const a = rand(10, total - 10);
-      question = `${a} + _ = ${total}`;
-      answer = total - a;
-      break;
-    }
-    case "blank_sub": {
-      const a = rand(20, MAX_RESULT);
-      const result = rand(1, a - 10);
-      question = `${a} - _ = ${result}`;
-      answer = a - result;
-      break;
-    }
-    case "blank_mul": {
-      const a = rand(2, 5);
-      const result = a * rand(2, Math.min(5, Math.floor(MAX_RESULT / a)));
-      question = `${a} × _ = ${result}`;
-      answer = result / a;
-      break;
-    }
-  }
-
-  return { id: Math.random(), question, answer, type };
-}
-
-// Easy mode (e.g. Eddie): add & subtract only, every answer capped at EASY_MATH_MAX.
-function generateEasyProblem(type: "add" | "sub"): MathProblem {
-  let question: string;
-  let answer: number;
-
-  if (type === "add") {
-    const a = rand(1, EASY_MATH_MAX - 1);
-    const b = rand(1, EASY_MATH_MAX - a);
-    question = `${a} + ${b} = ?`;
-    answer = a + b;
-  } else {
-    const a = rand(2, EASY_MATH_MAX);
-    const b = rand(1, a);
-    question = `${a} - ${b} = ?`;
-    answer = a - b;
-  }
-
-  return { id: Math.random(), question, answer, type };
-}
-
-function generateRound(easy = false): MathProblem[] {
-  const problems: MathProblem[] = [];
-  if (easy) {
-    const easyTypes: ("add" | "sub")[] = ["add", "sub"];
-    while (problems.length < TOTAL) {
-      problems.push(generateEasyProblem(easyTypes[rand(0, easyTypes.length - 1)]));
-    }
-    return problems;
-  }
-
-  const types: ProblemType[] = [
-    "add", "sub", "mul",
-    "chain_add_mul", "chain_mul_add",
-    "blank_add", "blank_sub", "blank_mul",
-  ];
-  while (problems.length < TOTAL) {
-    const type = types[rand(0, types.length - 1)];
-    const p = generateProblem(type);
-    if (p) problems.push(p);
-  }
-  return problems;
-}
+const TOTAL = MATH_ROUND_SIZE;
 
 export default function MathSparkGame({
   gameId,
