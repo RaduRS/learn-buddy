@@ -53,7 +53,9 @@ export default function TrueFalseGame({
   const [trueFalseHistory, setTrueFalseHistory] = useState<boolean[]>([]);
   const [hasInitialized, setHasInitialized] = useState(false);
   const isGeneratingRef = useRef(false);
-  const { execute, loading, error } = useApiCall<AIContent>({ timeout: 30000 });
+  // Server worst case is ~65s (text + image + download); stay above it so
+  // we never retry while a paid image generation is still running.
+  const { execute, loading, error } = useApiCall<AIContent>({ timeout: 75000 });
 
   const generateQuestion = useCallback(
     async (questionNumber: number, retryCount = 0) => {
@@ -62,9 +64,10 @@ export default function TrueFalseGame({
 
       try {
         const result = await execute(
-          async () => {
+          async (signal) => {
             const response = await fetch("/api/ai/generate-content", {
               method: "POST",
+              signal,
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 age: userAge,

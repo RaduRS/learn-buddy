@@ -1,20 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/database'
+import { DatabaseService, prisma } from '@/lib/database'
 
+// GET /api/achievements?userId=xxx - Get a user's achievements
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
+    const userId = request.nextUrl.searchParams.get('userId')
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'User ID is required' },
+        { status: 400 }
+      )
+    }
 
     const achievements = await prisma.achievement.findMany({
-      where: userId ? { userId } : undefined,
+      where: { userId },
       orderBy: [
-        { userId: 'asc' },
         { gameId: 'asc' },
         { unlockedAt: 'desc' }
       ]
     })
-    
+
     return NextResponse.json(achievements)
   } catch (error) {
     console.error('Failed to fetch achievements:', error)
@@ -25,35 +31,35 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: Request) {
+const isNonEmptyString = (value: unknown): value is string =>
+  typeof value === 'string' && value.trim().length > 0
+
+// POST /api/achievements - Unlock an achievement (idempotent)
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { userId, gameId, title, description, icon } = body
 
-    // Check if achievement already exists
-    const existingAchievement = await prisma.achievement.findFirst({
-      where: {
-        userId,
-        gameId,
-        title
-      }
-    })
-
-    if (existingAchievement) {
-      return NextResponse.json(existingAchievement)
+    if (
+      !isNonEmptyString(userId) ||
+      !isNonEmptyString(title) ||
+      !isNonEmptyString(description) ||
+      !isNonEmptyString(icon) ||
+      (gameId != null && !isNonEmptyString(gameId))
+    ) {
+      return NextResponse.json(
+        { error: 'userId, title, description and icon are required' },
+        { status: 400 }
+      )
     }
 
-    // Create new achievement
-    const achievement = await prisma.achievement.create({
-      data: {
-        userId,
-        gameId,
-        title,
-        description,
-        icon,
-        unlockedAt: new Date()
-      }
-    })
+    const achievement = await DatabaseService.unlockAchievement(
+      userId,
+      title,
+      description,
+      icon,
+      gameId ?? null
+    )
 
     return NextResponse.json(achievement)
   } catch (error) {

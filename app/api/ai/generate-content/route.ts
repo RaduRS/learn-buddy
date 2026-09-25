@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { generateFluxImage } from '@/lib/ai/replicate'
 
 const parseQuestionData = (content: string) => {
   let cleaned = content.trim()
@@ -112,6 +113,7 @@ Return ONLY a JSON object with:
         temperature: 0.9, // Higher temperature for more randomness
         max_tokens: 200,
       }),
+      signal: AbortSignal.timeout(15_000),
     })
 
     if (!deepseekResponse.ok) {
@@ -172,81 +174,14 @@ ULTRA STRICT NO-TEXT REQUIREMENTS:
 - NO ARROWS WITH TEXT OR LABELS
 - PURE VISUAL ONLY - LIKE A SILENT MOVIE`
 
-    // Call Replicate flux-schnell (sync via Prefer: wait)
-    const replicateResponse = await fetch(
-      'https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${replicateApiKey}`,
-          'Prefer': 'wait',
-        },
-        body: JSON.stringify({
-          input: {
-            prompt: imagePrompt,
-            aspect_ratio: '1:1',
-            num_outputs: 1,
-            output_format: 'png',
-            output_quality: 90,
-            num_inference_steps: 4,
-          },
-        }),
-      }
-    )
-
-    if (!replicateResponse.ok) {
-      const errorText = await replicateResponse.text()
-      console.error('Replicate API error:', replicateResponse.status, errorText)
-      throw new Error('Failed to generate image')
-    }
-
-    let replicateData = await replicateResponse.json()
-
-    // `Prefer: wait` only holds the connection for ~60s and then returns the
-    // prediction in whatever state it's in. On cold starts / queueing it comes
-    // back as "starting" with no output, so poll until it actually finishes.
-    const isTerminal = (s?: string) =>
-      s === 'succeeded' || s === 'failed' || s === 'canceled'
-    const pollUrl: string | undefined = replicateData?.urls?.get
-    const deadline = Date.now() + 90_000
-    while (pollUrl && !isTerminal(replicateData?.status)) {
-      if (Date.now() > deadline) {
-        throw new Error('Image generation timed out')
-      }
-      await new Promise((r) => setTimeout(r, 1200))
-      const poll = await fetch(pollUrl, {
-        headers: { Authorization: `Bearer ${replicateApiKey}` },
-      })
-      if (!poll.ok) break
-      replicateData = await poll.json()
-    }
-
-    if (replicateData?.status === 'failed' || replicateData?.status === 'canceled') {
-      throw new Error('Image generation failed')
-    }
-
-    const outputUrl: string | undefined = Array.isArray(replicateData?.output)
-      ? replicateData.output[0]
-      : replicateData?.output
-
-    if (!outputUrl) {
-      throw new Error('No image data received')
-    }
-
-    const imgRes = await fetch(outputUrl)
-    if (!imgRes.ok) {
-      throw new Error('Failed to fetch generated image')
-    }
-    const imgBuf = Buffer.from(await imgRes.arrayBuffer())
-    const imageBase64 = imgBuf.toString('base64')
+    const imageUrl = await generateFluxImage(imagePrompt, replicateApiKey)
 
     // Return the combined content
     return NextResponse.json({
       statement: questionData.statement,
       isTrue: questionData.isTrue,
       difficulty: questionData.difficulty || 1,
-      imageUrl: `data:image/png;base64,${imageBase64}`,
+      imageUrl,
     })
 
   } catch (error) {

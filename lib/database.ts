@@ -20,36 +20,20 @@ export class DatabaseService {
   }) {
     return await prisma.user.create({
       data,
+      omit: { parentEmail: true },
       include: {
         gameProgress: true,
-        achievements: true,
       },
     })
   }
 
-  static async getUserById(id: string) {
-    return await prisma.user.findUnique({
-      where: { id },
-      include: {
-        gameProgress: {
-          include: {
-            game: true,
-          },
-        },
-        achievements: {
-          include: {
-            game: true,
-          },
-        },
-      },
-    })
-  }
-
+  // The client only needs progress totals for the profile cards; parent
+  // emails never leave the server.
   static async getAllUsers() {
     return await prisma.user.findMany({
+      omit: { parentEmail: true },
       include: {
         gameProgress: true,
-        achievements: true,
       },
       orderBy: {
         createdAt: 'desc',
@@ -68,15 +52,6 @@ export class DatabaseService {
   }) {
     return await prisma.game.create({
       data,
-    })
-  }
-
-  static async getActiveGames() {
-    return await prisma.game.findMany({
-      where: { isActive: true },
-      orderBy: {
-        difficulty: 'asc',
-      },
     })
   }
 
@@ -103,85 +78,6 @@ export class DatabaseService {
   }
 
   // Game progress tracking
-  static async updateGameProgress(
-    userId: string,
-    gameId: string,
-    data: {
-      level?: number
-      score?: number
-      bestScore?: number
-      totalScore?: number
-      timesPlayed?: number
-    }
-  ) {
-    const existingProgress = await prisma.gameProgress.findUnique({
-      where: {
-        userId_gameId: {
-          userId,
-          gameId,
-        },
-      },
-    })
-
-    if (existingProgress) {
-      return await prisma.gameProgress.update({
-        where: {
-          userId_gameId: {
-            userId,
-            gameId,
-          },
-        },
-        data: {
-          ...data,
-          bestScore: data.bestScore
-            ? Math.max(data.bestScore, existingProgress.bestScore)
-            : existingProgress.bestScore,
-          totalScore: data.totalScore !== undefined ? data.totalScore : existingProgress.totalScore,
-          timesPlayed: data.timesPlayed !== undefined ? data.timesPlayed : existingProgress.timesPlayed,
-          lastPlayedAt: new Date(),
-        },
-      })
-    } else {
-      return await prisma.gameProgress.create({
-        data: {
-          userId,
-          gameId,
-          level: data.level || 1,
-          score: data.score || 0,
-          bestScore: data.bestScore || data.score || 0,
-          totalScore: data.totalScore || data.score || 0,
-          timesPlayed: data.timesPlayed || 1,
-        },
-      })
-    }
-  }
-
-  static async getUserGameProgress(userId: string, gameId: string): Promise<Prisma.GameProgressGetPayload<{ include: { game: true } }> | null> {
-    return await prisma.gameProgress.findUnique({
-      where: {
-        userId_gameId: {
-          userId,
-          gameId,
-        },
-      },
-      include: {
-        game: true,
-      },
-    })
-  }
-
-  static async getAllGameProgress(): Promise<Prisma.GameProgressGetPayload<{ include: { game: true, user: true } }>[]> {
-    return await prisma.gameProgress.findMany({
-      include: {
-        game: true,
-        user: true,
-      },
-      orderBy: {
-        lastPlayedAt: 'desc',
-      },
-    })
-  }
-
   static async getUserAllGameProgress(userId: string): Promise<Prisma.GameProgressGetPayload<{ include: { game: true } }>[]> {
     return await prisma.gameProgress.findMany({
       where: { userId },
@@ -194,39 +90,42 @@ export class DatabaseService {
     })
   }
 
-  static async upsertGameProgress(
-    userId: string,
-    gameId: string,
-    data: {
-      score?: number
-      level?: number
-      bestScore?: number
-      totalScore?: number
-      timesPlayed?: number
-    }
-  ) {
-    return await prisma.gameProgress.upsert({
+  // Record one finished round. Totals are incremented in the database
+  // rather than read-modify-written, so two saves landing at the same time
+  // can't overwrite each other.
+  static async recordGamePlay(userId: string, gameId: string, score: number, level?: number) {
+    const progress = await prisma.gameProgress.upsert({
       where: {
         userId_gameId: { userId, gameId },
       },
       update: {
-        score: data.score,
-        level: data.level,
-        bestScore: data.bestScore,
-        totalScore: data.totalScore,
-        timesPlayed: data.timesPlayed,
+        score,
+        ...(level !== undefined && { level }),
+        totalScore: { increment: score },
+        timesPlayed: { increment: 1 },
         lastPlayedAt: new Date(),
       },
       create: {
         userId,
         gameId,
-        score: data.score ?? 0,
-        level: data.level ?? 1,
-        bestScore: data.bestScore ?? 0,
-        totalScore: data.totalScore ?? 0,
-        timesPlayed: data.timesPlayed ?? 1,
+        score,
+        level: level ?? 1,
+        bestScore: score,
+        totalScore: score,
+        timesPlayed: 1,
       },
     })
+
+    if (score > progress.bestScore) {
+      // Conditional update keeps bestScore a true max under concurrency.
+      await prisma.gameProgress.updateMany({
+        where: { userId, gameId, bestScore: { lt: score } },
+        data: { bestScore: score },
+      })
+      return { ...progress, bestScore: score }
+    }
+
+    return progress
   }
 
   // Achievement system
@@ -235,14 +134,14 @@ export class DatabaseService {
     title: string,
     description: string,
     icon: string,
-    gameId?: string
+    gameId?: string | null
   ) {
     // Check if achievement already exists
     const existing = await prisma.achievement.findFirst({
       where: {
         userId,
         title,
-        gameId,
+        gameId: gameId ?? null,
       },
     })
 
@@ -251,7 +150,7 @@ export class DatabaseService {
     return await prisma.achievement.create({
       data: {
         userId,
-        gameId,
+        gameId: gameId ?? null,
         title,
         description,
         icon,
@@ -259,26 +158,7 @@ export class DatabaseService {
     })
   }
 
-  static async getUserAchievements(userId: string) {
-    return await prisma.achievement.findMany({
-      where: { userId },
-      include: {
-        game: true,
-      },
-      orderBy: {
-        unlockedAt: 'desc',
-      },
-    })
-  }
-
   // App settings
-  static async getSetting(key: string) {
-    const setting = await prisma.appSettings.findUnique({
-      where: { key },
-    })
-    return setting?.value
-  }
-
   static async setSetting(key: string, value: string) {
     return await prisma.appSettings.upsert({
       where: { key },

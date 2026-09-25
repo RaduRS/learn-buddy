@@ -78,9 +78,10 @@ export default function SubitizingGame({
       generatingRef.current = true;
 
       const result = await execute(
-        async () => {
+        async (signal) => {
           const response = await fetch("/api/ai/generate-subitizing", {
             method: "POST",
+            signal,
             headers: {
               "Content-Type": "application/json",
               "Cache-Control": "no-cache",

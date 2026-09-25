@@ -81,7 +81,8 @@ export default function PuzzleGame({
   const { incrementScore } = useScore();
   const { unlock } = useAchievementUnlock(userId);
   const { play } = useSfx();
-  const { execute, loading, error } = useApiCall<PuzzleConfig>({ timeout: 30000 });
+  // Server worst case is ~50s (image + download); stay above it.
+  const { execute, loading, error } = useApiCall<PuzzleConfig>({ timeout: 60000 });
 
   useEffect(() => {
     setMounted(true);
@@ -111,9 +112,10 @@ export default function PuzzleGame({
     setRecentlyPlaced(null);
 
     await execute(
-      async () => {
+      async (signal) => {
         const response = await fetch("/api/ai/generate-puzzle", {
           method: "POST",
+          signal,
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userAge, difficulty }),
         });

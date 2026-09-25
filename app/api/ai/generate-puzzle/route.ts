@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { generateFluxImage, ImageGenerationError } from "@/lib/ai/replicate";
 
 interface PuzzleRequest {
   userAge: number;
@@ -83,92 +84,7 @@ export async function POST(request: NextRequest) {
 
     const prompt = `${chosenTheme}. ${composition}. ${style}. Child-friendly, colorful, safe, educational, bright and cheerful, suitable for kids. CRITICAL: ABSOLUTELY NO TEXT, NO WORDS, NO LETTERS, NO WRITING, NO CAPTIONS, NO TYPOGRAPHY anywhere in the image.`;
 
-    // Call Replicate flux-schnell (sync via Prefer: wait)
-    const response = await fetch(
-      "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${replicateApiKey}`,
-          "Content-Type": "application/json",
-          Prefer: "wait",
-        },
-        body: JSON.stringify({
-          input: {
-            prompt,
-            aspect_ratio: "1:1",
-            num_outputs: 1,
-            output_format: "png",
-            output_quality: 90,
-            num_inference_steps: 4,
-          },
-        }),
-      },
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Replicate API error:", response.status, errorText);
-      return NextResponse.json(
-        { error: "Failed to generate image" },
-        { status: 500 },
-      );
-    }
-
-    let data = await response.json();
-
-    // `Prefer: wait` only holds the connection for ~60s and then returns the
-    // prediction in whatever state it's in. On cold starts / queueing it comes
-    // back as "starting" with no output, so poll until it actually finishes.
-    const isTerminal = (s?: string) =>
-      s === "succeeded" || s === "failed" || s === "canceled";
-    const pollUrl: string | undefined = data?.urls?.get;
-    const deadline = Date.now() + 90_000;
-    while (pollUrl && !isTerminal(data?.status)) {
-      if (Date.now() > deadline) {
-        console.error("Replicate prediction timed out:", data?.status);
-        return NextResponse.json(
-          { error: "Image generation timed out, please try again" },
-          { status: 504 },
-        );
-      }
-      await new Promise((r) => setTimeout(r, 1200));
-      const poll = await fetch(pollUrl, {
-        headers: { Authorization: `Bearer ${replicateApiKey}` },
-      });
-      if (!poll.ok) break;
-      data = await poll.json();
-    }
-
-    if (data?.status === "failed" || data?.status === "canceled") {
-      console.error("Replicate prediction failed:", data?.error ?? data?.status);
-      return NextResponse.json(
-        { error: "Image generation failed, please try again" },
-        { status: 502 },
-      );
-    }
-
-    const outputUrl: string | undefined = Array.isArray(data?.output)
-      ? data.output[0]
-      : data?.output;
-    if (!outputUrl) {
-      console.error("Replicate returned no output:", data);
-      return NextResponse.json(
-        { error: "Invalid image response" },
-        { status: 500 },
-      );
-    }
-
-    // Fetch image and inline as data URL so puzzle stays self-contained
-    const imgRes = await fetch(outputUrl);
-    if (!imgRes.ok) {
-      return NextResponse.json(
-        { error: "Failed to fetch generated image" },
-        { status: 500 },
-      );
-    }
-    const imgBuf = Buffer.from(await imgRes.arrayBuffer());
-    const imageUrl = `data:image/png;base64,${imgBuf.toString("base64")}`;
+    const imageUrl = await generateFluxImage(prompt, replicateApiKey);
 
     // Build puzzle pieces grid
     const pieces: PuzzlePiece[] = [];
@@ -187,6 +103,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(config);
   } catch (error) {
+    if (error instanceof ImageGenerationError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Error generating puzzle config:", error);
     return NextResponse.json(
       { error: "Internal server error" },
