@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { generateFluxImage } from '@/lib/ai/replicate'
+import { generateImage } from '@/lib/ai/image'
 
 const parseQuestionData = (content: string) => {
   let cleaned = content.trim()
@@ -34,9 +34,9 @@ export async function POST(request: Request) {
 
     // Check for required API keys
     const deepseekApiKey = process.env.DEEPSEEK_API_KEY
-    const replicateApiKey = process.env.REPLICATE_API_KEY
+    const openaiApiKey = process.env.OPENAI_API_KEY
 
-    if (!deepseekApiKey || !replicateApiKey) {
+    if (!deepseekApiKey || !openaiApiKey) {
       return NextResponse.json(
         { error: 'API keys not configured' },
         { status: 500 }
@@ -174,7 +174,7 @@ ULTRA STRICT NO-TEXT REQUIREMENTS:
 - NO ARROWS WITH TEXT OR LABELS
 - PURE VISUAL ONLY - LIKE A SILENT MOVIE`
 
-    const imageUrl = await generateFluxImage(imagePrompt, replicateApiKey)
+    const imageUrl = await generateImage(imagePrompt, openaiApiKey)
 
     // Return the combined content
     return NextResponse.json({

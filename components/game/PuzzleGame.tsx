@@ -81,7 +81,7 @@ export default function PuzzleGame({
   const { incrementScore } = useScore();
   const { unlock } = useAchievementUnlock(userId);
   const { play } = useSfx();
-  // Server worst case is ~50s (image + download); stay above it.
+  // Server worst case is ~45s (image generation); stay above it.
   const { execute, loading, error } = useApiCall<PuzzleConfig>({ timeout: 60000 });
 
   useEffect(() => {

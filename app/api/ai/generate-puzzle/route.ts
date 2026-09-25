@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateFluxImage, ImageGenerationError } from "@/lib/ai/replicate";
+import { generateImage, ImageGenerationError } from "@/lib/ai/image";
 
 interface PuzzleRequest {
   userAge: number;
@@ -23,10 +23,10 @@ export async function POST(request: NextRequest) {
   try {
     const { difficulty = 2, theme } = (await request.json()) as PuzzleRequest;
 
-    const replicateApiKey = process.env.REPLICATE_API_KEY;
-    if (!replicateApiKey) {
+    const openaiApiKey = process.env.OPENAI_API_KEY;
+    if (!openaiApiKey) {
       return NextResponse.json(
-        { error: "Replicate API key not configured" },
+        { error: "OpenAI API key not configured" },
         { status: 500 },
       );
     }
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
 
     const prompt = `${chosenTheme}. ${composition}. ${style}. Child-friendly, colorful, safe, educational, bright and cheerful, suitable for kids. CRITICAL: ABSOLUTELY NO TEXT, NO WORDS, NO LETTERS, NO WRITING, NO CAPTIONS, NO TYPOGRAPHY anywhere in the image.`;
 
-    const imageUrl = await generateFluxImage(prompt, replicateApiKey);
+    const imageUrl = await generateImage(prompt, openaiApiKey);
 
     // Build puzzle pieces grid
     const pieces: PuzzlePiece[] = [];

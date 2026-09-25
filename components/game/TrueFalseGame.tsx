@@ -53,7 +53,7 @@ export default function TrueFalseGame({
   const [trueFalseHistory, setTrueFalseHistory] = useState<boolean[]>([]);
   const [hasInitialized, setHasInitialized] = useState(false);
   const isGeneratingRef = useRef(false);
-  // Server worst case is ~65s (text + image + download); stay above it so
+  // Server worst case is ~60s (text + image); stay above it so
   // we never retry while a paid image generation is still running.
   const { execute, loading, error } = useApiCall<AIContent>({ timeout: 75000 });
 
