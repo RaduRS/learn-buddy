@@ -11,16 +11,8 @@ import {
   ScanText,
   Sparkles,
 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Buddy } from "@/components/mascot/Buddy";
 import { useSfx } from "@/components/sound/SoundProvider";
-import { cn } from "@/lib/utils";
 
 interface ReadingHelperGameProps {
   userId: string;
@@ -28,8 +20,6 @@ interface ReadingHelperGameProps {
   userAge: number;
   onGameComplete: (score: number, totalQuestions: number) => void;
 }
-
-type OcrProvider = "nebius" | "openai-nano";
 
 export default function ReadingHelperGame({
   onGameComplete,
@@ -46,10 +36,6 @@ export default function ReadingHelperGame({
   const [error, setError] = useState<string | null>(null);
   const [hasScored, setHasScored] = useState(false);
   const [lastSelectedFile, setLastSelectedFile] = useState<File | null>(null);
-  const [ocrProvider, setOcrProvider] = useState<OcrProvider>("openai-nano");
-  const [pendingProvider, setPendingProvider] = useState<OcrProvider | null>(null);
-  const [isProviderModalOpen, setIsProviderModalOpen] = useState(false);
-  const [providerPassword, setProviderPassword] = useState("");
 
   useEffect(() => {
     return () => {
@@ -88,19 +74,15 @@ export default function ReadingHelperGame({
 
   const buildImageDataUrl = async (
     file: File,
-    provider: OcrProvider,
     mode: "balanced" | "high_quality" = "balanced",
   ) => {
     const image = await loadImageElement(file);
     const longestSide = Math.max(image.width, image.height);
     const targetLongest =
-      provider === "openai-nano"
-        ? mode === "high_quality"
-          ? Math.min(1680, Math.max(1200, longestSide))
-          : Math.min(1280, Math.max(960, longestSide))
-        : Math.min(1800, Math.max(1200, longestSide));
-    const quality =
-      provider === "openai-nano" ? (mode === "high_quality" ? 0.9 : 0.8) : 0.92;
+      mode === "high_quality"
+        ? Math.min(1680, Math.max(1200, longestSide))
+        : Math.min(1280, Math.max(960, longestSide));
+    const quality = mode === "high_quality" ? 0.9 : 0.8;
     const scale = targetLongest / longestSide;
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(image.width * scale));
@@ -189,11 +171,8 @@ export default function ReadingHelperGame({
 
   const extractTextFromImage = async (file: File) => {
     const OCR_TIMEOUT_MS = 90000;
-    const imageDataUrl = await buildImageDataUrl(file, ocrProvider, "balanced");
-    const highQualityImageDataUrl =
-      ocrProvider === "openai-nano"
-        ? await buildImageDataUrl(file, ocrProvider, "high_quality")
-        : null;
+    const imageDataUrl = await buildImageDataUrl(file, "balanced");
+    const highQualityImageDataUrl = await buildImageDataUrl(file, "high_quality");
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), OCR_TIMEOUT_MS);
 
@@ -201,10 +180,7 @@ export default function ReadingHelperGame({
       const response = await fetch("/api/ai/reading-ocr", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          imageDataUrl: payloadImage,
-          provider: ocrProvider,
-        }),
+        body: JSON.stringify({ imageDataUrl: payloadImage }),
         signal: controller.signal,
       });
       if (!response.ok) {
@@ -220,9 +196,8 @@ export default function ReadingHelperGame({
     try {
       try {
         return await requestOcr(imageDataUrl);
-      } catch (firstAttemptError) {
-        if (highQualityImageDataUrl) return await requestOcr(highQualityImageDataUrl);
-        throw firstAttemptError;
+      } catch {
+        return await requestOcr(highQualityImageDataUrl);
       }
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
@@ -251,7 +226,7 @@ export default function ReadingHelperGame({
       const response = await fetch("/api/ai/reading-audio", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, ocrProvider }),
+        body: JSON.stringify({ text }),
       });
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
@@ -320,27 +295,6 @@ export default function ReadingHelperGame({
     await processImage(lastSelectedFile);
   };
 
-  const handleProviderChangeRequest = (value: string) => {
-    const nextProvider = value as OcrProvider;
-    if (nextProvider === ocrProvider) return;
-    setPendingProvider(nextProvider);
-    setProviderPassword("");
-    setIsProviderModalOpen(true);
-  };
-
-  const closeProviderModal = () => {
-    setIsProviderModalOpen(false);
-    setProviderPassword("");
-    setPendingProvider(null);
-  };
-
-  const confirmProviderChange = () => {
-    if (providerPassword === "1990" && pendingProvider) {
-      setOcrProvider(pendingProvider);
-    }
-    closeProviderModal();
-  };
-
   return (
     <div className="space-y-5">
       <div className="surface-card cat-reading p-5 sm:p-7">
@@ -357,18 +311,6 @@ export default function ReadingHelperGame({
                 Snap any text — Buddy will read it back.
               </p>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-arcade-soft font-display">OCR</span>
-            <select
-              value={ocrProvider}
-              onChange={(event) => handleProviderChangeRequest(event.target.value)}
-              className="h-10 rounded-full bg-[var(--arcade-card-soft)] border border-[var(--arcade-edge)] px-3 text-sm text-arcade-strong"
-              disabled={isReadingImage || isGeneratingAudio}
-            >
-              <option value="openai-nano">GPT-4.1 Nano</option>
-              <option value="nebius">Nebius</option>
-            </select>
           </div>
         </div>
 
@@ -503,58 +445,6 @@ export default function ReadingHelperGame({
           )}
         </div>
       )}
-
-      <Dialog
-        open={isProviderModalOpen}
-        onOpenChange={(open) => (open ? setIsProviderModalOpen(true) : closeProviderModal())}
-      >
-        <DialogContent
-          className={cn(
-            "bg-[var(--arcade-card)] border-[var(--arcade-edge)] rounded-3xl",
-            "p-0",
-          )}
-        >
-          <div className="bg-arcade rounded-3xl">
-            <DialogHeader className="px-6 pt-6 pb-2 text-left">
-              <DialogTitle className="font-display text-xl text-arcade-strong">
-                Enter password
-              </DialogTitle>
-            </DialogHeader>
-            <div className="px-6 pb-6 space-y-4">
-              <Input
-                type="password"
-                value={providerPassword}
-                onChange={(event) => setProviderPassword(event.target.value)}
-                placeholder="Password"
-                className="bg-[var(--arcade-card-soft)] border-[var(--arcade-edge)] text-arcade-strong placeholder:text-arcade-soft h-12 rounded-2xl px-4"
-              />
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={closeProviderModal}
-                  className="font-display px-5 py-2.5 rounded-full
-                             bg-[var(--arcade-card-soft)] text-arcade-strong
-                             border border-[var(--arcade-edge)]
-                             active:scale-[0.97]"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmProviderChange}
-                  className="font-display px-5 py-2.5 rounded-full text-[var(--ink-on-color)]
-                             bg-[var(--cat-reading)]
-                             border border-[oklch(0.55_0.16_70)]
-                             shadow-[0_8px_22px_-10px_var(--cat-reading-glow),inset_0_1px_0_oklch(1_0_0_/_0.4)]
-                             active:scale-[0.97]"
-                >
-                  Confirm
-                </button>
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

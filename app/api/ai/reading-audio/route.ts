@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const MAX_TTS_CHARS = 2000;
 const TTS_MODEL = "aura-2-thalia-en";
-const BASE_TTS_TAGS = ["learn-buddy", "reading-helper", "tts"];
+const TTS_TAGS = ["learn-buddy", "reading-helper", "tts"];
 
 const formatForAuraSpeech = (text: string) => {
   const withoutCodeFences = text
@@ -25,12 +25,9 @@ const formatForAuraSpeech = (text: string) => {
     .trim();
 };
 
-const sanitizeTag = (tag: string) =>
-  tag.trim().replace(/\s+/g, "-").slice(0, 128);
-
 export async function POST(request: NextRequest) {
   try {
-    const { text, ocrProvider } = await request.json();
+    const { text } = await request.json();
 
     if (!text || typeof text !== "string") {
       return NextResponse.json({ error: "Text is required" }, { status: 400 });
@@ -59,17 +56,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const providerTag =
-      typeof ocrProvider === "string" && ocrProvider.trim()
-        ? sanitizeTag(`ocr-${ocrProvider}`)
-        : null;
-    const tags = [...BASE_TTS_TAGS];
-    if (providerTag) {
-      tags.push(providerTag);
-    }
     const ttsUrl = new URL("https://api.deepgram.com/v1/speak");
     ttsUrl.searchParams.set("model", TTS_MODEL);
-    for (const tag of tags) {
+    for (const tag of TTS_TAGS) {
       ttsUrl.searchParams.append("tag", tag);
     }
 
@@ -106,7 +95,6 @@ export async function POST(request: NextRequest) {
         "Content-Type": contentType,
         "Cache-Control": "no-store",
         "X-Text-Truncated": String(formattedForSpeech.length > MAX_TTS_CHARS),
-        "X-TTS-Tag-Count": String(tags.length),
       },
     });
   } catch (error) {
