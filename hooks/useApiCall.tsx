@@ -37,20 +37,24 @@ export function useApiCall<T = unknown>(options: ApiCallOptions = {}) {
       while (attempt <= retries) {
         attempt++;
 
-        try {
-          abortControllerRef.current = new AbortController();
-          const { signal } = abortControllerRef.current;
+        // Each attempt owns its controller and timer. The timer is cleared
+        // when the attempt settles so it can never abort a later request.
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+        let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
+        try {
           const timeoutPromise = new Promise<never>((_, reject) => {
-            const timeoutId = setTimeout(() => {
-              abortControllerRef.current?.abort();
+            timeoutId = setTimeout(() => {
+              controller.abort();
               reject(new Error(`Request timeout after ${timeout}ms`));
             }, timeout);
-            // Clean up timeout if aborted externally
-            signal.addEventListener("abort", () => clearTimeout(timeoutId));
           });
 
-          const data = await Promise.race([apiFunction(signal), timeoutPromise]);
+          const data = await Promise.race([
+            apiFunction(controller.signal),
+            timeoutPromise,
+          ]);
 
           setLoading(false);
           onSuccess?.(data);
@@ -65,6 +69,8 @@ export function useApiCall<T = unknown>(options: ApiCallOptions = {}) {
           if (attempt < retries) {
             await new Promise((resolve) => setTimeout(resolve, retryDelay));
           }
+        } finally {
+          clearTimeout(timeoutId);
         }
       }
 
