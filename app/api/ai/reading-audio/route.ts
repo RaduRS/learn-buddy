@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { FLUX_TTS_MODEL, formatForSpeech } from "@/lib/ai/speech";
+import { TTS_MODEL, formatForSpeech } from "@/lib/ai/speech";
 
 const MAX_TTS_CHARS = 2000;
 const TTS_TAGS = ["learn-buddy", "reading-helper", "tts"];
@@ -35,8 +35,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const ttsUrl = new URL("https://api.deepgram.com/v2/speak");
-    ttsUrl.searchParams.set("model", FLUX_TTS_MODEL);
+    const ttsUrl = new URL("https://api.deepgram.com/v1/speak");
+    ttsUrl.searchParams.set("model", TTS_MODEL);
     for (const tag of TTS_TAGS) {
       ttsUrl.searchParams.append("tag", tag);
     }

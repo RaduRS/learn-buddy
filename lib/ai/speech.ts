@@ -1,18 +1,15 @@
-// Shared text-to-speech for the AI routes (Deepgram Flux TTS).
+// Shared text-to-speech for the AI routes (Deepgram Aura-2).
 //
-// Flux TTS is served on /v2/speak and required for the story builder, which
-// needs the audio back as a base64 data URL it can persist alongside the beat.
-// We use the batch (REST) transport: it takes the whole line of text and
-// returns the finished audio in one response, which is exactly what a stored
-// narration wants. The streaming WebSocket transport would only pay off if we
-// were playing audio back as tokens arrive.
+// Aura-2 synthesises a story line in roughly half the time Flux TTS takes
+// (measured ~2.5s vs ~5.5s for a couple of sentences), which matters here
+// because the child waits for the narration before the page feels done. Aura-2
+// is served on /v1/speak; Flux TTS uses /v2/speak.
 
-const DEEPGRAM_SPEAK_URL = "https://api.deepgram.com/v2/speak";
+const DEEPGRAM_SPEAK_URL = "https://api.deepgram.com/v1/speak";
 
-// Flux voices use a `flux-{voice}-{language}` model string. Hannah is a clear,
-// pleasant young voice Deepgram lists for storytelling — a good bedtime
-// narrator.
-export const FLUX_TTS_MODEL = "flux-hannah-en";
+// Aura-2 voices carry the language in the model name. Thalia is a warm, clear
+// narrator that works well for bedtime-story pacing.
+export const TTS_MODEL = "aura-2-thalia-en";
 export const TTS_TAGS = ["learn-buddy", "build-a-story", "tts"];
 const TTS_TIMEOUT_MS = 30_000;
 
@@ -59,7 +56,7 @@ export async function synthesizeSpeech(
   if (!spoken) return null;
 
   const url = new URL(DEEPGRAM_SPEAK_URL);
-  url.searchParams.set("model", FLUX_TTS_MODEL);
+  url.searchParams.set("model", TTS_MODEL);
   for (const tag of TTS_TAGS) url.searchParams.append("tag", tag);
 
   let response: Response;
@@ -74,12 +71,12 @@ export async function synthesizeSpeech(
       signal: AbortSignal.timeout(TTS_TIMEOUT_MS),
     });
   } catch (error) {
-    console.error("Flux TTS request failed:", error);
+    console.error("Aura TTS request failed:", error);
     return null;
   }
 
   if (!response.ok) {
-    console.error("Flux TTS error:", response.status, await response.text());
+    console.error("Aura TTS error:", response.status, await response.text());
     return null;
   }
 
