@@ -312,7 +312,13 @@ button, [role="button"], a, .cursor-pointer {
   opacity: 0.85;
 }
 
-.bg-arcade > * { position: relative; z-index: 1; }
+/* Lift direct children above the drifting starfield (`::before`, z-index 0).
+   Kept in `@layer base` so Tailwind utilities still win: an unlayered rule
+   here would outrank `@layer utilities` and silently override a child's
+   `fixed` / `sticky` / `z-*` (which once dropped modals into normal flow). */
+@layer base {
+  .bg-arcade > * { position: relative; z-index: 1; }
+}
 
 @keyframes starfield-drift {
   0%   { transform: translate3d(0, 0, 0); }
