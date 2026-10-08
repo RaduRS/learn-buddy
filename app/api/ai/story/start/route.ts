@@ -5,7 +5,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/database";
 import { chat, LlmError } from "@/lib/ai/llm";
-import { synthesizeSpeech } from "@/lib/ai/speech";
 import {
   buildFirstBeatPrompt,
   parseBeat,
@@ -50,8 +49,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to write a story" }, { status: 502 });
     }
 
-    const speech = await synthesizeSpeech(beat.text, process.env.DEEPGRAM_API_KEY);
-
+    // Voice and picture are generated separately (see the voice/image routes)
+    // so they run in parallel and neither delays the text the child reads.
     const story = await prisma.story.create({
       data: {
         userId,
@@ -66,8 +65,6 @@ export async function POST(request: NextRequest) {
             speaker: "ai",
             text: beat.text,
             imagePrompt: beat.imagePrompt,
-            audioB64: speech?.dataUrl ?? null,
-            audioMime: speech?.mime ?? null,
           },
         },
       },
@@ -85,8 +82,8 @@ export async function POST(request: NextRequest) {
         speaker: first.speaker,
         text: first.text,
         imagePrompt: first.imagePrompt,
-        audioB64: first.audioB64,
-        audioMime: first.audioMime,
+        audioB64: null,
+        audioMime: null,
       },
     });
   } catch (error) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, Loader2, Mic, Square, Volume2 } from "lucide-react";
+import { Check, Loader2, Mic, SkipForward, Square, Volume2 } from "lucide-react";
 import { Buddy } from "@/components/mascot/Buddy";
 import { useSfx } from "@/components/sound/SoundProvider";
 import { useDeepgramStream } from "@/hooks/useDeepgramStream";
@@ -47,7 +47,6 @@ export function LiveStory({
   const [storyId, setStoryId] = useState<string | null>(null);
   const [interim, setInterim] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [imageLoading, setImageLoading] = useState(false);
   const [busy, setBusy] = useState(false);
 
   // --- refs (declared up front so every callback can close over them) ---
@@ -58,11 +57,12 @@ export function LiveStory({
   const phaseRef = useRef<Phase>("starting");
   // Latest thing the child said, whatever the transcription confidence.
   const transcriptRef = useRef("");
+  // True once the beat now playing is the story's last one.
+  const finalRef = useRef(false);
 
   // Late-bound callbacks that break circular dependencies between the
   // streaming handlers and the turn/advance logic.
-  const playBeatRef = useRef<((beat: Beat) => void) | null>(null);
-  const finishRef = useRef<((lastBeat?: Beat) => void) | null>(null);
+  const finishRef = useRef<(() => void) | null>(null);
   const advanceRef = useRef<((childText: string | null) => void) | null>(null);
   const startStreamRef = useRef<(() => void) | null>(null);
   const stopStreamRef = useRef<(() => void) | null>(null);
@@ -74,7 +74,6 @@ export function LiveStory({
   }, []);
 
   const requestImage = useCallback(async (beat: Beat) => {
-    setImageLoading(true);
     try {
       const res = await fetch("/api/ai/story/image", {
         method: "POST",
@@ -90,8 +89,6 @@ export function LiveStory({
       }
     } catch {
       // The picture is a nice-to-have; text and voice already landed.
-    } finally {
-      setImageLoading(false);
     }
   }, []);
 
@@ -99,7 +96,6 @@ export function LiveStory({
     (beat: Beat) => {
       const audio = audioRef.current;
       if (!audio || !beat.audioB64) {
-        // No voice for this beat: hand the turn straight to the child.
         goPhase("yourturn");
         return;
       }
@@ -108,6 +104,51 @@ export function LiveStory({
       audio.play().catch(() => goPhase("yourturn"));
     },
     [goPhase],
+  );
+
+  // Ask for the voice and start it as soon as it lands. Reads the is-final
+  // flag so the last line still gets spoken before the ending panel.
+  const requestVoice = useCallback(
+    async (beat: Beat, isFinal: boolean) => {
+      finalRef.current = isFinal;
+      let voiced: Beat | null = null;
+      try {
+        const res = await fetch("/api/ai/story/voice", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ beatId: beat.id }),
+        });
+        if (res.ok) {
+          const data = (await res.json()) as {
+            audioB64?: string | null;
+            audioMime?: string | null;
+          };
+          if (data.audioB64) {
+            voiced = { ...beat, audioB64: data.audioB64, audioMime: data.audioMime ?? null };
+            setBeats((prev) => prev.map((b) => (b.id === beat.id ? voiced! : b)));
+          }
+        }
+      } catch {
+        // Fall through to the voice-less path below.
+      }
+      if (voiced) {
+        playBeat(voiced);
+      } else if (isFinal) {
+        finishRef.current?.();
+      } else {
+        goPhase("yourturn");
+      }
+    },
+    [goPhase, playBeat],
+  );
+
+  // Picture and voice are kicked off together, so they overlap.
+  const hydrate = useCallback(
+    (beat: Beat, isFinal: boolean) => {
+      void requestImage(beat);
+      void requestVoice(beat, isFinal);
+    },
+    [requestImage, requestVoice],
   );
 
   const advance = useCallback(
@@ -139,10 +180,7 @@ export function LiveStory({
           ]);
         }
         setBeats((prev) => [...prev, data.beat]);
-        void requestImage(data.beat);
-
-        if (data.done) finishRef.current?.(data.beat);
-        else playBeatRef.current?.(data.beat);
+        hydrate(data.beat, data.done);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Something went wrong");
         goPhase("error");
@@ -151,7 +189,7 @@ export function LiveStory({
         setBusy(false);
       }
     },
-    [goPhase, requestImage],
+    [goPhase, hydrate],
   );
   useEffect(() => {
     advanceRef.current = advance;
@@ -217,13 +255,21 @@ export function LiveStory({
     else beginListening();
   }, [beginListening, endListening]);
 
+  // Skip the child's turn: let Buddy carry the story on. Also fine to press
+  // while Buddy is still talking, which cuts him off and moves ahead.
+  const nextBeat = useCallback(() => {
+    if (busyRef.current) return;
+    if (phaseRef.current === "listening") stopStreamRef.current?.();
+    audioRef.current?.pause();
+    void advanceRef.current?.(null);
+  }, []);
+
   // Bind the late refs used by the callbacks above.
   useEffect(() => {
-    playBeatRef.current = playBeat;
     finishRef.current = finish;
     startStreamRef.current = startStream;
     stopStreamRef.current = stopStream;
-  }, [playBeat, finish, startStream, stopStream]);
+  }, [finish, startStream, stopStream]);
 
   useEffect(() => {
     beatsRef.current = beats;
@@ -245,8 +291,7 @@ export function LiveStory({
         storyIdRef.current = data.storyId;
         setStoryId(data.storyId);
         setBeats([data.beat]);
-        void requestImage(data.beat);
-        playBeatRef.current?.(data.beat);
+        hydrate(data.beat, false);
       } catch (err) {
         if (cancelled) return;
         setError(err instanceof Error ? err.message : "Something went wrong");
@@ -275,24 +320,42 @@ export function LiveStory({
   }
 
   const current = beats.filter((b) => b.speaker === "ai").slice(-1)[0] ?? null;
+  // While the new picture is drawing, keep the last one on screen (dimmed)
+  // rather than dropping to a blank, so the child always sees something.
+  const lastWithImage = [...beats].reverse().find((b) => b.imageB64) ?? null;
+  const pictured = current?.imageB64 ? current : lastWithImage;
+  const drawing = !current?.imageB64;
   const speaking = interim.length > 0;
   const listening = phase === "listening";
   const micBusy = streamState === "connecting";
+  const canNext = !busy && !listening && phase !== "starting" && phase !== "finished";
 
   return (
     <div className="pop-in max-w-3xl mx-auto">
       <div className="relative surface-card cat-creative overflow-hidden p-2 sm:p-3">
         <div className="relative aspect-square sm:aspect-[4/3] w-full rounded-2xl overflow-hidden bg-[oklch(0.20_0.06_285_/_0.55)]">
-          {current?.imageB64 ? (
+          {pictured?.imageB64 ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={current.imageB64}
-              alt={current.text}
-              className="w-full h-full object-cover"
+              src={pictured.imageB64}
+              alt={current?.text ?? pictured.text}
+              className={cn(
+                "w-full h-full object-cover transition-opacity duration-500",
+                drawing && "opacity-40",
+              )}
             />
           ) : (
             <div className="absolute inset-0 grid place-items-center">
-              <Shimmer label={imageLoading ? "Drawing the picture…" : "Getting ready"} />
+              <Shimmer label="Getting ready" />
+            </div>
+          )}
+
+          {drawing && (
+            <div className="absolute right-3 top-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[oklch(0.18_0.07_285_/_0.78)] border border-[var(--arcade-edge)]">
+              <Loader2 className="w-4 h-4 animate-spin text-arcade-soft" aria-hidden />
+              <span className="font-display text-sm text-arcade-strong">
+                Drawing the picture…
+              </span>
             </div>
           )}
 
@@ -329,7 +392,7 @@ export function LiveStory({
             )}
             {phase === "yourturn" && (
               <p className="mt-2 text-sm text-arcade-soft">
-                Tap the mic and tell Buddy what happens next.
+                Talk to add your own idea, or tap Next to let Buddy carry on.
               </p>
             )}
             {streamError && (
@@ -340,7 +403,7 @@ export function LiveStory({
           </div>
         </div>
 
-        <div className="mt-4 flex items-center gap-3">
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
             type="button"
             onClick={pushToTalk}
@@ -361,6 +424,19 @@ export function LiveStory({
               <Mic className="w-5 h-5" aria-hidden />
             )}
             {listening ? "I'm done" : micBusy ? "Starting the mic…" : "Tap to talk"}
+          </button>
+
+          <button
+            type="button"
+            onClick={nextBeat}
+            disabled={!canNext}
+            className="inline-flex items-center gap-2 font-display px-5 py-3 rounded-full
+                       text-arcade-strong bg-[var(--arcade-card-soft)]
+                       border border-[var(--arcade-edge)] active:scale-[0.97]
+                       disabled:opacity-60 disabled:active:scale-100"
+          >
+            <SkipForward className="w-5 h-5" aria-hidden />
+            Next
           </button>
 
           <div className="flex-1" />
@@ -392,7 +468,10 @@ export function LiveStory({
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <audio
         ref={audioRef}
-        onEnded={() => goPhase("yourturn")}
+        onEnded={() => {
+          if (finalRef.current) finishRef.current?.();
+          else goPhase("yourturn");
+        }}
         className="hidden"
       />
     </div>

@@ -5,7 +5,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/database";
 import { chat, LlmError } from "@/lib/ai/llm";
-import { synthesizeSpeech } from "@/lib/ai/speech";
 import {
   buildNextBeatPrompt,
   parseBeat,
@@ -91,8 +90,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to continue the story" }, { status: 502 });
     }
 
-    const speech = await synthesizeSpeech(beat.text, process.env.DEEPGRAM_API_KEY);
-
+    // The voice is generated in a separate call so the picture can start
+    // drawing at the same time instead of waiting its turn behind the voice.
     const [saved] = await prisma.$transaction([
       prisma.storyBeat.create({
         data: {
@@ -101,8 +100,6 @@ export async function POST(request: NextRequest) {
           speaker: "ai",
           text: beat.text,
           imagePrompt: beat.imagePrompt,
-          audioB64: speech?.dataUrl ?? null,
-          audioMime: speech?.mime ?? null,
         },
       }),
       prisma.story.update({
@@ -118,8 +115,8 @@ export async function POST(request: NextRequest) {
         speaker: saved.speaker,
         text: saved.text,
         imagePrompt: saved.imagePrompt,
-        audioB64: saved.audioB64,
-        audioMime: saved.audioMime,
+        audioB64: null,
+        audioMime: null,
       },
       done: isFinal,
     });
