@@ -94,6 +94,7 @@ model Story {
   gameId    String?
   title     String
   theme     String // e.g. "dragons", "space" — chosen by the child or rolled
+  seed      String? // per-story cast/surprise, keeps characters consistent
   status    String   @default("in_progress") // "in_progress" | "complete"
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

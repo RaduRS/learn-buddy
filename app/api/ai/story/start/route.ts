@@ -9,6 +9,7 @@ import { synthesizeSpeech } from "@/lib/ai/speech";
 import {
   buildFirstBeatPrompt,
   parseBeat,
+  pickStorySeed,
   themeMeta,
   type ParsedBeat,
 } from "@/lib/games/storyBuilder";
@@ -33,10 +34,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unknown user" }, { status: 404 });
     }
 
+    // A fresh cast and surprise for this story, so two stories in the same
+    // theme never come out the same. Stored below so later beats reuse it.
+    const seed = pickStorySeed(theme);
+
     // One retry with a fresh sample if the model returns a dud.
     let beat: ParsedBeat | null = null;
     for (let attempt = 0; attempt < 2 && !beat; attempt++) {
-      const content = await chat(buildFirstBeatPrompt(theme, age), {
+      const content = await chat(buildFirstBeatPrompt(theme, age, seed), {
         temperature: 1.05,
       });
       beat = parseBeat(content);
@@ -52,6 +57,7 @@ export async function POST(request: NextRequest) {
         userId,
         gameId,
         theme,
+        seed: seed.description,
         title: beat.title || `${themeMeta(theme).label} Story`,
         status: "in_progress",
         beats: {

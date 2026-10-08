@@ -106,11 +106,9 @@ export function useDeepgramStream({
         throw new Error("Microphone is not supported on this device");
       }
 
-      const tokenRes = await fetch("/api/ai/deepgram-token", { method: "POST" });
-      if (!tokenRes.ok) throw new Error("Could not start listening");
-      const { accessToken } = (await tokenRes.json()) as { accessToken?: string };
-      if (!accessToken) throw new Error("Could not start listening");
-
+      // Ask for the microphone FIRST. getUserMedia is the call that shows the
+      // OS/browser permission prompt, so it must not sit behind anything that
+      // can fail first — otherwise the child is never asked to allow the mic.
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -119,6 +117,11 @@ export function useDeepgramStream({
         },
       });
       streamRef.current = stream;
+
+      const tokenRes = await fetch("/api/ai/deepgram-token", { method: "POST" });
+      if (!tokenRes.ok) throw new Error("Could not start listening");
+      const { accessToken } = (await tokenRes.json()) as { accessToken?: string };
+      if (!accessToken) throw new Error("Could not start listening");
 
       const ws = new WebSocket(LISTEN_URL, ["token", accessToken]);
       wsRef.current = ws;

@@ -225,6 +225,13 @@ export function LiveStory({
   const { state: streamState, error: streamError, start: startStream, stop: stopStream } =
     useDeepgramStream({ onSpeechStart, onInterim: onInterimText, onFinal: onFinalText });
 
+  // Tapping the mic turns listening on (which asks for microphone permission
+  // the first time) or off again.
+  const toggleMic = useCallback(() => {
+    if (streamState === "listening") stopStream();
+    else void startStream();
+  }, [streamState, startStream, stopStream]);
+
   // Bind the late refs used by the callbacks above.
   useEffect(() => {
     playBeatRef.current = playBeat;
@@ -349,14 +356,31 @@ export function LiveStory({
         </div>
 
         <div className="mt-4 flex items-center gap-3">
-          <span className="inline-flex items-center gap-2 text-sm text-arcade-mid">
-            {streamState === "listening" ? (
-              <Mic className="w-4 h-4" style={{ color: "var(--cat-music)" }} aria-hidden />
-            ) : (
-              <MicOff className="w-4 h-4 opacity-60" aria-hidden />
+          <button
+            type="button"
+            onClick={toggleMic}
+            disabled={streamState === "connecting"}
+            aria-pressed={streamState === "listening"}
+            className={cn(
+              "inline-flex items-center gap-2 font-display text-sm px-4 py-2.5 rounded-full",
+              "border border-[var(--arcade-edge)] active:scale-[0.97]",
+              "disabled:opacity-60 disabled:active:scale-100",
+              streamState === "listening"
+                ? "text-arcade-strong bg-[oklch(0.30_0.08_160_/_0.4)]"
+                : "text-[var(--ink-on-color)] bg-[var(--cat-music)]",
             )}
-            {streamState === "listening" ? "Listening" : "Mic off"}
-          </span>
+          >
+            {streamState === "listening" ? (
+              <Mic className="w-4 h-4" aria-hidden />
+            ) : (
+              <MicOff className="w-4 h-4" aria-hidden />
+            )}
+            {streamState === "listening"
+              ? "Listening"
+              : streamState === "connecting"
+                ? "Starting the mic…"
+                : "Turn on the mic"}
+          </button>
 
           <div className="flex-1" />
 

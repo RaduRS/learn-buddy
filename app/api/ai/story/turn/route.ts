@@ -69,12 +69,17 @@ export async function POST(request: NextRequest) {
     }));
     if (childText) history.push({ speaker: "child", text: childText });
 
+    // Reuse the cast chosen when the story opened, so the characters stay the
+    // same from page to page.
+    const seed = story.seed ? { description: story.seed } : null;
+
     const prompt = buildNextBeatPrompt(
       story.theme,
       age,
       history,
       childText || null,
       isFinal,
+      seed,
     );
 
     let beat: ParsedBeat | null = null;
