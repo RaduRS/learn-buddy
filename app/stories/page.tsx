@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BookOpen, Mic } from "lucide-react";
+import { BookOpen, Mic, Trash2 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { LoadingScreen } from "@/components/game/LoadingScreen";
 import { Buddy } from "@/components/mascot/Buddy";
+import { DeleteStoryConfirm } from "@/components/game/story/DeleteStoryConfirm";
 import { findTheme } from "@/lib/games/storyThemes";
 import { useSfx } from "@/components/sound/SoundProvider";
 import type { User } from "@/types";
@@ -26,6 +27,9 @@ export default function StoriesPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [stories, setStories] = useState<StorySummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingDelete, setPendingDelete] = useState<StorySummary | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -70,6 +74,32 @@ export default function StoriesPage() {
     router.push(`/stories/${id}`);
   };
 
+  const confirmDelete = useCallback(async () => {
+    const story = pendingDelete;
+    if (!story) return;
+    const savedUserId = localStorage.getItem("selectedUserId");
+    if (!savedUserId) return;
+
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(
+        `/api/stories/${story.id}?userId=${savedUserId}`,
+        { method: "DELETE" },
+      );
+      if (!res.ok) throw new Error("Could not delete the story");
+      setStories((prev) => prev.filter((s) => s.id !== story.id));
+      setPendingDelete(null);
+      play("whoosh");
+    } catch (err) {
+      setDeleteError(
+        err instanceof Error ? err.message : "Could not delete the story",
+      );
+    } finally {
+      setDeleting(false);
+    }
+  }, [pendingDelete, play]);
+
   if (loading) {
     return (
       <LoadingScreen
@@ -103,41 +133,78 @@ export default function StoriesPage() {
               const status =
                 story.status === "complete" ? "The end" : "Still going";
               return (
-                <button
-                  key={story.id}
-                  type="button"
-                  onClick={() => openStory(story.id)}
-                  className="surface-card cat-creative text-left p-5 sm:p-6 active:scale-[0.985]"
-                >
-                  <div className="flex items-start gap-4">
-                    <span
-                      aria-hidden
-                      className="grid place-items-center shrink-0 w-14 h-14 rounded-2xl
-                                 bg-[oklch(0.20_0.06_285_/_0.6)]
-                                 border border-[var(--arcade-edge)]"
-                      style={{ boxShadow: `0 8px 26px -14px var(${theme.token})` }}
-                    >
-                      <Icon className="w-7 h-7" strokeWidth={1.6} style={{ color: `var(${theme.token})` }} />
-                    </span>
-                    <div className="min-w-0">
-                      <h2 className="font-display text-xl text-arcade-strong leading-tight line-clamp-2">
-                        {story.title}
-                      </h2>
-                      <p className="mt-1 text-sm text-arcade-mid">
-                        {theme.label} · {story._count.beats}{" "}
-                        {story._count.beats === 1 ? "page" : "pages"}
-                      </p>
-                      <p className="mt-1 text-xs text-arcade-soft">
-                        {status} · {formatDate(story.updatedAt)}
-                      </p>
+                <div key={story.id} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => openStory(story.id)}
+                    className="surface-card cat-creative text-left p-5 sm:p-6 pr-14 w-full active:scale-[0.985]"
+                  >
+                    <div className="flex items-start gap-4">
+                      <span
+                        aria-hidden
+                        className="grid place-items-center shrink-0 w-14 h-14 rounded-2xl
+                                   bg-[oklch(0.20_0.06_285_/_0.6)]
+                                   border border-[var(--arcade-edge)]"
+                        style={{ boxShadow: `0 8px 26px -14px var(${theme.token})` }}
+                      >
+                        <Icon className="w-7 h-7" strokeWidth={1.6} style={{ color: `var(${theme.token})` }} />
+                      </span>
+                      <div className="min-w-0">
+                        <h2 className="font-display text-xl text-arcade-strong leading-tight line-clamp-2">
+                          {story.title}
+                        </h2>
+                        <p className="mt-1 text-sm text-arcade-mid">
+                          {theme.label} · {story._count.beats}{" "}
+                          {story._count.beats === 1 ? "page" : "pages"}
+                        </p>
+                        <p className="mt-1 text-xs text-arcade-soft">
+                          {status} · {formatDate(story.updatedAt)}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </button>
+                  </button>
+
+                  <button
+                    type="button"
+                    aria-label={`Delete ${story.title}`}
+                    onClick={() => setPendingDelete(story)}
+                    className="absolute top-3 right-3 grid place-items-center w-10 h-10 rounded-full
+                               text-arcade-mid bg-[oklch(0.20_0.06_285_/_0.6)]
+                               border border-[var(--arcade-edge)]
+                               hover:text-[var(--cat-spatial)] hover:border-[var(--cat-spatial)]
+                               active:scale-90"
+                  >
+                    <Trash2 className="w-5 h-5" aria-hidden />
+                  </button>
+                </div>
               );
             })}
           </div>
         )}
       </main>
+
+      {deleteError && (
+        <p
+          role="status"
+          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[80] px-5 py-3 rounded-full
+                     surface-card cat-spatial text-arcade-strong"
+        >
+          {deleteError}
+        </p>
+      )}
+
+      <DeleteStoryConfirm
+        open={pendingDelete !== null}
+        title={pendingDelete?.title ?? ""}
+        busy={deleting}
+        onCancel={() => {
+          if (!deleting) {
+            setPendingDelete(null);
+            setDeleteError(null);
+          }
+        }}
+        onConfirm={() => void confirmDelete()}
+      />
     </div>
   );
 }
