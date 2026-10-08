@@ -1,29 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { FLUX_TTS_MODEL, formatForSpeech } from "@/lib/ai/speech";
 
 const MAX_TTS_CHARS = 2000;
-const TTS_MODEL = "aura-2-thalia-en";
 const TTS_TAGS = ["learn-buddy", "reading-helper", "tts"];
-
-const formatForAuraSpeech = (text: string) => {
-  const withoutCodeFences = text
-    .replace(/^```(?:markdown|md|text)?\s*/i, "")
-    .replace(/\s*```$/i, "");
-
-  return withoutCodeFences
-    .replace(/\r\n/g, "\n")
-    .replace(/\t/g, " ")
-    .replace(/[ ]{2,}/g, " ")
-    .replace(/\*\*(.*?)\*\*/g, "$1")
-    .replace(/__(.*?)__/g, "$1")
-    .replace(/(?<=\s|^)\*(?!\s)(.*?)(?<!\s)\*(?=\s|$)/g, "$1")
-    .replace(/(?<=\s|^)_(?!\s)(.*?)(?<!\s)_(?=\s|$)/g, "$1")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/^#{1,2}\s+/gm, "")
-    .replace(/^[-*]\s+/gm, "")
-    .replace(/^>\s+/gm, "")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-};
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,7 +20,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const formattedForSpeech = formatForAuraSpeech(cleanedText);
+    const formattedForSpeech = formatForSpeech(cleanedText);
 
     const textForSpeech =
       formattedForSpeech.length > MAX_TTS_CHARS
@@ -56,8 +35,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const ttsUrl = new URL("https://api.deepgram.com/v1/speak");
-    ttsUrl.searchParams.set("model", TTS_MODEL);
+    const ttsUrl = new URL("https://api.deepgram.com/v2/speak");
+    ttsUrl.searchParams.set("model", FLUX_TTS_MODEL);
     for (const tag of TTS_TAGS) {
       ttsUrl.searchParams.append("tag", tag);
     }

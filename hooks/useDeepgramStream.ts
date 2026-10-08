@@ -22,24 +22,33 @@ interface UseDeepgramStream {
   stop: () => void;
 }
 
+// Flux is Deepgram's conversational STT model. Unlike the older Nova streams,
+// it runs a turn-taking state machine and tells us when the child started and
+// finished a thought, so we don't hand-roll VAD or endpointing.
+//
+// We send containerized WebM/Opus (what MediaRecorder produces), so `encoding`
+// and `sample_rate` must be omitted and are auto-detected from the container.
+// `eot_timeout_ms` caps how long silence can sit before Flux calls the turn
+// over, which keeps the game snappy for kids.
 const LISTEN_URL =
-  "wss://api.deepgram.com/v1/listen" +
-  "?model=nova-2" +
-  "&language=en" +
-  "&smart_format=true" +
-  "&interim_results=true" +
-  "&punctuate=true" +
-  "&endpointing=800" +
-  "&vad_events=true";
+  "wss://api.deepgram.com/v2/listen" +
+  "?model=flux-general-en" +
+  "&eot_timeout_ms=2000";
 
-const KEEPALIVE_MS = 8000;
+// Flux recommends ~80ms audio chunks for its lowest latency.
+const CHUNK_MS = 80;
 
 /**
- * Streams the microphone to Deepgram for live transcription.
+ * Streams the microphone to Deepgram Flux for live, turn-aware transcription.
  *
  * The browser connects straight to Deepgram (Vercel functions can't proxy a
  * WebSocket) using a short-lived token minted by `/api/ai/deepgram-token`, so
  * the real API key stays on the server.
+ *
+ * Flux emits `TurnInfo` messages rather than continuous transcripts:
+ *   StartOfTurn  -> the child began speaking (our barge-in signal)
+ *   Update       -> provisional transcript, refreshed a few times a second
+ *   EndOfTurn    -> the child finished a thought; the confirmed transcript
  */
 export function useDeepgramStream({
   onFinal,
@@ -52,7 +61,6 @@ export function useDeepgramStream({
   const wsRef = useRef<WebSocket | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const keepaliveRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Fresh callbacks without re-creating the sockets on every render.
   const cbs = useRef({ onFinal, onInterim, onSpeechStart });
@@ -61,10 +69,6 @@ export function useDeepgramStream({
   }, [onFinal, onInterim, onSpeechStart]);
 
   const teardown = useCallback(() => {
-    if (keepaliveRef.current) {
-      clearInterval(keepaliveRef.current);
-      keepaliveRef.current = null;
-    }
     const recorder = recorderRef.current;
     if (recorder && recorder.state !== "inactive") {
       try {
@@ -127,14 +131,11 @@ export function useDeepgramStream({
         recorder.ondataavailable = (e) => {
           if (e.data.size > 0 && ws.readyState === WebSocket.OPEN) ws.send(e.data);
         };
-        recorder.start(250);
+        // Continuous audio doubles as keep-alive: Flux has no KeepAlive
+        // control message, and sending a frame every 80ms keeps the socket
+        // active even while the child is quiet.
+        recorder.start(CHUNK_MS);
         recorderRef.current = recorder;
-
-        keepaliveRef.current = setInterval(() => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: "KeepAlive" }));
-          }
-        }, KEEPALIVE_MS);
 
         setState("listening");
       };
@@ -142,8 +143,8 @@ export function useDeepgramStream({
       ws.onmessage = (event) => {
         let msg: {
           type?: string;
-          is_final?: boolean;
-          channel?: { alternatives?: { transcript?: string }[] };
+          event?: string;
+          transcript?: string;
         };
         try {
           msg = JSON.parse(event.data as string);
@@ -151,16 +152,27 @@ export function useDeepgramStream({
           return;
         }
 
-        if (msg.type === "SpeechStarted") {
-          cbs.current.onSpeechStart?.();
-          return;
-        }
-        if (msg.type !== "Results") return;
+        if (msg.type !== "TurnInfo") return;
+        const transcript = msg.transcript?.trim();
 
-        const transcript = msg.channel?.alternatives?.[0]?.transcript?.trim();
-        if (!transcript) return;
-        if (msg.is_final) cbs.current.onFinal?.(transcript);
-        else cbs.current.onInterim?.(transcript);
+        switch (msg.event) {
+          case "StartOfTurn":
+            // The child started talking. Flux guarantees a non-empty
+            // transcript here, which makes this a reliable barge-in signal.
+            cbs.current.onSpeechStart?.();
+            if (transcript) cbs.current.onInterim?.(transcript);
+            break;
+          case "Update":
+            if (transcript) cbs.current.onInterim?.(transcript);
+            break;
+          case "EndOfTurn":
+            if (transcript) cbs.current.onFinal?.(transcript);
+            break;
+          // We don't set `eager_eot_threshold`, so EagerEndOfTurn/TurnResumed
+          // never arrive; ignore anything else the model may add later.
+          default:
+            break;
+        }
       };
 
       ws.onerror = () => {

@@ -1,6 +1,6 @@
 // app/api/ai/story/start/route.ts
 //
-// Opens a story: writes the first beat, voices it with Aura, saves the story
+// Opens a story: writes the first beat, voices it with Flux TTS, saves the story
 // and its first page, and hands the client everything it needs to begin.
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/database";

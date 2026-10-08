@@ -1,19 +1,23 @@
-// Shared text-to-speech for the AI routes (Deepgram Aura).
+// Shared text-to-speech for the AI routes (Deepgram Flux TTS).
 //
-// The reading-helper route keeps its own inline copy for now; this module is
-// the version the story builder uses, since it needs the audio back as a
-// base64 data URL it can persist alongside the beat.
+// Flux TTS is served on /v2/speak and required for the story builder, which
+// needs the audio back as a base64 data URL it can persist alongside the beat.
+// We use the batch (REST) transport: it takes the whole line of text and
+// returns the finished audio in one response, which is exactly what a stored
+// narration wants. The streaming WebSocket transport would only pay off if we
+// were playing audio back as tokens arrive.
 
-const DEEPGRAM_SPEAK_URL = "https://api.deepgram.com/v1/speak";
+const DEEPGRAM_SPEAK_URL = "https://api.deepgram.com/v2/speak";
 
-// Aura-2 voices carry the language in the model name. Thalia is a warm,
-// clear narrator that works well for bedtime-story pacing.
-const TTS_MODEL = "aura-2-thalia-en";
-const TTS_TAGS = ["learn-buddy", "build-a-story", "tts"];
+// Flux voices use a `flux-{voice}-{language}` model string. Hannah is a clear,
+// pleasant young voice Deepgram lists for storytelling — a good bedtime
+// narrator.
+export const FLUX_TTS_MODEL = "flux-hannah-en";
+export const TTS_TAGS = ["learn-buddy", "build-a-story", "tts"];
 const TTS_TIMEOUT_MS = 30_000;
 
-/** Strip markdown so Aura doesn't read punctuation literally. */
-export function formatForAuraSpeech(text: string): string {
+/** Strip markdown so the voice doesn't read punctuation literally. */
+export function formatForSpeech(text: string): string {
   return text
     .replace(/^```(?:markdown|md|text)?\s*/i, "")
     .replace(/\s*```$/i, "")
@@ -51,11 +55,11 @@ export async function synthesizeSpeech(
 ): Promise<{ dataUrl: string; mime: string } | null> {
   if (!apiKey) return null;
 
-  const spoken = formatForAuraSpeech(text);
+  const spoken = formatForSpeech(text);
   if (!spoken) return null;
 
   const url = new URL(DEEPGRAM_SPEAK_URL);
-  url.searchParams.set("model", TTS_MODEL);
+  url.searchParams.set("model", FLUX_TTS_MODEL);
   for (const tag of TTS_TAGS) url.searchParams.append("tag", tag);
 
   let response: Response;
@@ -70,12 +74,12 @@ export async function synthesizeSpeech(
       signal: AbortSignal.timeout(TTS_TIMEOUT_MS),
     });
   } catch (error) {
-    console.error("Aura TTS request failed:", error);
+    console.error("Flux TTS request failed:", error);
     return null;
   }
 
   if (!response.ok) {
-    console.error("Aura TTS error:", response.status, await response.text());
+    console.error("Flux TTS error:", response.status, await response.text());
     return null;
   }
 
