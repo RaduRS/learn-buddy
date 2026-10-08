@@ -73,24 +73,58 @@ export function LiveStory({
     setPhase(p);
   }, []);
 
-  const requestImage = useCallback(async (beat: Beat) => {
+  // Fetch a beat's picture and store it the moment it lands. Merges into the
+  // existing beat so nothing else on it (the voice, once it arrives) is lost.
+  const fetchBeatImage = useCallback(async (beat: Beat): Promise<string | null> => {
     try {
       const res = await fetch("/api/ai/story/image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ beatId: beat.id }),
       });
-      if (!res.ok) return;
+      if (!res.ok) return null;
       const data = (await res.json()) as { imageB64?: string };
-      if (data.imageB64) {
-        setBeats((prev) =>
-          prev.map((b) => (b.id === beat.id ? { ...b, imageB64: data.imageB64 } : b)),
-        );
-      }
+      if (!data.imageB64) return null;
+      setBeats((prev) =>
+        prev.map((b) => (b.id === beat.id ? { ...b, imageB64: data.imageB64 } : b)),
+      );
+      return data.imageB64;
     } catch {
-      // The picture is a nice-to-have; text and voice already landed.
+      // The picture is a nice-to-have; the story still reads without it.
+      return null;
     }
   }, []);
+
+  // Fetch a beat's voice. Like the picture, it merges into the existing beat
+  // rather than replacing it, so the two requests can't clobber each other.
+  const fetchBeatVoice = useCallback(
+    async (beat: Beat): Promise<{ audioB64: string; audioMime: string | null } | null> => {
+      try {
+        const res = await fetch("/api/ai/story/voice", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ beatId: beat.id }),
+        });
+        if (!res.ok) return null;
+        const data = (await res.json()) as {
+          audioB64?: string | null;
+          audioMime?: string | null;
+        };
+        if (!data.audioB64) return null;
+        setBeats((prev) =>
+          prev.map((b) =>
+            b.id === beat.id
+              ? { ...b, audioB64: data.audioB64!, audioMime: data.audioMime ?? null }
+              : b,
+          ),
+        );
+        return { audioB64: data.audioB64, audioMime: data.audioMime ?? null };
+      } catch {
+        return null;
+      }
+    },
+    [],
+  );
 
   const playBeat = useCallback(
     (beat: Beat) => {
@@ -106,49 +140,28 @@ export function LiveStory({
     [goPhase],
   );
 
-  // Ask for the voice and start it as soon as it lands. Reads the is-final
-  // flag so the last line still gets spoken before the ending panel.
-  const requestVoice = useCallback(
+  // Picture and voice are fetched together so they overlap, but the narration
+  // only starts once the picture is on screen: both calls resolve, then Buddy
+  // speaks. If the picture fails we still speak, so a hiccup never strands the
+  // story. The is-final flag rides along so the last line is spoken before the
+  // ending panel.
+  const hydrate = useCallback(
     async (beat: Beat, isFinal: boolean) => {
       finalRef.current = isFinal;
-      let voiced: Beat | null = null;
-      try {
-        const res = await fetch("/api/ai/story/voice", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ beatId: beat.id }),
-        });
-        if (res.ok) {
-          const data = (await res.json()) as {
-            audioB64?: string | null;
-            audioMime?: string | null;
-          };
-          if (data.audioB64) {
-            voiced = { ...beat, audioB64: data.audioB64, audioMime: data.audioMime ?? null };
-            setBeats((prev) => prev.map((b) => (b.id === beat.id ? voiced! : b)));
-          }
-        }
-      } catch {
-        // Fall through to the voice-less path below.
-      }
-      if (voiced) {
-        playBeat(voiced);
+      const [, voice] = await Promise.all([
+        fetchBeatImage(beat),
+        fetchBeatVoice(beat),
+      ]);
+
+      if (voice) {
+        playBeat({ ...beat, audioB64: voice.audioB64, audioMime: voice.audioMime });
       } else if (isFinal) {
         finishRef.current?.();
       } else {
         goPhase("yourturn");
       }
     },
-    [goPhase, playBeat],
-  );
-
-  // Picture and voice are kicked off together, so they overlap.
-  const hydrate = useCallback(
-    (beat: Beat, isFinal: boolean) => {
-      void requestImage(beat);
-      void requestVoice(beat, isFinal);
-    },
-    [requestImage, requestVoice],
+    [fetchBeatImage, fetchBeatVoice, goPhase, playBeat],
   );
 
   const advance = useCallback(
@@ -320,11 +333,12 @@ export function LiveStory({
   }
 
   const current = beats.filter((b) => b.speaker === "ai").slice(-1)[0] ?? null;
-  // While the new picture is drawing, keep the last one on screen (dimmed)
-  // rather than dropping to a blank, so the child always sees something.
+  // While a new picture is drawing, keep the last one on screen at full
+  // brightness rather than blanking or dimming it, so the child always sees a
+  // picture and it never appears to vanish.
   const lastWithImage = [...beats].reverse().find((b) => b.imageB64) ?? null;
   const pictured = current?.imageB64 ? current : lastWithImage;
-  const drawing = !current?.imageB64;
+  const drawing = !current?.imageB64 && !busy;
   const speaking = interim.length > 0;
   const listening = phase === "listening";
   const micBusy = streamState === "connecting";
@@ -339,10 +353,7 @@ export function LiveStory({
             <img
               src={pictured.imageB64}
               alt={current?.text ?? pictured.text}
-              className={cn(
-                "w-full h-full object-cover transition-opacity duration-500",
-                drawing && "opacity-40",
-              )}
+              className="w-full h-full object-cover"
             />
           ) : (
             <div className="absolute inset-0 grid place-items-center">
