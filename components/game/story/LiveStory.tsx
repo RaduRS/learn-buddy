@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, Mic, MicOff, Square, Volume2 } from "lucide-react";
+import { Check, Loader2, Mic, Square, Volume2 } from "lucide-react";
 import { Buddy } from "@/components/mascot/Buddy";
 import { useSfx } from "@/components/sound/SoundProvider";
 import { useDeepgramStream } from "@/hooks/useDeepgramStream";
@@ -28,21 +28,7 @@ interface Beat {
   imageB64?: string | null;
 }
 
-type Phase = "starting" | "narrating" | "listening" | "error" | "finished";
-
-/** How long we wait for the child to start talking before carrying on. */
-const LISTEN_WINDOW_MS = 1700;
-
-/** Loose echo guard: ignore a transcript that is basically the AI's own line. */
-function looksLikeEcho(transcript: string, aiText: string | null): boolean {
-  if (!aiText) return false;
-  const norm = (s: string) =>
-    s.toLowerCase().replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
-  const t = norm(transcript);
-  const a = norm(aiText);
-  if (t.length < 6 || a.length < 6) return false;
-  return a.includes(t) || t.includes(a.slice(0, Math.min(a.length, 40)));
-}
+type Phase = "starting" | "narrating" | "yourturn" | "listening" | "error" | "finished";
 
 export function LiveStory({
   themeId,
@@ -62,29 +48,29 @@ export function LiveStory({
   const [interim, setInterim] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   // --- refs (declared up front so every callback can close over them) ---
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const currentBeatRef = useRef<Beat | null>(null);
-  const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const busyRef = useRef(false);
-  const speakingRef = useRef(false);
   const storyIdRef = useRef<string | null>(null);
   const beatsRef = useRef<Beat[]>([]);
   const phaseRef = useRef<Phase>("starting");
+  // Latest thing the child said, whatever the transcription confidence.
+  const transcriptRef = useRef("");
 
   // Late-bound callbacks that break circular dependencies between the
   // streaming handlers and the turn/advance logic.
   const playBeatRef = useRef<((beat: Beat) => void) | null>(null);
   const finishRef = useRef<((lastBeat?: Beat) => void) | null>(null);
-  const scheduleRef = useRef<(() => void) | null>(null);
+  const advanceRef = useRef<((childText: string | null) => void) | null>(null);
+  const startStreamRef = useRef<(() => void) | null>(null);
   const stopStreamRef = useRef<(() => void) | null>(null);
 
-  const clearAdvance = useCallback(() => {
-    if (advanceTimerRef.current) {
-      clearTimeout(advanceTimerRef.current);
-      advanceTimerRef.current = null;
-    }
+  // Keep the ref and the render state in step in one place.
+  const goPhase = useCallback((p: Phase) => {
+    phaseRef.current = p;
+    setPhase(p);
   }, []);
 
   const requestImage = useCallback(async (beat: Beat) => {
@@ -109,44 +95,35 @@ export function LiveStory({
     }
   }, []);
 
-  const playBeat = useCallback((beat: Beat) => {
-    currentBeatRef.current = beat;
-    const audio = audioRef.current;
-    if (!audio || !beat.audioB64) {
-      // No voice for this beat: open the listening window straight away.
-      setPhase("listening");
-      scheduleRef.current?.();
-      return;
-    }
-    audio.src = beat.audioB64;
-    setPhase("narrating");
-    audio.play().catch(() => {
-      setPhase("listening");
-      scheduleRef.current?.();
-    });
-  }, []);
-
-  const scheduleAdvance = useCallback(() => {
-    clearAdvance();
-    advanceTimerRef.current = setTimeout(() => {
-      if (!speakingRef.current) void advanceRef.current?.(null);
-    }, LISTEN_WINDOW_MS);
-  }, [clearAdvance]);
+  const playBeat = useCallback(
+    (beat: Beat) => {
+      const audio = audioRef.current;
+      if (!audio || !beat.audioB64) {
+        // No voice for this beat: hand the turn straight to the child.
+        goPhase("yourturn");
+        return;
+      }
+      audio.src = beat.audioB64;
+      goPhase("narrating");
+      audio.play().catch(() => goPhase("yourturn"));
+    },
+    [goPhase],
+  );
 
   const advance = useCallback(
     async (childText: string | null) => {
       const id = storyIdRef.current;
       if (!id || busyRef.current) return;
       busyRef.current = true;
-      clearAdvance();
-      setPhase("narrating");
+      setBusy(true);
+      goPhase("narrating");
       try {
         const res = await fetch("/api/ai/story/turn", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ storyId: id, childText: childText ?? undefined }),
         });
-        if (!res.ok) throw new Error("The story paused. Tap the mic to keep going.");
+        if (!res.ok) throw new Error("The story paused. Tap the mic to try again.");
         const data = (await res.json()) as { beat: Beat; done: boolean };
 
         if (childText) {
@@ -168,84 +145,89 @@ export function LiveStory({
         else playBeatRef.current?.(data.beat);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Something went wrong");
-        setPhase("error");
+        goPhase("error");
       } finally {
         busyRef.current = false;
+        setBusy(false);
       }
     },
-    [clearAdvance, requestImage],
+    [goPhase, requestImage],
   );
-  const advanceRef = useRef(advance);
   useEffect(() => {
     advanceRef.current = advance;
   }, [advance]);
 
   const finish = useCallback(() => {
-    clearAdvance();
     stopStreamRef.current?.();
-    const audio = audioRef.current;
-    if (audio) audio.pause();
-    setPhase("finished");
+    audioRef.current?.pause();
+    goPhase("finished");
     const aiBeats = beatsRef.current.filter((b) => b.speaker === "ai").length;
     play("finish");
     onComplete(aiBeats, Math.max(aiBeats, 1));
-  }, [clearAdvance, onComplete, play]);
+  }, [goPhase, onComplete, play]);
 
-  const onSpeechStart = useCallback(() => {
-    speakingRef.current = true;
-    clearAdvance();
+  // --- push-to-talk ------------------------------------------------------
+  // First tap: stop Buddy mid-sentence and start listening. Second tap: stop
+  // listening and send whatever the child said. Nothing happens on a timer, so
+  // the child is always in control of when they talk.
+  const beginListening = useCallback(() => {
     const audio = audioRef.current;
     if (audio && !audio.paused) {
-      // Barge-in: the child is talking, so stop the narrator immediately.
       audio.pause();
       audio.currentTime = 0;
     }
-    setPhase("listening");
-  }, [clearAdvance]);
+    transcriptRef.current = "";
+    setInterim("");
+    goPhase("listening");
+    void startStreamRef.current?.();
+  }, [goPhase]);
+
+  const endListening = useCallback(() => {
+    stopStreamRef.current?.();
+    const text = transcriptRef.current.trim();
+    transcriptRef.current = "";
+    setInterim("");
+    void advanceRef.current?.(text || null);
+  }, []);
+
+  const onSpeechStart = useCallback(() => {
+    // Barge-in: Buddy stops the moment the child starts talking.
+    const audio = audioRef.current;
+    if (audio && !audio.paused) {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+    goPhase("listening");
+  }, [goPhase]);
 
   const onInterimText = useCallback((text: string) => {
-    speakingRef.current = true;
+    transcriptRef.current = text;
     setInterim(text);
   }, []);
 
-  const onFinalText = useCallback(
-    (text: string) => {
-      setInterim("");
-      speakingRef.current = false;
-      if (looksLikeEcho(text, currentBeatRef.current?.text ?? null)) {
-        // The narrator heard itself; ignore it and keep the flow moving.
-        if (phaseRef.current === "listening") scheduleRef.current?.();
-        return;
-      }
-      void advanceRef.current?.(text);
-    },
-    [],
-  );
+  const onFinalText = useCallback((text: string) => {
+    transcriptRef.current = text;
+  }, []);
 
   const { state: streamState, error: streamError, start: startStream, stop: stopStream } =
     useDeepgramStream({ onSpeechStart, onInterim: onInterimText, onFinal: onFinalText });
 
-  // Tapping the mic turns listening on (which asks for microphone permission
-  // the first time) or off again.
-  const toggleMic = useCallback(() => {
-    if (streamState === "listening") stopStream();
-    else void startStream();
-  }, [streamState, startStream, stopStream]);
+  const pushToTalk = useCallback(() => {
+    if (phaseRef.current === "listening") endListening();
+    else beginListening();
+  }, [beginListening, endListening]);
 
   // Bind the late refs used by the callbacks above.
   useEffect(() => {
     playBeatRef.current = playBeat;
     finishRef.current = finish;
-    scheduleRef.current = scheduleAdvance;
+    startStreamRef.current = startStream;
     stopStreamRef.current = stopStream;
-  }, [playBeat, finish, scheduleAdvance, stopStream]);
+  }, [playBeat, finish, startStream, stopStream]);
 
   useEffect(() => {
     beatsRef.current = beats;
   }, [beats]);
-  useEffect(() => {
-    phaseRef.current = phase;
-  }, [phase]);
 
   // Kick the story off exactly once.
   useEffect(() => {
@@ -264,17 +246,15 @@ export function LiveStory({
         setStoryId(data.storyId);
         setBeats([data.beat]);
         void requestImage(data.beat);
-        void startStream();
         playBeatRef.current?.(data.beat);
       } catch (err) {
         if (cancelled) return;
         setError(err instanceof Error ? err.message : "Something went wrong");
-        setPhase("error");
+        goPhase("error");
       }
     })();
     return () => {
       cancelled = true;
-      clearAdvance();
       stopStreamRef.current?.();
       // Read the ref at cleanup time on purpose: the element is stable, and
       // capturing it at mount would only ever see the initial null.
@@ -285,11 +265,10 @@ export function LiveStory({
   }, []);
 
   const handleExit = useCallback(() => {
-    clearAdvance();
     stopStream();
     audioRef.current?.pause();
     onExit();
-  }, [clearAdvance, onExit, stopStream]);
+  }, [onExit, stopStream]);
 
   if (phase === "error") {
     return <ErrorState message={error ?? "Something went wrong"} onExit={handleExit} />;
@@ -298,6 +277,7 @@ export function LiveStory({
   const current = beats.filter((b) => b.speaker === "ai").slice(-1)[0] ?? null;
   const speaking = interim.length > 0;
   const listening = phase === "listening";
+  const micBusy = streamState === "connecting";
 
   return (
     <div className="pop-in max-w-3xl mx-auto">
@@ -316,11 +296,11 @@ export function LiveStory({
             </div>
           )}
 
-          {listening && (
+          {(listening || phase === "yourturn") && (
             <div className="absolute left-3 bottom-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[oklch(0.18_0.07_285_/_0.72)] border border-[var(--arcade-edge)]">
               <span className="inline-flex h-2.5 w-2.5 rounded-full bg-[var(--cat-music)] animate-pulse" />
               <span className="font-display text-sm text-arcade-strong">
-                {speaking ? "I can hear you" : "Your turn"}
+                {listening ? (speaking ? "I can hear you" : "Listening") : "Your turn"}
               </span>
             </div>
           )}
@@ -337,14 +317,19 @@ export function LiveStory({
             {speaking && (
               <p className="mt-2 text-arcade-mid italic truncate">“{interim}”</p>
             )}
-            {phase === "narrating" && (
+            {phase === "narrating" && !busy && (
               <p className="mt-2 inline-flex items-center gap-2 text-sm text-arcade-soft">
                 <Volume2 className="w-4 h-4" aria-hidden /> Buddy is telling the story
               </p>
             )}
-            {phase === "starting" && (
+            {(phase === "starting" || busy) && (
               <p className="mt-2 inline-flex items-center gap-2 text-sm text-arcade-soft">
                 <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> Buddy is thinking
+              </p>
+            )}
+            {phase === "yourturn" && (
+              <p className="mt-2 text-sm text-arcade-soft">
+                Tap the mic and tell Buddy what happens next.
               </p>
             )}
             {streamError && (
@@ -358,28 +343,24 @@ export function LiveStory({
         <div className="mt-4 flex items-center gap-3">
           <button
             type="button"
-            onClick={toggleMic}
-            disabled={streamState === "connecting"}
-            aria-pressed={streamState === "listening"}
+            onClick={pushToTalk}
+            disabled={micBusy || busy}
+            aria-pressed={listening}
             className={cn(
-              "inline-flex items-center gap-2 font-display text-sm px-4 py-2.5 rounded-full",
+              "inline-flex items-center gap-2 font-display px-5 py-3 rounded-full",
               "border border-[var(--arcade-edge)] active:scale-[0.97]",
               "disabled:opacity-60 disabled:active:scale-100",
-              streamState === "listening"
+              listening
                 ? "text-arcade-strong bg-[oklch(0.30_0.08_160_/_0.4)]"
                 : "text-[var(--ink-on-color)] bg-[var(--cat-music)]",
             )}
           >
-            {streamState === "listening" ? (
-              <Mic className="w-4 h-4" aria-hidden />
+            {listening ? (
+              <Check className="w-5 h-5" aria-hidden />
             ) : (
-              <MicOff className="w-4 h-4" aria-hidden />
+              <Mic className="w-5 h-5" aria-hidden />
             )}
-            {streamState === "listening"
-              ? "Listening"
-              : streamState === "connecting"
-                ? "Starting the mic…"
-                : "Turn on the mic"}
+            {listening ? "I'm done" : micBusy ? "Starting the mic…" : "Tap to talk"}
           </button>
 
           <div className="flex-1" />
@@ -411,10 +392,7 @@ export function LiveStory({
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <audio
         ref={audioRef}
-        onEnded={() => {
-          setPhase("listening");
-          scheduleRef.current?.();
-        }}
+        onEnded={() => goPhase("yourturn")}
         className="hidden"
       />
     </div>

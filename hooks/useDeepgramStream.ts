@@ -123,7 +123,10 @@ export function useDeepgramStream({
       const { accessToken } = (await tokenRes.json()) as { accessToken?: string };
       if (!accessToken) throw new Error("Could not start listening");
 
-      const ws = new WebSocket(LISTEN_URL, ["token", accessToken]);
+      // The ephemeral JWT must be sent with the `bearer` subprotocol. The
+      // `token` scheme is only for a raw API key; a JWT sent that way makes
+      // Deepgram hang the handshake, which surfaced as "Listening stopped".
+      const ws = new WebSocket(LISTEN_URL, ["bearer", accessToken]);
       wsRef.current = ws;
 
       ws.onopen = () => {
