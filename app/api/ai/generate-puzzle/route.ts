@@ -23,10 +23,10 @@ export async function POST(request: NextRequest) {
   try {
     const { difficulty = 2, theme } = (await request.json()) as PuzzleRequest;
 
-    const openaiApiKey = process.env.OPENAI_API_KEY;
-    if (!openaiApiKey) {
+    const imageApiKey = process.env.DEEPINFRA_API_KEY;
+    if (!imageApiKey) {
       return NextResponse.json(
-        { error: "OpenAI API key not configured" },
+        { error: "Image API key not configured" },
         { status: 500 },
       );
     }
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
 
     const prompt = `${chosenTheme}. ${composition}. ${style}. Child-friendly, colorful, safe, educational, bright and cheerful, suitable for kids. CRITICAL: ABSOLUTELY NO TEXT, NO WORDS, NO LETTERS, NO WRITING, NO CAPTIONS, NO TYPOGRAPHY anywhere in the image.`;
 
-    const imageUrl = await generateImage(prompt, openaiApiKey);
+    const imageUrl = await generateImage(prompt, imageApiKey);
 
     // Build puzzle pieces grid
     const pieces: PuzzlePiece[] = [];

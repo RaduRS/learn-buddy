@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Beat has no scene to draw" }, { status: 422 });
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.DEEPINFRA_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
         { error: "Image API key not configured" },

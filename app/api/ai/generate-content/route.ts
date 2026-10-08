@@ -34,9 +34,9 @@ export async function POST(request: Request) {
 
     // Check for required API keys
     const deepseekApiKey = process.env.DEEPSEEK_API_KEY
-    const openaiApiKey = process.env.OPENAI_API_KEY
+    const imageApiKey = process.env.DEEPINFRA_API_KEY
 
-    if (!deepseekApiKey || !openaiApiKey) {
+    if (!deepseekApiKey || !imageApiKey) {
       return NextResponse.json(
         { error: 'API keys not configured' },
         { status: 500 }
@@ -174,7 +174,7 @@ ULTRA STRICT NO-TEXT REQUIREMENTS:
 - NO ARROWS WITH TEXT OR LABELS
 - PURE VISUAL ONLY - LIKE A SILENT MOVIE`
 
-    const imageUrl = await generateImage(imagePrompt, openaiApiKey)
+    const imageUrl = await generateImage(imagePrompt, imageApiKey)
 
     // Return the combined content
     return NextResponse.json({
