@@ -92,19 +92,23 @@ const initialGames = [
     difficulty: 1,
     isActive: true,
   },
+  {
+    title: "Build a Story",
+    description:
+      "Talk with Buddy to build a story out loud, and watch it come to life with pictures.",
+    icon: "🎙️",
+    category: "creative",
+    difficulty: 2,
+    isActive: true,
+  },
 ];
 
 async function seedDatabase() {
   try {
-    // Check if games already exist
-    const existingGames = await DatabaseService.getAllGames();
-    if (existingGames.length > 0) {
-      return;
-    }
-
-    // Create initial games
+    // Create any games that aren't in the database yet. Idempotent, so
+    // re-running the seed adds newly-shipped games without duplicates.
     for (const gameData of initialGames) {
-      await DatabaseService.createGame(gameData);
+      await DatabaseService.ensureGame(gameData);
     }
 
     // Set up initial app settings

@@ -7,6 +7,7 @@ import {
   Calculator,
   CheckCircle2,
   Eye,
+  Mic,
   Music,
   Palette,
   Puzzle,
@@ -31,6 +32,7 @@ const ICONS: Record<string, LucideIcon> = {
   "true-false":        CheckCircle2,
   "true-or-false":     CheckCircle2,
   "paint":             Palette,
+  "build-a-story":     Mic,
 };
 
 /**

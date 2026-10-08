@@ -11,6 +11,7 @@ export type User = {
   updatedAt: Date
   gameProgress?: GameProgress[]
   achievements?: Achievement[]
+  stories?: Story[]
 }
 
 export type Game = {
@@ -25,6 +26,7 @@ export type Game = {
   updatedAt: Date
   gameProgress?: GameProgress[]
   achievements?: Achievement[]
+  stories?: Story[]
 }
 
 export type GameProgress = {
@@ -53,6 +55,34 @@ export type Achievement = {
   unlockedAt: Date
   user?: User
   game?: Game | null
+}
+
+// A voice-built story and its pages.
+export type StoryBeat = {
+  id: string
+  storyId: string
+  index: number
+  speaker: "ai" | "child"
+  text: string
+  /** data: URL, or null while the picture is still generating. */
+  imageB64?: string | null
+  imagePrompt?: string | null
+  /** Aura mp3 as a data: URL, or null if TTS failed. */
+  audioB64?: string | null
+  audioMime?: string | null
+  createdAt: Date
+}
+
+export type Story = {
+  id: string
+  userId: string
+  gameId?: string | null
+  title: string
+  theme: string
+  status: "in_progress" | "complete"
+  createdAt: Date
+  updatedAt: Date
+  beats?: StoryBeat[]
 }
 
 // UI Component types

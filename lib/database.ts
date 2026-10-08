@@ -63,6 +63,24 @@ export class DatabaseService {
     })
   }
 
+  // Create a game only if no game with the same title exists yet. Lets the
+  // seed script add newly-shipped games to a database that already has rows,
+  // without duplicating or clobbering the ones already there.
+  static async ensureGame(data: {
+    title: string
+    description: string
+    icon: string
+    category: string
+    difficulty?: number
+    isActive?: boolean
+  }) {
+    const existing = await prisma.game.findFirst({
+      where: { title: data.title },
+    })
+    if (existing) return existing
+    return await prisma.game.create({ data })
+  }
+
   static async updateGame(id: string, data: {
     title?: string
     description?: string

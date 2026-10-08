@@ -110,6 +110,9 @@ export default function Home() {
       case "achievements":
         router.push("/achievements");
         break;
+      case "stories":
+        router.push("/stories");
+        break;
       case "settings":
         // Settings live in the profile dialog for now (mute is in header).
         setShowUserDialog(true);

@@ -14,6 +14,7 @@ import {
   User as UserIcon,
   Trophy,
   Star,
+  Library,
   Volume2,
   VolumeX,
 } from "lucide-react";
@@ -31,6 +32,7 @@ interface HeaderProps {
 
 const MENU_ITEMS = [
   { id: "home", label: "Home", icon: Home },
+  { id: "stories", label: "My Stories", icon: Library },
   { id: "achievements", label: "Achievements", icon: Trophy },
 ] as const;
 

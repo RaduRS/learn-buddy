@@ -45,3 +45,10 @@ next-env.d.ts
 /public/workbox-*.js
 
 /lib/generated/prisma
+
+# claude code local state
+.claude/settings.local.json
+.claude/plans/
+
+# playwright mcp scratch output
+/.playwright-mcp/

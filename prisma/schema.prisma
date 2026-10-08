@@ -23,6 +23,7 @@ model User {
   // Relations
   gameProgress GameProgress[]
   achievements Achievement[]
+  stories      Story[]
 
   @@map("users")
 }
@@ -42,6 +43,7 @@ model Game {
   // Relations
   gameProgress GameProgress[]
   achievements Achievement[]
+  stories      Story[]
 
   @@map("games")
 }
@@ -83,6 +85,47 @@ model Achievement {
   game Game? @relation(fields: [gameId], references: [id], onDelete: SetNull)
 
   @@map("achievements")
+}
+
+// A voice-built story. Each child-visible "page" is a StoryBeat.
+model Story {
+  id        String   @id @default(cuid())
+  userId    String
+  gameId    String?
+  title     String
+  theme     String // e.g. "dragons", "space" — chosen by the child or rolled
+  status    String   @default("in_progress") // "in_progress" | "complete"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  game  Game?       @relation(fields: [gameId], references: [id], onDelete: SetNull)
+  beats StoryBeat[]
+
+  @@map("stories")
+}
+
+// One page of a story: the narration line, its voice clip and its picture.
+// Media is inlined as base64 `data:` URLs (same shape lib/ai/image.ts returns),
+// so a finished story replays with no further AI calls.
+model StoryBeat {
+  id          String   @id @default(cuid())
+  storyId     String
+  index       Int // 0-based order within the story
+  speaker     String // "ai" | "child"
+  text        String
+  imageB64    String?  @db.Text // filled lazily, after the text + audio land
+  imagePrompt String?  @db.Text
+  audioB64    String?  @db.Text // Aura mp3 as a data: URL
+  audioMime   String?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, index])
+  @@map("story_beats")
 }
 
 // Settings for the app

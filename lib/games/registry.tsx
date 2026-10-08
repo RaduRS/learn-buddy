@@ -38,6 +38,7 @@ const ShapesGame         = lazy(() => import("@/components/game/ShapesGame"));
 const ReadingHelperGame  = lazy(() => import("@/components/game/ReadingHelperGame"));
 const MathSparkGame      = lazy(() => import("@/components/game/MathSparkGame"));
 const ReadingStoryGame   = lazy(() => import("@/components/game/ReadingStoryGame"));
+const StoryBuilderGame   = lazy(() => import("@/components/game/StoryBuilderGame"));
 const PaintGame          = lazy(() => import("@/components/game/PaintGame"));
 
 interface MemoryGridConfig {
@@ -150,6 +151,19 @@ function PaintAdapter(ctx: GameContext) {
   return <PaintGame userId={ctx.userId} />;
 }
 
+function StoryBuilderAdapter(ctx: GameContext) {
+  return (
+    <StoryBuilderGame
+      userId={ctx.userId}
+      gameId={ctx.gameId}
+      userAge={ctx.userAge}
+      userName={ctx.userName}
+      onGameComplete={ctx.onGameComplete}
+      onExit={ctx.onExit}
+    />
+  );
+}
+
 /** Memory Match shows a grid-size picker before the game. */
 function MemoryMatchAdapter(ctx: GameContext) {
   const [config, setConfig] = useState<MemoryGridConfig | null>(null);
@@ -192,6 +206,7 @@ export const REGISTRY: Record<string, RegistryEntry> = {
   "story-time":     { title: "Story Time",     category: "reading", Component: ReadingStoryAdapter },
   "true-false":     { title: "True or False",  category: "math",    Component: TrueFalseAdapter },
   "paint":          { title: "Paint",          category: "creative",Component: PaintAdapter },
+  "build-a-story":  { title: "Build a Story",  category: "creative",Component: StoryBuilderAdapter },
 };
 
 /**
