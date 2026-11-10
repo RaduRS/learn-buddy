@@ -101,7 +101,8 @@ function buildPrompt(
     .filter(Boolean)
     .join("\n");
 
-  return `Write a short story for a ${childAge}-year-old child (UK Year 1) about ${theme}.
+  return `Write a short story about ${theme} for independent readers in Year 2 in England (ages 6 to 7).
+The reader is ${childAge} years old. Use their age to choose relatable details and keep the text at Year 2 reading level.
 
 Make this story feel brand new:
 - The plot is about ${shape}.
@@ -109,20 +110,23 @@ Make this story feel brand new:
 - Invent a fresh main character whose name starts with the letter ${letter}.
 ${avoidLines ? avoidLines + "\n" : ""}
 Rules for the story:
-- Between ${STORY_PAGE_MIN} and ${STORY_PAGE_MAX} pages. Each page is ONE simple sentence of about 6 to 10 words.
-- Use common, easy words a 6-year-old can read. Avoid long or rare words.
-- A clear beginning, middle, and happy ending.
+- Between ${STORY_PAGE_MIN} and ${STORY_PAGE_MAX} pages. Write 1 or 2 sentences per page, aiming for 15 to 25 words in total on each page.
+- Use British English, mostly familiar words, and a few vivid words whose meanings are clear from what happens around them.
+- Vary sentence lengths. Use words like when, because, and but to connect ideas, and include occasional short dialogue where it fits.
+- Give the story a clear beginning, middle, and happy ending. Use concrete details and show how characters feel through what they say and do.
 - Completely kid-safe: no violence, nothing scary, no death.
+- Do not use dashes to separate clauses or set off asides in the story, facts, or questions.
 
 Teach something real:
 - Weave exactly ${STORY_FACT_COUNT} TRUE facts about ${factTopic} into the story itself, in simple words.
 - The facts must be genuinely true in the real world (e.g. "an octopus has eight arms", "the Moon has no air").
 - List those facts again in the "facts" array, each restated as one short simple sentence.
 
-Then write exactly ${STORY_QUESTION_COUNT} very simple questions about the story.
-- The first ${STORY_QUESTION_COUNT - 1} ask about something that literally happened (who, what, or where).
-- The last question asks about one of the true facts the child just learned.
-- For each question include a short correct answer of a few words.
+Then write exactly ${STORY_QUESTION_COUNT} short questions for the reader to answer aloud.
+- Question 1 asks the reader to recall a specific event or detail from the story.
+- Question 2 asks the reader to infer how a character felt or why they did something, using a clear clue in what the character said or did.
+- Question 3 asks about one of the true facts woven into the story.
+- For each question include a short correct answer in a phrase or one simple sentence.
 
 Respond with ONLY a JSON object, no extra text, in this exact shape:
 {
@@ -150,7 +154,7 @@ export async function POST(request: NextRequest) {
         : theme;
     const avoidTitles = sanitizeList(body.avoidTitles);
     const avoidCharacters = sanitizeList(body.avoidCharacters);
-    const childAge = typeof age === "number" && age >= 3 && age <= 12 ? age : 6;
+    const childAge = typeof age === "number" && age >= 3 && age <= 12 ? age : 7;
 
     const deepseekApiKey = process.env.DEEPSEEK_API_KEY;
     const deepseekApiUrl =

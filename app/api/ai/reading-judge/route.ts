@@ -40,9 +40,10 @@ export async function POST(request: NextRequest) {
       )
       .join("\n");
 
-    const prompt = `You are kindly marking a 6-year-old child's spoken answers about a story titled "${storyTitle ?? "the story"}".
+    const prompt = `You are kindly marking a Year 2 reader's spoken answers about a story titled "${storyTitle ?? "the story"}".
 The "Child said" text comes from speech-to-text and may be slightly wrong or misspelled.
 Judge by MEANING, not exact words. Be generous: if the child clearly understood, mark it correct.
+Use British English in feedback. Do not use dashes to separate clauses or set off asides.
 
 Here are the answers:
 ${items}
