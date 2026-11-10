@@ -11,6 +11,43 @@ import {
 
 const board = LIGHT_LINKS_LEVELS[0].boards[0];
 
+test("six growing difficulties offer at least 24 boards each", () => {
+  assert.deepEqual(LIGHT_LINKS_LEVELS.map((level) => level.size), [4, 5, 6, 7, 8, 9]);
+  for (const level of LIGHT_LINKS_LEVELS) {
+    assert.ok(level.boards.length >= 24, `${level.label} needs more boards`);
+    assert.equal(level.stars, level.size - 3);
+  }
+});
+
+test("board layouts remain distinct after rotating, reflecting or renumbering pairs", () => {
+  for (const level of LIGHT_LINKS_LEVELS) {
+    const seen = new Set<string>();
+    for (const puzzle of level.boards) {
+      const keys: string[] = [];
+      for (let transform = 0; transform < 8; transform++) {
+        const transformCell = (cell: number) => {
+          let x = cell % puzzle.size;
+          let y = Math.floor(cell / puzzle.size);
+          if (transform >= 4) x = puzzle.size - 1 - x;
+          for (let turn = 0; turn < transform % 4; turn++) {
+            [x, y] = [puzzle.size - 1 - y, x];
+          }
+          return y * puzzle.size + x;
+        };
+        keys.push(puzzle.routes.map((route) =>
+          [transformCell(route[0]), transformCell(route.at(-1)!)].sort((a, b) => a - b).join(","),
+        ).sort().join(";"));
+      }
+      const key = keys.sort()[0];
+      assert.ok(!seen.has(key), `${level.label} repeats an endpoint layout`);
+      seen.add(key);
+      assert.equal(puzzle.endpoints.size, puzzle.routes.length * 2);
+      assert.equal(new Set(puzzle.routes.flat()).size, puzzle.size ** 2);
+      assert.ok(puzzle.routes.flat().every((cell) => Number.isInteger(cell) && cell >= 0 && cell < puzzle.size ** 2));
+    }
+  }
+});
+
 test("lines stay on the grid, cannot cross, and can retrace their own cells", () => {
   const first = beginLink(board, [], 4)!;
   const withCorner = extendLink(board, first.links, first.pair, 0);

@@ -83,7 +83,7 @@ function PuzzleAdapter(ctx: GameContext) {
 }
 
 function LightLinksAdapter(ctx: GameContext) {
-  return <LightLinksGame gameId={ctx.gameId} onGameComplete={ctx.onGameComplete} />;
+  return <LightLinksGame userId={ctx.userId} gameId={ctx.gameId} onGameComplete={ctx.onGameComplete} />;
 }
 
 function NumberFunAdapter(ctx: GameContext) {

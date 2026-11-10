@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
 import { ArrowRight, Check, Lightbulb, RotateCcw, Sparkles, Star, Undo2 } from "lucide-react";
 import { useSfx } from "@/components/sound/SoundProvider";
 import { useScore } from "@/hooks/useScore";
@@ -15,9 +15,20 @@ import {
   type GridPoint,
   type Links,
 } from "@/lib/games/lightLinks";
+import {
+  advanceLightLinksBoard,
+  loadLightLinksProgress,
+  saveLightLinksProgress,
+  selectLightLinksLevel,
+  type LightLinksProgress,
+} from "@/lib/games/lightLinksProgress";
 import styles from "./LightLinksGame.module.css";
 
-const PAIR_COLOURS = ["#ff92bb", "#78edce", "#ffd481", "#9db9ff", "#d6a4ff", "#ff9979", "#c5ee84"];
+const PAIR_COLOURS = ["#ff92bb", "#78edce", "#ffd481", "#9db9ff", "#d6a4ff", "#ff9979", "#c5ee84", "#75ddff", "#fff0cd", "#c4d1e5"];
+const BOARD_COUNTS = LIGHT_LINKS_LEVELS.map((level) => level.boards.length);
+const subscribeToHydration = () => () => {};
+const clientSnapshot = () => true;
+const serverSnapshot = () => false;
 
 const SPARKS = [
   [-117, -70], [48, -98], [102, -52], [-52, -105], [-91, 55],
@@ -32,13 +43,22 @@ const ARROWS: Record<string, [number, number]> = {
 };
 
 interface LightLinksProps {
+  userId: string;
   gameId: string;
   onGameComplete: (score: number, total: number) => void;
 }
 
 export default function LightLinksGame(props: LightLinksProps) {
-  const [levelIndex, setLevelIndex] = useState(0);
-  const [boardIndex, setBoardIndex] = useState(0);
+  const hydrated = useSyncExternalStore(subscribeToHydration, clientSnapshot, serverSnapshot);
+  if (!hydrated) return <div className={styles.game} role="status">Loading puzzles…</div>;
+  return <LightLinksSession key={props.userId} {...props} />;
+}
+
+function LightLinksSession(props: LightLinksProps) {
+  const [progress, setProgress] = useState(() => loadLightLinksProgress(props.userId, BOARD_COUNTS));
+  const resumeProgress = useRef(progress);
+  const { levelIndex, boardIndices } = progress;
+  const boardIndex = boardIndices[levelIndex];
   const level = LIGHT_LINKS_LEVELS[levelIndex];
   const { play } = useSfx();
   const gameRef = useRef<HTMLDivElement>(null);
@@ -50,17 +70,25 @@ export default function LightLinksGame(props: LightLinksProps) {
     gameRef.current?.querySelector<HTMLButtonElement>("[data-cell='0']")?.focus();
   }, [boardIndex]);
 
+  function saveProgress(next: LightLinksProgress) {
+    resumeProgress.current = next;
+    saveLightLinksProgress(props.userId, next, BOARD_COUNTS);
+  }
+
   function selectLevel(index: number) {
     if (index === levelIndex) return;
     play("tap");
-    setLevelIndex(index);
-    setBoardIndex(0);
+    const next = selectLightLinksLevel(resumeProgress.current, index, BOARD_COUNTS);
+    saveProgress(next);
+    setProgress(next);
   }
 
   function nextBoard(fromKeyboard: boolean) {
     play("tap");
     focusNextBoard.current = fromKeyboard;
-    setBoardIndex((previous) => (previous + 1) % level.boards.length);
+    const next = advanceLightLinksBoard(progress, BOARD_COUNTS);
+    saveProgress(next);
+    setProgress(next);
   }
 
   return (
@@ -90,6 +118,11 @@ export default function LightLinksGame(props: LightLinksProps) {
       <LightLinksRound
         key={`${levelIndex}-${boardIndex}`}
         {...props}
+        onGameComplete={(score, total) => {
+          // Keep the celebration visible, but resume at the following board next time.
+          saveProgress(advanceLightLinksBoard(progress, BOARD_COUNTS));
+          props.onGameComplete(score, total);
+        }}
         level={level}
         boardIndex={boardIndex}
         nextBoard={nextBoard}
