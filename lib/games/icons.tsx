@@ -4,6 +4,7 @@ import type { ComponentProps, CSSProperties } from "react";
 import {
   BookOpenText,
   Brain,
+  Cable,
   Calculator,
   CheckCircle2,
   Eye,
@@ -16,11 +17,13 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { CategoryKey } from "./categories";
+import { LIGHT_LINKS_GAME } from "./lightLinksCatalog";
 import { slugifyTitle } from "./registry";
 
 const ICONS: Record<string, LucideIcon> = {
   "memory-match":      Brain,
   "puzzle":            Puzzle,
+  [LIGHT_LINKS_GAME.id]: Cable,
   "number-fun":        Calculator,
   "subitizing":        Eye,
   "mathspark":         Sparkles,
@@ -81,7 +84,7 @@ export function getGameIconAndCategory(title: string): {
   else if (slug.includes("math") || slug.includes("number") || slug.includes("subitizing")) category = "math";
   else if (slug.includes("music") || slug.includes("rhythm")) category = "music";
   else if (slug.includes("read") || slug.includes("letter")) category = "reading";
-  else if (slug.includes("puzzle") || slug.includes("shape") || slug.includes("spatial")) category = "spatial";
+  else if (slug === LIGHT_LINKS_GAME.id || slug.includes("puzzle") || slug.includes("shape") || slug.includes("spatial")) category = "spatial";
   else if (slug.includes("true") || slug.includes("false")) category = "math";
   else if (slug.includes("paint") || slug.includes("draw") || slug.includes("art")) category = "creative";
   return { Icon, category };

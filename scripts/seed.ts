@@ -1,4 +1,5 @@
 import { DatabaseService } from "../lib/database";
+import { LIGHT_LINKS_GAME } from "../lib/games/lightLinksCatalog";
 
 const initialGames = [
   {
@@ -59,6 +60,7 @@ const initialGames = [
     difficulty: 2,
     isActive: true,
   },
+  LIGHT_LINKS_GAME,
   {
     title: "Read Aloud Camera",
     description:

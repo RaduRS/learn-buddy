@@ -2,6 +2,7 @@
 
 import { lazy, useState, type ComponentType } from "react";
 import type { CategoryKey } from "./categories";
+import { LIGHT_LINKS_GAME } from "./lightLinksCatalog";
 
 /**
  * Unified context handed to every game adapter.
@@ -30,6 +31,7 @@ export interface RegistryEntry {
 const TrueFalseGame      = lazy(() => import("@/components/game/TrueFalseGame"));
 const SubitizingGame     = lazy(() => import("@/components/game/SubitizingGame"));
 const PuzzleGame         = lazy(() => import("@/components/game/PuzzleGame"));
+const LightLinksGame     = lazy(() => import("@/components/game/LightLinksGame"));
 const MemoryMatchGame    = lazy(() => import("@/components/game/MemoryMatchGame"));
 const MemoryMatchConfig  = lazy(() => import("@/components/game/MemoryMatchConfig"));
 const NumberFunGame      = lazy(() => import("@/components/game/NumberFunGame"));
@@ -78,6 +80,10 @@ function PuzzleAdapter(ctx: GameContext) {
       onGameComplete={ctx.onGameComplete}
     />
   );
+}
+
+function LightLinksAdapter(ctx: GameContext) {
+  return <LightLinksGame gameId={ctx.gameId} onGameComplete={ctx.onGameComplete} />;
 }
 
 function NumberFunAdapter(ctx: GameContext) {
@@ -196,6 +202,7 @@ export function slugifyTitle(title: string): string {
 export const REGISTRY: Record<string, RegistryEntry> = {
   "memory-match":   { title: "Memory Match",   category: "memory",  Component: MemoryMatchAdapter },
   "puzzle":         { title: "Puzzle",         category: "spatial", Component: PuzzleAdapter },
+  [LIGHT_LINKS_GAME.id]: { title: LIGHT_LINKS_GAME.title, category: LIGHT_LINKS_GAME.category, Component: LightLinksAdapter },
   "number-fun":     { title: "Number Fun",     category: "math",    Component: NumberFunAdapter },
   "subitizing":     { title: "Subitizing",     category: "math",    Component: SubitizingAdapter },
   "mathspark":      { title: "MathSpark",      category: "math",    Component: MathSparkAdapter },

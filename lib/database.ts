@@ -67,6 +67,7 @@ export class DatabaseService {
   // seed script add newly-shipped games to a database that already has rows,
   // without duplicating or clobbering the ones already there.
   static async ensureGame(data: {
+    id?: string
     title: string
     description: string
     icon: string
@@ -78,6 +79,11 @@ export class DatabaseService {
       where: { title: data.title },
     })
     if (existing) return existing
+    if (data.id) {
+      // A fixed ID lets concurrent first requests add the same game safely.
+      await prisma.game.createMany({ data, skipDuplicates: true })
+      return await prisma.game.findUniqueOrThrow({ where: { id: data.id } })
+    }
     return await prisma.game.create({ data })
   }
 

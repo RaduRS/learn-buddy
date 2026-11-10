@@ -522,21 +522,22 @@ export default function ReadingStoryGame({
           </p>
         </div>
 
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-1" role="group" aria-label="Story pages">
           {story.pages.map((_, i) => (
             <button
               key={i}
               type="button"
               onClick={() => goPage(i)}
               aria-label={`Go to page ${i + 1}`}
-              className="w-3 h-3 rounded-full"
-              style={{
-                background:
-                  i === pageIndex
-                    ? "var(--cat-reading)"
-                    : "var(--arcade-edge)",
-              }}
-            />
+              aria-current={i === pageIndex ? "page" : undefined}
+              className="grid h-11 w-11 place-items-center rounded-full hover:bg-[var(--arcade-card-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cat-reading)]"
+            >
+              <span
+                aria-hidden="true"
+                className="h-3 w-3 rounded-full"
+                style={{ background: i === pageIndex ? "var(--cat-reading)" : "var(--arcade-edge)" }}
+              />
+            </button>
           ))}
         </div>
 

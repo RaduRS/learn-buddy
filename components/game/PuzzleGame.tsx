@@ -6,7 +6,6 @@ import { ChevronDown, Puzzle as PuzzleIcon, RotateCcw } from "lucide-react";
 import { LoadingScreen } from "@/components/game/LoadingScreen";
 import { ResultsScreen } from "@/components/game/ResultsScreen";
 import { useScore } from "@/hooks/useScore";
-import { useApiCall } from "@/hooks/useApiCall";
 import { useAchievementUnlock } from "@/hooks/useAchievementUnlock";
 import { useSfx } from "@/components/sound/SoundProvider";
 import { cn } from "@/lib/utils";
@@ -22,6 +21,8 @@ interface PuzzleConfig {
   gridSize: number;
   pieces: PuzzlePiece[];
 }
+
+const READY_PICTURES = ["animals", "space", "dinosaurs", "under-the-sea"];
 
 interface DragInfo {
   piece: PuzzlePiece;
@@ -60,6 +61,8 @@ export default function PuzzleGame({
   const [bank, setBank] = useState<PuzzlePiece[]>([]);
   const [score, setScore] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const generationRef = useRef<AbortController | null>(null);
 
   const [dragInfo, setDragInfo] = useState<DragInfo | null>(null);
   const [hoveredTarget, setHoveredTarget] = useState<string | null>(null);
@@ -81,8 +84,6 @@ export default function PuzzleGame({
   const { incrementScore } = useScore();
   const { unlock } = useAchievementUnlock(userId);
   const { play } = useSfx();
-  // Server worst case is ~45s (image generation); stay above it.
-  const { execute, loading, error } = useApiCall<PuzzleConfig>({ timeout: 60000 });
 
   useEffect(() => {
     setMounted(true);
@@ -102,35 +103,68 @@ export default function PuzzleGame({
     return () => window.removeEventListener("resize", update);
   }, []);
 
-  const loadPuzzle = useCallback(async () => {
+  const resetRound = useCallback(() => {
     setConfig(null);
     setPlaced({});
+    setScore(0);
     setIsCompleted(false);
     setDragInfo(null);
     setReturnAnim(null);
     setWrongDropId(null);
     setRecentlyPlaced(null);
+    setError(null);
+  }, []);
 
-    await execute(
-      async (signal) => {
-        const response = await fetch("/api/ai/generate-puzzle", {
-          method: "POST",
-          signal,
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userAge, difficulty }),
-        });
-        if (!response.ok) throw new Error("Failed to generate puzzle");
-        const cfg: PuzzleConfig = await response.json();
-        const shuffled = [...cfg.pieces].sort(() => Math.random() - 0.5);
-        setBank(shuffled);
-        return cfg;
-      },
-      (data) => setConfig(data),
-    );
-  }, [userAge, difficulty, execute]);
+  const loadPuzzle = useCallback(async () => {
+    generationRef.current?.abort();
+    const controller = new AbortController();
+    generationRef.current = controller;
+    resetRound();
+    // Image generation can take 45 seconds. The ready-made option stays available.
+    const timeout = setTimeout(() => controller.abort(), 60000);
+    try {
+      const response = await fetch("/api/ai/generate-puzzle", {
+        method: "POST",
+        signal: controller.signal,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userAge, difficulty }),
+      });
+      if (!response.ok) throw new Error("Failed to generate puzzle");
+      const data: PuzzleConfig = await response.json();
+      if (generationRef.current !== controller) return;
+      setBank([...data.pieces].sort(() => Math.random() - 0.5));
+      setConfig(data);
+    } catch {
+      if (generationRef.current === controller) {
+        setError("Buddy couldn't make a new picture. Try again or play with a picture that's ready.");
+      }
+    } finally {
+      clearTimeout(timeout);
+    }
+  }, [userAge, difficulty, resetRound]);
+
+  function playReadyPicture() {
+    generationRef.current?.abort();
+    generationRef.current = null;
+    resetRound();
+    play("tap");
+    const gridSize = difficulty + 1;
+    const pieces = Array.from({ length: gridSize * gridSize }, (_, index) => {
+      const row = Math.floor(index / gridSize);
+      const col = index % gridSize;
+      return { id: `${row}-${col}`, row, col };
+    });
+    const picture = READY_PICTURES[Math.floor(Math.random() * READY_PICTURES.length)];
+    setBank([...pieces].sort(() => Math.random() - 0.5));
+    setConfig({ imageUrl: `/story-themes/${picture}.png`, gridSize, pieces });
+  }
 
   useEffect(() => {
     void loadPuzzle();
+    return () => {
+      generationRef.current?.abort();
+      generationRef.current = null;
+    };
   }, [loadPuzzle]);
 
   const bgSize = (gs: number) => `${gs * 100}% ${gs * 100}%`;
@@ -320,20 +354,34 @@ export default function PuzzleGame({
     }
   }, [placed, config, isCompleted, gameId, incrementScore, onGameComplete, unlock]);
 
-  if (loading || !config) {
-    if (error) {
-      return (
-        <div className="surface-card cat-spatial p-6 max-w-md mx-auto text-center text-arcade-mid">
-          {error}
-        </div>
-      );
-    }
+  if (!config) {
     return (
-      <LoadingScreen
-        tone="generating"
-        message="Buddy is cutting up a picture…"
-        subMessage="Hang on while we make your puzzle."
-      />
+      <div className="space-y-4">
+        {error ? (
+          <div className="surface-card cat-spatial p-6 max-w-md mx-auto text-center text-arcade-mid" role="alert">
+            {error}
+          </div>
+        ) : (
+          <LoadingScreen
+            tone="generating"
+            message="Buddy is cutting up a picture…"
+            subMessage="You can start now with a picture that's ready."
+            className="!min-h-[35vh]"
+          />
+        )}
+        <div className="flex flex-wrap justify-center gap-3">
+          <button type="button" onClick={playReadyPicture}
+            className="font-display rounded-full bg-[var(--cat-spatial)] text-[var(--ink-on-color)] px-6 py-3 hover:brightness-110 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--cat-spatial)]">
+            Play Now
+          </button>
+          {error && (
+            <button type="button" onClick={loadPuzzle}
+              className="font-display rounded-full border border-[var(--arcade-edge)] bg-[var(--arcade-card-soft)] text-arcade-strong px-6 py-3 hover:brightness-110 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--cat-spatial)]">
+              Try Again
+            </button>
+          )}
+        </div>
+      </div>
     );
   }
 
@@ -345,7 +393,7 @@ export default function PuzzleGame({
           total={1}
           category="spatial"
           headline="Puzzle complete!"
-          message="Beautiful work — every piece in its place."
+          message="Beautiful work. Every piece is in its place."
           onPlayAgain={loadPuzzle}
         />
       </div>
@@ -445,7 +493,7 @@ export default function PuzzleGame({
       </div>
 
       <div className="surface-card cat-spatial p-4 sm:p-6">
-        <div className="flex flex-col md:flex-row gap-5 md:gap-6 items-start">
+        <div className="flex flex-col lg:flex-row gap-5 lg:gap-6 items-start">
           <div
             ref={boardRef}
             className="relative border-2 border-[var(--arcade-edge)] rounded-2xl bg-[oklch(0.20_0.06_285_/_0.55)] shrink-0"
@@ -489,12 +537,18 @@ export default function PuzzleGame({
             })}
           </div>
 
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 w-full lg:w-auto">
             <p className="text-xs text-arcade-soft mb-2 select-none">
               Drag pieces onto the board.
             </p>
 
-            <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+            <div
+              className="grid gap-2"
+              style={{
+                gridTemplateColumns: `repeat(${Math.min(gridSize, 4)}, minmax(0, 1fr))`,
+                maxWidth: Math.min(gridSize, 4) * 80,
+              }}
+            >
               {bank.map((piece) => {
                 const isBeingDragged = dragInfo?.piece.id === piece.id;
                 const isWrong = wrongDropId === piece.id;
@@ -507,6 +561,7 @@ export default function PuzzleGame({
                     }}
                     onPointerDown={(e) => handlePiecePointerDown(e, piece)}
                     type="button"
+                    aria-label={`Puzzle piece ${piece.row * gridSize + piece.col + 1}`}
                     className={cn(
                       "relative border-2 rounded-xl overflow-hidden",
                       "shadow-[inset_0_1px_0_oklch(1_0_0_/_0.10)]",
@@ -517,8 +572,8 @@ export default function PuzzleGame({
                           : "border-[var(--arcade-edge)] hover:border-[color:var(--cat-spatial)] active:scale-95",
                     )}
                     style={{
-                      width: cellPx,
-                      height: cellPx,
+                      width: "100%",
+                      aspectRatio: "1",
                       touchAction: "none",
                       cursor: "grab",
                       transition: isBeingDragged
