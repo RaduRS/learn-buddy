@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { Geist, Geist_Mono, Fredoka } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { ScoreProvider } from "@/hooks/useScore";
 import { SoundProvider } from "@/components/sound/SoundProvider";
@@ -15,10 +16,10 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const fredoka = Fredoka({
+const fredoka = localFont({
+  src: "./fonts/Fredoka.ttf",
   variable: "--font-fredoka",
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
+  weight: "300 700",
   display: "swap",
 });
 

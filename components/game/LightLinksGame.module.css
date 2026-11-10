@@ -290,8 +290,7 @@
   to { transform: scale(1.9); opacity: 0; }
 }
 
-.boardCaption,
-.footer {
+.boardCaption {
   margin-top: 0.7rem;
   color: var(--links-muted);
   font-size: 0.78rem;

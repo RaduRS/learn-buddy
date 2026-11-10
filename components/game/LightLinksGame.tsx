@@ -379,7 +379,7 @@ function LightLinksRound({
             <span>{size} × {size} Grid</span>
           </div>
         </div>
-        <p id={helpId} className={styles.footer}>
+        <p id={helpId} className="sr-only">
           Drag from a number or tap one square at a time. Use arrow keys and Enter to play with a keyboard.
         </p>
       </section>
