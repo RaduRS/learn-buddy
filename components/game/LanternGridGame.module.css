@@ -1,0 +1,27 @@
+.boardFrame {
+  padding: clamp(0.65rem, 3vw, 1.2rem);
+  border: 1px solid #666184;
+  border-radius: 1.05rem;
+  background: radial-gradient(ellipse at 50% 0%, #312843, transparent 85%), #17162d;
+}
+.board { display: grid; gap: 0.45rem; width: min(100%, 24rem); margin-inline: auto; }
+.row { display: grid; grid-template-columns: repeat(var(--lantern-size), minmax(0, 1fr)); gap: 0.45rem; }
+.tile {
+  display: grid;
+  width: 100%;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid #685d83;
+  border-radius: 0.65rem;
+  background: #302642;
+  color: #f6cd74;
+}
+button.tile { cursor: pointer; }
+.tile svg { width: 53%; height: 53%; max-width: 2.7rem; max-height: 2.7rem; }
+.tile[data-lit="true"] { border-color: #ffc666; color: #4a2b41; background: #ffe093; box-shadow: inset 0 0 0 3px #fff3b5, 0 0 0.8rem #ffe19544; }
+.tile[data-selected="true"] { border-color: #ffce8b; background: #594156; }
+.tile[data-result="right"] { border-color: #a1e5ac; background: #a8e7b6; color: #1d493c; box-shadow: none; }
+.tile[data-result="wrong"] { border-color: #ed9eac; background: #603348; color: #ffdbe4; }
+@media (max-width: 24rem) {
+  .board, .row { gap: 0.35rem; }
+}

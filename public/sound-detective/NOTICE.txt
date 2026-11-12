@@ -1,6 +1,6 @@
 Sound Detective audio credits
 
-All 18 sounds are recordings sourced from Wikimedia Commons. Learn Buddy trimmed, faded, adjusted playback levels and converted each recording to MP3. Each adapted recording is available under the listed licence.
+All 36 sounds are recordings sourced from Wikimedia Commons. Learn Buddy trimmed, faded, adjusted playback levels and converted each recording to MP3. Each adapted recording is available under the listed licence.
 
 dog.mp3
 Original recording: Barking of a dog.ogg
@@ -109,3 +109,112 @@ Original recording: Model 500 Telephone British ring.ogg
 Creator: CianMcCann
 Source: https://commons.wikimedia.org/wiki/File:Model_500_Telephone_British_ring.ogg
 Licence: CC BY-SA 3.0 Unported (https://creativecommons.org/licenses/by-sa/3.0/)
+
+duck.mp3
+Original recording: Pekin duck & mallard.ogg
+Creator: WaderClub
+Source: https://commons.wikimedia.org/wiki/File:Pekin_duck_%26_mallard.ogg
+Licence: CC BY-SA 4.0 International (https://creativecommons.org/licenses/by-sa/4.0/)
+
+frog.mp3
+Original recording: Frogs croak calling chorus at night.ogg
+Creator: JogiAsad
+Source: https://commons.wikimedia.org/wiki/File:Frogs_croak_calling_chorus_at_night.ogg
+Licence: CC BY-SA 4.0 International (https://creativecommons.org/licenses/by-sa/4.0/)
+
+pig.mp3
+Original recording: Pig grunt - Erdie.ogg
+Creator: erdie
+Source: https://commons.wikimedia.org/wiki/File:Pig_grunt_-_Erdie.ogg
+Licence: CC BY 3.0 Unported (https://creativecommons.org/licenses/by/3.0/)
+Adaptation: The short grunt is played twice with a pause.
+
+donkey.mp3
+Original recording: 157763 felix-blume a-donkey-is-braying-in-his-enclosure-in-south-of-france.wav
+Creator: felix-blume
+Source: https://commons.wikimedia.org/wiki/File:157763_felix-blume_a-donkey-is-braying-in-his-enclosure-in-south-of-france.wav
+Licence: CC0 1.0 Universal (https://creativecommons.org/publicdomain/zero/1.0/)
+
+goat.mp3
+Original recording: Herd of goats bleating.ogg
+Creator: stephan
+Source: https://commons.wikimedia.org/wiki/File:Herd_of_goats_bleating.ogg
+Licence: Public domain
+
+owl.mp3
+Original recording: Tawny Owl (Strix aluco).ogg
+Creator: Chris Taklis
+Source: https://commons.wikimedia.org/wiki/File:Tawny_Owl_%28Strix_aluco%29.ogg
+Licence: CC BY-SA 4.0 International (https://creativecommons.org/licenses/by-sa/4.0/)
+
+triangle.mp3
+Original recording: Tri.ogg
+Creator: Wji
+Source: https://commons.wikimedia.org/wiki/File:Tri.ogg
+Licence: Public domain
+
+tambourine.mp3
+Original recording: Tambourine.ogg
+Creator: Freddythehat
+Source: https://commons.wikimedia.org/wiki/File:Tambourine.ogg
+Licence: Public domain
+
+maracas.mp3
+Original recording: Maracas.ogg
+Creator: wikipedia-ce
+Source: https://commons.wikimedia.org/wiki/File:Maracas.ogg
+Licence: Public domain
+
+xylophone.mp3
+Original recording: Bali xylophone.ogg
+Creator: thedialogueproject
+Source: https://commons.wikimedia.org/wiki/File:Bali_xylophone.ogg
+Licence: CC0 1.0 Universal (https://creativecommons.org/publicdomain/zero/1.0/)
+
+saxophone.mp3
+Original recording: Sax growl.ogg
+Creator: thanvannispen
+Source: https://commons.wikimedia.org/wiki/File:Sax_growl.ogg
+Licence: CC BY 3.0 Unported (https://creativecommons.org/licenses/by/3.0/)
+
+trumpet.mp3
+Original recording: Cup mute trumpet demo.ogg
+Creator: Ovinus Real
+Source: https://commons.wikimedia.org/wiki/File:Cup_mute_trumpet_demo.ogg
+Licence: CC BY-SA 4.0 International (https://creativecommons.org/licenses/by-sa/4.0/)
+
+car-horn.mp3
+Original recording: Car Horn.wav
+Creator: 15HPanska_Ruttner_Jan
+Source: https://commons.wikimedia.org/wiki/File:Car_Horn.wav
+Licence: CC0 1.0 Universal (https://creativecommons.org/publicdomain/zero/1.0/)
+
+scissors.mp3
+Original recording: Rejection letter cut into pieces.ogg
+Creator: hugh
+Source: https://commons.wikimedia.org/wiki/File:Rejection_letter_cut_into_pieces.ogg
+Licence: Public domain
+
+washer.mp3
+Original recording: Washing machine.ogg
+Creator: chocoholic
+Source: https://commons.wikimedia.org/wiki/File:Washing_machine.ogg
+Licence: Public domain
+
+thunder.mp3
+Original recording: Rain and thunder.ogg
+Creator: Caesar
+Source: https://commons.wikimedia.org/wiki/File:Rain_and_thunder.ogg
+Licence: Public domain
+
+door.mp3
+Original recording: Closing an old door.ogg
+Creator: ezwa
+Source: https://commons.wikimedia.org/wiki/File:Closing_an_old_door.ogg
+Licence: Public domain
+
+music-box.mp3
+Original recording: Music Box Sound Effect.ogg
+Creator: Big Daddy
+Source: https://commons.wikimedia.org/wiki/File:Music_Box_Sound_Effect.ogg
+Licence: Public domain

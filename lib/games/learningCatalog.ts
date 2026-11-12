@@ -14,7 +14,7 @@ export const WORD_BUILDER_GAME = {
 } as const;
 
 export const MAP_QUEST_GAME = {
-  id: "map-quest", title: "Map Quest", description: "Follow directions and find a path to the treasure.",
+  id: "map-quest", title: "Map Quest", description: "Find your own route to the treasure before you run out of moves.",
   icon: "map", category: "spatial", difficulty: 2, isActive: true,
 } as const;
 
@@ -28,4 +28,17 @@ export const SOUND_DETECTIVE_GAME = {
   icon: "audio-lines", category: "music", difficulty: 1, isActive: true,
 } as const;
 
-export const LEARNING_GAMES = [MINI_SHOP_GAME, WORD_BUILDER_GAME, MAP_QUEST_GAME, PATTERN_TRAIN_GAME, SOUND_DETECTIVE_GAME] as const;
+export const LANTERN_GRID_GAME = {
+  id: "lantern-grid", title: "Lantern Grid", description: "Remember where the lanterns were lit, then find those squares again.",
+  icon: "lightbulb", category: "memory", difficulty: 2, isActive: true,
+} as const;
+
+export const SWITCH_SORT_GAME = {
+  id: "switch-sort", title: "Switch Sort", description: "Match cards by shape or colour and keep up when the rule changes.",
+  icon: "shapes", category: "spatial", difficulty: 2, isActive: true,
+} as const;
+
+export const LEARNING_GAMES = [
+  MINI_SHOP_GAME, WORD_BUILDER_GAME, MAP_QUEST_GAME, PATTERN_TRAIN_GAME, SOUND_DETECTIVE_GAME,
+  LANTERN_GRID_GAME, SWITCH_SORT_GAME,
+] as const;

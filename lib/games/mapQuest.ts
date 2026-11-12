@@ -12,13 +12,14 @@ const OFFSETS: Record<Direction, readonly [number, number]> = {
   left: [0, -1],
 };
 
+const EXTRA_MOVES: Record<MapLevel, number> = { easy: 6, medium: 4, hard: 2 };
+
 export interface MapQuestBoard {
-  level: MapLevel;
   size: number;
   start: number;
   treasure: number;
   rocks: ReadonlySet<number>;
-  route: readonly Direction[];
+  maxMoves: number;
 }
 
 // S marks the start, T marks the treasure and # marks a rock.
@@ -60,6 +61,16 @@ export function moveOnMap(
   return board.rocks.has(next) ? null : next;
 }
 
+export function getMapTrailProgress(
+  board: Pick<MapQuestBoard, "maxMoves" | "treasure">,
+  trail: readonly number[],
+) {
+  const moves = trail.length - 1;
+  const remaining = Math.max(0, board.maxMoves - moves);
+  const won = moves <= board.maxMoves && trail.at(-1) === board.treasure;
+  return { remaining, won, exhausted: remaining === 0 && !won };
+}
+
 function readBoard(level: MapLevel, encoded: string): MapQuestBoard {
   const rows = encoded.split("/");
   const cells = rows.join("");
@@ -69,19 +80,19 @@ function readBoard(level: MapLevel, encoded: string): MapQuestBoard {
   for (let cell = 0; cell < cells.length; cell++) {
     if (cells[cell] === "#") rocks.add(cell);
   }
-  const board = { level, size: rows.length, start, treasure, rocks };
+  const board = { size: rows.length, start, treasure, rocks };
 
-  // Breadth-first search supplies the guide arrows and the shortest Hard route.
-  const queue: { cell: number; route: Direction[] }[] = [{ cell: start, route: [] }];
+  // The shortest route establishes a fair move limit for every map.
+  const queue = [{ cell: start, distance: 0 }];
   const visited = new Set([start]);
   for (let index = 0; index < queue.length; index++) {
-    const { cell, route } = queue[index];
-    if (cell === treasure) return { ...board, route };
+    const { cell, distance } = queue[index];
+    if (cell === treasure) return { ...board, maxMoves: distance + EXTRA_MOVES[level] };
     for (const direction of MAP_DIRECTIONS) {
       const next = moveOnMap(board, cell, direction);
       if (next === null || visited.has(next)) continue;
       visited.add(next);
-      queue.push({ cell: next, route: [...route, direction] });
+      queue.push({ cell: next, distance: distance + 1 });
     }
   }
   throw new Error(`Unreachable Map Quest treasure: ${encoded}`);

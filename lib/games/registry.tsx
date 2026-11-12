@@ -4,7 +4,7 @@ import { lazy, useState, type ComponentType } from "react";
 import type { CategoryKey } from "./categories";
 import { CAR_LOGO_GAME } from "./carLogoCatalog";
 import { LIGHT_LINKS_GAME } from "./lightLinksCatalog";
-import { MAP_QUEST_GAME, MINI_SHOP_GAME, PATTERN_TRAIN_GAME, SOUND_DETECTIVE_GAME, WORD_BUILDER_GAME } from "./learningCatalog";
+import { LANTERN_GRID_GAME, MAP_QUEST_GAME, MINI_SHOP_GAME, PATTERN_TRAIN_GAME, SOUND_DETECTIVE_GAME, SWITCH_SORT_GAME, WORD_BUILDER_GAME } from "./learningCatalog";
 
 /**
  * Unified context handed to every game adapter.
@@ -40,6 +40,8 @@ const WordBuilderGame     = lazy(() => import("@/components/game/WordBuilderGame
 const MapQuestGame        = lazy(() => import("@/components/game/MapQuestGame"));
 const PatternTrainGame    = lazy(() => import("@/components/game/PatternTrainGame"));
 const SoundDetectiveGame  = lazy(() => import("@/components/game/SoundDetectiveGame"));
+const LanternGridGame     = lazy(() => import("@/components/game/LanternGridGame"));
+const SwitchSortGame      = lazy(() => import("@/components/game/SwitchSortGame"));
 const MemoryMatchGame    = lazy(() => import("@/components/game/MemoryMatchGame"));
 const MemoryMatchConfig  = lazy(() => import("@/components/game/MemoryMatchConfig"));
 const NumberFunGame      = lazy(() => import("@/components/game/NumberFunGame"));
@@ -106,6 +108,8 @@ const WordBuilderAdapter = (ctx: GameContext) => <WordBuilderGame key={ctx.userI
 const MapQuestAdapter = (ctx: GameContext) => <MapQuestGame key={ctx.userId} {...ctx} />;
 const PatternTrainAdapter = (ctx: GameContext) => <PatternTrainGame key={ctx.userId} {...ctx} />;
 const SoundDetectiveAdapter = (ctx: GameContext) => <SoundDetectiveGame key={ctx.userId} {...ctx} />;
+const LanternGridAdapter = (ctx: GameContext) => <LanternGridGame key={ctx.userId} {...ctx} />;
+const SwitchSortAdapter = (ctx: GameContext) => <SwitchSortGame key={ctx.userId} {...ctx} />;
 
 function NumberFunAdapter(ctx: GameContext) {
   return (
@@ -230,6 +234,8 @@ export const REGISTRY: Record<string, RegistryEntry> = {
   [MAP_QUEST_GAME.id]: { title: MAP_QUEST_GAME.title, category: MAP_QUEST_GAME.category, Component: MapQuestAdapter },
   [PATTERN_TRAIN_GAME.id]: { title: PATTERN_TRAIN_GAME.title, category: PATTERN_TRAIN_GAME.category, Component: PatternTrainAdapter },
   [SOUND_DETECTIVE_GAME.id]: { title: SOUND_DETECTIVE_GAME.title, category: SOUND_DETECTIVE_GAME.category, Component: SoundDetectiveAdapter },
+  [LANTERN_GRID_GAME.id]: { title: LANTERN_GRID_GAME.title, category: LANTERN_GRID_GAME.category, Component: LanternGridAdapter },
+  [SWITCH_SORT_GAME.id]: { title: SWITCH_SORT_GAME.title, category: SWITCH_SORT_GAME.category, Component: SwitchSortAdapter },
   "number-fun":     { title: "Number Fun",     category: "math",    Component: NumberFunAdapter },
   "subitizing":     { title: "Subitizing",     category: "math",    Component: SubitizingAdapter },
   "mathspark":      { title: "MathSpark",      category: "math",    Component: MathSparkAdapter },

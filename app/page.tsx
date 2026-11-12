@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Sparkles } from "lucide-react";
 import { GameCard } from "@/components/game/GameCard";
@@ -21,44 +21,65 @@ export default function Home() {
   const [users, setUsers] = useState<User[]>([]);
   const [games, setGames] = useState<Game[]>([]);
   const [showUserDialog, setShowUserDialog] = useState(false);
+  const [pendingGameId, setPendingGameId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    void loadData();
-  }, []);
-
-  // Hydrate the saved profile once the user list is available.
-  useEffect(() => {
-    if (users.length === 0) return;
-    const savedUserId = localStorage.getItem("selectedUserId");
-    if (!savedUserId) return;
-    const savedUser = users.find((user) => user.id === savedUserId);
-    if (savedUser) {
-      setCurrentUser(savedUser);
-      void loadUserScore(savedUser.id);
-    }
-  }, [users, loadUserScore]);
-
-  const loadData = async () => {
+  const loadData = useEffectEvent(async (signal: AbortSignal) => {
     try {
-      setIsLoading(true);
+      await Promise.resolve();
+      if (signal.aborted) return;
       const [usersResponse, gamesResponse] = await Promise.all([
-        fetch("/api/users"),
-        fetch("/api/games"),
+        fetch("/api/users", { signal }),
+        fetch("/api/games", { signal }),
       ]);
+      if (!usersResponse.ok || !gamesResponse.ok) throw new Error("Could not load the catalogue or profiles");
       const usersData = (await usersResponse.json()) as User[];
       const gamesData = (await gamesResponse.json()) as Game[];
+      if (signal.aborted) return;
+      if (!Array.isArray(usersData) || !Array.isArray(gamesData)) throw new Error("Invalid catalogue or profiles");
       setUsers(usersData);
       setGames(gamesData);
       if (usersData.length === 0) setShowUserDialog(true);
+      let savedUserId: string | null = null;
+      try { savedUserId = localStorage.getItem("selectedUserId"); } catch { /* Storage may be blocked. */ }
+      const savedUser = usersData.find((user) => user.id === savedUserId);
+      if (savedUser) {
+        setCurrentUser(savedUser);
+        void loadUserScore(savedUser.id);
+      }
     } catch (error) {
+      if (signal.aborted) return;
       console.error("Failed to load data:", error);
       setErrorMessage("Couldn't load games. Please refresh and try again.");
     } finally {
-      setIsLoading(false);
+      if (!signal.aborted) setIsLoading(false);
     }
-  };
+  });
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void loadData(controller.signal);
+    return () => controller.abort();
+  }, []);
+
+  function openGame(game: Game, user: User) {
+    try {
+      sessionStorage.setItem("pendingGameSession", JSON.stringify({ game, user }));
+    } catch {
+      // The game page can load its data without the navigation handoff.
+    }
+    router.push(`/game/${encodeURIComponent(game.id)}`);
+  }
+
+  function chooseProfile(user: User) {
+    setCurrentUser(user);
+    try { localStorage.setItem("selectedUserId", user.id); } catch { /* Keep this selection in memory. */ }
+    void loadUserScore(user.id);
+    const pendingGame = games.find((game) => game.id === pendingGameId);
+    setPendingGameId(null);
+    if (pendingGame?.isActive && canSeeGame(pendingGame.title, user.name)) openGame(pendingGame, user);
+  }
 
   const handleCreateUser = async (userData: CreateUserForm) => {
     try {
@@ -70,36 +91,22 @@ export default function Home() {
       if (!response.ok) throw new Error("Failed to create user");
       const newUser = (await response.json()) as User;
       setUsers((prev) => [newUser, ...prev]);
-      setCurrentUser(newUser);
-      localStorage.setItem("selectedUserId", newUser.id);
-      void loadUserScore(newUser.id);
+      chooseProfile(newUser);
     } catch (error) {
       console.error("Failed to create user:", error);
       setErrorMessage("Couldn't save the new profile. Please try again.");
     }
   };
 
-  const handleSelectUser = (user: User) => {
-    play("ding");
-    setCurrentUser(user);
-    localStorage.setItem("selectedUserId", user.id);
-    void loadUserScore(user.id);
-  };
-
   const handlePlayGame = (gameId: string) => {
+    const game = games.find((item) => item.id === gameId);
+    if (!game?.isActive) return;
     if (!currentUser) {
+      setPendingGameId(game.id);
       setShowUserDialog(true);
       return;
     }
-    const game = games.find((g) => g.id === gameId);
-    if (!game?.isActive) return;
-    try {
-      sessionStorage.setItem("pendingGameData", JSON.stringify(game));
-      sessionStorage.setItem("pendingUserData", JSON.stringify(currentUser));
-    } catch {
-      // sessionStorage may be unavailable — game page falls back to API fetch
-    }
-    router.push(`/game/${gameId}`);
+    if (canSeeGame(game.title, currentUser.name)) openGame(game, currentUser);
   };
 
   const handleNavigation = (page: string) => {
@@ -264,9 +271,12 @@ export default function Home() {
 
       <UserSelectionDialog
         isOpen={showUserDialog}
-        onClose={() => setShowUserDialog(false)}
+        onClose={() => {
+          setPendingGameId(null);
+          setShowUserDialog(false);
+        }}
         users={users}
-        onSelectUser={handleSelectUser}
+        onSelectUser={chooseProfile}
         onCreateUser={handleCreateUser}
       />
     </div>

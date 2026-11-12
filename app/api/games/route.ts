@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { DatabaseService } from '@/lib/database'
 import { CAR_LOGO_GAME } from '@/lib/games/carLogoCatalog'
 import { LIGHT_LINKS_GAME } from '@/lib/games/lightLinksCatalog'
-import { LEARNING_GAMES } from '@/lib/games/learningCatalog'
+import { LEARNING_GAMES, MAP_QUEST_GAME } from '@/lib/games/learningCatalog'
 
 const builtInGames = [LIGHT_LINKS_GAME, CAR_LOGO_GAME, ...LEARNING_GAMES]
 
@@ -20,7 +20,11 @@ export async function GET() {
         console.error(`Error registering ${entry.title}:`, error)
       }
     }
-    return NextResponse.json(addedGame ? await DatabaseService.getAllGames() : games)
+    const catalog = addedGame ? await DatabaseService.getAllGames() : games
+    // Existing seeded copies may still describe the old guided trails.
+    return NextResponse.json(catalog.map((game) => game.title === MAP_QUEST_GAME.title && game.description === 'Follow directions and find a path to the treasure.'
+      ? { ...game, description: MAP_QUEST_GAME.description }
+      : game))
   } catch (error) {
     console.error('Error fetching games:', error)
     return NextResponse.json(

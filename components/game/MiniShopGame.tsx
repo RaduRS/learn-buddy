@@ -64,13 +64,14 @@ export default function MiniShopGame({ gameId, onGameComplete, onExit }: MiniSho
   }
 
   function pickCoin(coin: Coin) {
-    if (solved || (level !== "easy" && sum > order.target)) return;
+    if (solved) return;
     play("tap");
     setChecked(false);
     setCoins((current) => level === "easy" ? [coin] : [...current, coin]);
   }
 
   function editCoins(undoLast: boolean) {
+    if (solved || !coins.length) return;
     play("tap");
     setChecked(false);
     setCoins((current) => undoLast ? current.slice(0, -1) : []);
@@ -139,7 +140,7 @@ export default function MiniShopGame({ gameId, onGameComplete, onExit }: MiniSho
               <button key={coin} type="button" className={styles.coinButton}
                 aria-label={level === "easy" ? `Choose ${money(coin)}` : `Add ${money(coin)}`}
                 aria-pressed={level === "easy" ? coins[0] === coin : undefined}
-                disabled={solved || (level !== "easy" && sum > order.target)} onClick={() => pickCoin(coin)}>
+                disabled={solved} onClick={() => pickCoin(coin)}>
                 <span className={styles.coin} data-value={coin}>{money(coin)}</span>
               </button>
             ))}
@@ -151,8 +152,10 @@ export default function MiniShopGame({ gameId, onGameComplete, onExit }: MiniSho
               {selection && <p className={styles.selected}>{selection}</p>}
             </div>
             <div className={styles.edit}>
-              <button type="button" onClick={() => editCoins(true)} aria-label="Undo last coin" disabled={solved || !coins.length}><Undo2 size={19} aria-hidden="true" /></button>
-              <button type="button" onClick={() => editCoins(false)} aria-label="Clear selected coins" disabled={solved || !coins.length}><RotateCcw size={18} aria-hidden="true" /></button>
+              <button type="button" onClick={() => editCoins(true)} aria-label="Undo last coin" aria-disabled={solved || !coins.length}
+                tabIndex={solved || !coins.length ? -1 : undefined}><Undo2 size={19} aria-hidden="true" /></button>
+              <button type="button" onClick={() => editCoins(false)} aria-label="Clear selected coins" aria-disabled={solved || !coins.length}
+                tabIndex={solved || !coins.length ? -1 : undefined}><RotateCcw size={18} aria-hidden="true" /></button>
             </div>
           </div>
           <p className={styles.feedback} role="status" data-solved={solved}>

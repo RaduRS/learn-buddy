@@ -1,0 +1,27 @@
+.station {
+  display: grid;
+  justify-items: center;
+  padding: clamp(0.8rem, 4vw, 1.4rem);
+  border: 1px solid #65817d;
+  border-radius: 1rem;
+  background: radial-gradient(ellipse at 50% 0%, #294d49, transparent 85%), #1b2538;
+  text-align: center;
+}
+.target {
+  display: grid;
+  min-width: min(100%, 9.2rem);
+  justify-items: center;
+  gap: 0.3rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #fff3d4;
+  border-radius: 0.9rem;
+  background: #fff3da;
+  box-shadow: inset 0 0 0 3px #f1dec5;
+  color: #382a45;
+  font: 600 1.05rem / 1.2 var(--font-fredoka), sans-serif;
+}
+.mark { display: grid; width: 1.4rem; height: 1.4rem; color: #ffd772; }
+.mark[data-colour="Red"] { color: #e66c82; }
+.mark[data-colour="Blue"] { color: #6198e5; }
+.mark[data-colour="Green"] { color: #64ad81; }
+.target .mark { width: clamp(2.8rem, 11vw, 4rem); height: clamp(2.8rem, 11vw, 4rem); }

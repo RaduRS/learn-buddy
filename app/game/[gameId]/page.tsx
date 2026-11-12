@@ -1,88 +1,110 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { AlertCircle, ArrowLeft } from "lucide-react";
 import { GameShell } from "@/components/game/GameShell";
 import { LoadingScreen } from "@/components/game/LoadingScreen";
+import { UserSelectionDialog } from "@/components/user/UserSelectionDialog";
 import { resolveGameEntry, slugifyTitle } from "@/lib/games/registry";
 import { canSeeGame } from "@/lib/games/visibility";
 import { Buddy } from "@/components/mascot/Buddy";
 import { CATEGORIES, toCategoryKey } from "@/lib/games/categories";
-import type { Game, User } from "@/types";
+import { useScore } from "@/hooks/useScore";
+import type { CreateUserForm, Game, User } from "@/types";
 
 export default function GamePage() {
-  const params = useParams();
+  const { gameId } = useParams<{ gameId: string }>();
+  return <GameSession key={gameId} gameId={gameId} />;
+}
+
+function GameSession({ gameId }: { gameId: string }) {
   const router = useRouter();
-  const gameId = params.gameId as string;
+  const { loadUserScore } = useScore();
+  const [game, setGame] = useState<Game | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [profileError, setProfileError] = useState(false);
+  const [creatingProfile, setCreatingProfile] = useState(false);
+  const [scoreWarning, setScoreWarning] = useState(false);
+  const finishingProfile = useRef(false);
 
-  // Hydrate synchronously from sessionStorage to avoid a loading flash when
-  // the user just clicked through from the home page.
-  const initial = readSessionCache(gameId);
-  const [game, setGame] = useState<Game | null>(initial.game);
-  const [currentUser, setCurrentUser] = useState<User | null>(initial.user);
-  const [loading, setLoading] = useState(initial.loading);
-
-  const loadGameData = useCallback(async () => {
+  const loadSession = useEffectEvent(async (signal: AbortSignal) => {
     try {
-      const cachedGame = sessionStorage.getItem("pendingGameData");
-      if (cachedGame) {
-        const parsed = JSON.parse(cachedGame) as Game;
-        if (parsed.id === gameId || slugifyTitle(parsed.title) === gameId) {
-          setGame(parsed);
-          sessionStorage.removeItem("pendingGameData");
-          return;
-        }
+      await Promise.resolve();
+      if (signal.aborted) return;
+      const handoff = takeGameHandoff(gameId);
+      if (handoff) {
+        setGame(handoff.game);
+        setCurrentUser(handoff.user);
+        return;
       }
-      const response = await fetch("/api/games");
-      const games = (await response.json()) as Game[];
-      // Match by id or by title slug so PWA shortcuts (/game/memory-match)
-      // work alongside the home-page navigation (/game/<cuid>).
-      const match =
-        games.find((g) => g.id === gameId) ??
-        games.find((g) => slugifyTitle(g.title) === gameId);
+
+      const [gamesResponse, usersResponse] = await Promise.all([
+        fetch("/api/games", { signal }),
+        fetch("/api/users", { signal }),
+      ]);
+      if (!gamesResponse.ok || !usersResponse.ok) throw new Error("Could not load the game or profiles");
+      const games = (await gamesResponse.json()) as Game[];
+      const profiles = (await usersResponse.json()) as User[];
+      if (signal.aborted) return;
+      if (!Array.isArray(games) || !Array.isArray(profiles)) throw new Error("Invalid catalogue or profiles");
+      const match = games.find((item) => item.id === gameId) ?? games.find((item) => slugifyTitle(item.title) === gameId);
       setGame(match ?? null);
-    } catch (error) {
-      console.error("Failed to load game:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [gameId]);
+      setUsers(profiles);
 
-  const loadCurrentUser = useCallback(async () => {
-    try {
-      const cachedUser = sessionStorage.getItem("pendingUserData");
-      if (cachedUser) {
-        const parsed = JSON.parse(cachedUser) as User;
-        if (parsed) {
-          setCurrentUser(parsed);
-          sessionStorage.removeItem("pendingUserData");
-          return;
-        }
+      let savedUserId: string | null = null;
+      try { savedUserId = localStorage.getItem("selectedUserId"); } catch { /* Storage may be blocked. */ }
+      const user = profiles.find((item) => item.id === savedUserId);
+      if (user) {
+        setCurrentUser(user);
+        void loadUserScore(user.id);
       }
-      const savedUserId = localStorage.getItem("selectedUserId");
-      if (!savedUserId) {
-        router.push("/");
-        return;
-      }
-      const response = await fetch("/api/users");
-      const users = (await response.json()) as User[];
-      const user = users.find((u) => u.id === savedUserId);
-      if (!user) {
-        router.push("/");
-        return;
-      }
-      setCurrentUser(user);
     } catch (error) {
-      console.error("Failed to load user:", error);
-      router.push("/");
+      if (signal.aborted) return;
+      console.error("Failed to load game session:", error);
+      setLoadFailed(true);
+    } finally {
+      if (!signal.aborted) setLoading(false);
     }
-  }, [router]);
+  });
 
   useEffect(() => {
-    void loadGameData();
-    void loadCurrentUser();
-  }, [gameId, loadGameData, loadCurrentUser]);
+    const controller = new AbortController();
+    void loadSession(controller.signal);
+    return () => controller.abort();
+  }, [gameId]);
+
+  function chooseProfile(user: User) {
+    finishingProfile.current = true;
+    setCurrentUser(user);
+    try { localStorage.setItem("selectedUserId", user.id); } catch { /* Keep this selection in memory. */ }
+    void loadUserScore(user.id);
+  }
+
+  async function createProfile(userData: CreateUserForm) {
+    if (finishingProfile.current) return;
+    finishingProfile.current = true;
+    setCreatingProfile(true);
+    setProfileError(false);
+    try {
+      const response = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userData),
+      });
+      if (!response.ok) throw new Error("Could not save profile");
+      chooseProfile((await response.json()) as User);
+    } catch (error) {
+      console.error("Failed to create user:", error);
+      finishingProfile.current = false;
+      setProfileError(true);
+    } finally {
+      setCreatingProfile(false);
+    }
+  }
 
   const handleGameComplete = useCallback(
     async (score: number) => {
@@ -103,6 +125,7 @@ export default function GamePage() {
         }
       } catch (error) {
         console.error("Error saving game progress:", error);
+        setScoreWarning(true);
       }
     },
     [currentUser, game],
@@ -121,27 +144,20 @@ export default function GamePage() {
     );
   }
 
+  if (loadFailed) {
+    return <NotFoundShell title="The game couldn’t load" message="Check your connection and try opening it again." onHome={handleExit} />;
+  }
+
   if (!game) {
     return <NotFoundShell title="Game not found" onHome={handleExit} />;
   }
 
-  if (!currentUser) {
-    return (
-      <LoadingScreen
-        tone="thinking"
-        message="Heading home…"
-        subMessage="Looking for your profile."
-        fullscreen
-      />
-    );
-  }
-
   const entry = resolveGameEntry(game);
-  if (!entry) {
+  if (!game.isActive || !entry) {
     return <NotFoundShell title="Game not available" onHome={handleExit} />;
   }
 
-  if (!canSeeGame(game.title, currentUser.name)) {
+  if (currentUser && !canSeeGame(game.title, currentUser.name)) {
     return <NotFoundShell title="Game not available" onHome={handleExit} />;
   }
 
@@ -158,22 +174,50 @@ export default function GamePage() {
       // The wrapped game still owns its own internal header (score/progress).
       // Hide the shell's hero strip until each game adopts GameShell in Phase 3.
       showHero={false}
+      showScoreChip={Boolean(currentUser)}
     >
-      <Suspense fallback={<LoadingScreen tone="loading" />}>
-        <Component
-          userId={currentUser.id}
-          gameId={game.id}
-          userAge={currentUser.age ?? 6}
-          userName={currentUser.name}
-          onGameComplete={handleGameComplete}
-          onExit={handleExit}
-        />
-      </Suspense>
+      {currentUser ? (
+        <>
+          {scoreWarning && (
+            <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-[#b38e5d] bg-[#3d2f46] p-3 text-[#fff0d0]">
+              <AlertCircle size={18} aria-hidden="true" className="shrink-0" />
+              <p role="alert" className="min-w-0 flex-1 text-sm">We couldn’t confirm your stars were saved. Check your connection before your next round.</p>
+              <button type="button" onClick={() => setScoreWarning(false)} aria-label="Dismiss score save notice"
+                className="min-h-11 rounded-lg px-2 text-sm font-medium underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2">
+                Dismiss
+              </button>
+            </div>
+          )}
+          <Suspense fallback={<LoadingScreen tone="loading" />}>
+            <Component
+              userId={currentUser.id}
+              gameId={game.id}
+              userAge={currentUser.age ?? 6}
+              userName={currentUser.name}
+              onGameComplete={handleGameComplete}
+              onExit={handleExit}
+            />
+          </Suspense>
+        </>
+      ) : creatingProfile ? (
+        <LoadingScreen tone="thinking" message="Creating your profile…" />
+      ) : profileError ? (
+        <div className="surface-card p-5 text-arcade-strong">
+          <p role="alert">We couldn’t save your profile. Check your connection and try again.</p>
+          <button type="button" onClick={() => setProfileError(false)}
+            className="mt-3 min-h-11 rounded-xl border border-[var(--arcade-edge)] bg-[var(--arcade-card-soft)] px-4 font-display focus-visible:outline-2 focus-visible:outline-offset-2">
+            Choose a profile
+          </button>
+        </div>
+      ) : (
+        <UserSelectionDialog isOpen users={users} onSelectUser={chooseProfile} onCreateUser={createProfile}
+          onClose={() => { if (!finishingProfile.current) router.replace("/"); }} />
+      )}
     </GameShell>
   );
 }
 
-function NotFoundShell({ title, onHome }: { title: string; onHome: () => void }) {
+function NotFoundShell({ title, message = "Buddy looked everywhere but couldn’t find that game.", onHome }: { title: string; message?: string; onHome: () => void }) {
   return (
     <div className="bg-arcade min-h-screen flex items-center justify-center p-4">
       <div className="surface-card cat-spatial p-8 max-w-md w-full text-center">
@@ -182,7 +226,7 @@ function NotFoundShell({ title, onHome }: { title: string; onHome: () => void })
         </div>
         <h1 className="font-display text-2xl text-arcade-strong">{title}</h1>
         <p className="mt-2 text-arcade-mid">
-          Buddy looked everywhere but couldn&apos;t find that game.
+          {message}
         </p>
         <button
           type="button"
@@ -202,28 +246,15 @@ function NotFoundShell({ title, onHome }: { title: string; onHome: () => void })
   );
 }
 
-function readSessionCache(gameId: string) {
-  if (typeof window === "undefined") {
-    return { game: null as Game | null, user: null as User | null, loading: true };
-  }
+function takeGameHandoff(gameId: string): { game: Game; user: User } | null {
   try {
-    const cachedGame = sessionStorage.getItem("pendingGameData");
-    const cachedUser = sessionStorage.getItem("pendingUserData");
-    const game = cachedGame ? (JSON.parse(cachedGame) as Game) : null;
-    const user = cachedUser ? (JSON.parse(cachedUser) as User) : null;
-    const cached = !!(
-      game &&
-      (game.id === gameId || slugifyTitle(game.title) === gameId) &&
-      user
-    );
-    if (cached) {
-      sessionStorage.removeItem("pendingGameData");
-      sessionStorage.removeItem("pendingUserData");
-    }
-    return cached
-      ? { game, user, loading: false }
-      : { game: null, user: null, loading: true };
+    const cached = sessionStorage.getItem("pendingGameSession");
+    if (!cached) return null;
+    sessionStorage.removeItem("pendingGameSession");
+    const handoff = JSON.parse(cached) as { game?: Game; user?: User } | null;
+    if (handoff?.game?.id === gameId && handoff.user?.id) return { game: handoff.game, user: handoff.user };
   } catch {
-    return { game: null, user: null, loading: true };
+    // Storage may be blocked or the handoff malformed. Load from the catalogue instead.
   }
+  return null;
 }

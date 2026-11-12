@@ -80,17 +80,17 @@
 .feedback { min-height: 1.4em; margin-block: 0.45rem; color: #ffc2ae; font-size: 0.92rem; }
 .feedback[data-solved="true"] { color: #a4f5c4; }
 .action { display: flex; align-items: center; justify-content: space-between; gap: 0.45rem; width: 100%; min-height: 2.9rem; padding: 0.5rem 0.85rem; border-color: #ffecb4; background: var(--shop-accent); color: #352335; font: 600 1rem var(--font-fredoka), sans-serif; }
-.shop button:disabled { cursor: default; opacity: 0.58; }
+.shop button:is(:disabled, [aria-disabled="true"]) { cursor: default; opacity: 0.58; }
 .shop :is(button, h2, [role="region"]):focus-visible { outline: 2px solid var(--shop-accent); outline-offset: 3px; }
 .receipt h2:focus-visible { outline-color: #7a4655; }
-.shop button:not(:disabled):active { transform: scale(0.97); }
+.shop button:not(:disabled, [aria-disabled="true"]):active { transform: scale(0.97); }
 @media (hover: hover) {
-  .shop button:not(:disabled):hover { filter: brightness(1.16); }
+  .shop button:not(:disabled, [aria-disabled="true"]):hover { filter: brightness(1.16); }
 }
 @media (max-width: 33rem) {
   .wallet { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .coinButton { min-height: 3.3rem; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .shop button:not(:disabled):active { transform: none; }
+  .shop button:not(:disabled, [aria-disabled="true"]):active { transform: none; }
 }
