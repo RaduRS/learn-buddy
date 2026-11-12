@@ -4,6 +4,7 @@ import { lazy, useState, type ComponentType } from "react";
 import type { CategoryKey } from "./categories";
 import { CAR_LOGO_GAME } from "./carLogoCatalog";
 import { LIGHT_LINKS_GAME } from "./lightLinksCatalog";
+import { MINI_SHOP_GAME } from "./learningCatalog";
 
 /**
  * Unified context handed to every game adapter.
@@ -34,6 +35,7 @@ const SubitizingGame     = lazy(() => import("@/components/game/SubitizingGame")
 const PuzzleGame         = lazy(() => import("@/components/game/PuzzleGame"));
 const LightLinksGame     = lazy(() => import("@/components/game/LightLinksGame"));
 const CarLogoGame        = lazy(() => import("@/components/game/CarLogoGame"));
+const MiniShopGame        = lazy(() => import("@/components/game/MiniShopGame"));
 const MemoryMatchGame    = lazy(() => import("@/components/game/MemoryMatchGame"));
 const MemoryMatchConfig  = lazy(() => import("@/components/game/MemoryMatchConfig"));
 const NumberFunGame      = lazy(() => import("@/components/game/NumberFunGame"));
@@ -90,6 +92,10 @@ function LightLinksAdapter(ctx: GameContext) {
 
 function CarLogoAdapter(ctx: GameContext) {
   return <CarLogoGame key={ctx.userId} gameId={ctx.gameId} onGameComplete={ctx.onGameComplete} onExit={ctx.onExit} />;
+}
+
+function MiniShopAdapter(ctx: GameContext) {
+  return <MiniShopGame key={ctx.userId} gameId={ctx.gameId} onGameComplete={ctx.onGameComplete} onExit={ctx.onExit} />;
 }
 
 function NumberFunAdapter(ctx: GameContext) {
@@ -210,6 +216,7 @@ export const REGISTRY: Record<string, RegistryEntry> = {
   "puzzle":         { title: "Puzzle",         category: "spatial", Component: PuzzleAdapter },
   [LIGHT_LINKS_GAME.id]: { title: LIGHT_LINKS_GAME.title, category: LIGHT_LINKS_GAME.category, Component: LightLinksAdapter },
   [CAR_LOGO_GAME.id]: { title: CAR_LOGO_GAME.title, category: CAR_LOGO_GAME.category, Component: CarLogoAdapter },
+  [MINI_SHOP_GAME.id]: { title: MINI_SHOP_GAME.title, category: MINI_SHOP_GAME.category, Component: MiniShopAdapter },
   "number-fun":     { title: "Number Fun",     category: "math",    Component: NumberFunAdapter },
   "subitizing":     { title: "Subitizing",     category: "math",    Component: SubitizingAdapter },
   "mathspark":      { title: "MathSpark",      category: "math",    Component: MathSparkAdapter },

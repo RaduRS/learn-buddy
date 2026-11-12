@@ -14,12 +14,14 @@ import {
   Palette,
   Puzzle,
   Shapes as ShapesIcon,
+  ShoppingBasket,
   Sparkles,
   type LucideIcon,
 } from "lucide-react";
 import type { CategoryKey } from "./categories";
 import { CAR_LOGO_GAME } from "./carLogoCatalog";
 import { LIGHT_LINKS_GAME } from "./lightLinksCatalog";
+import { MINI_SHOP_GAME } from "./learningCatalog";
 import { slugifyTitle } from "./registry";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -27,6 +29,7 @@ const ICONS: Record<string, LucideIcon> = {
   "puzzle":            Puzzle,
   [LIGHT_LINKS_GAME.id]: Cable,
   [CAR_LOGO_GAME.id]: CarFront,
+  [MINI_SHOP_GAME.id]: ShoppingBasket,
   "number-fun":        Calculator,
   "subitizing":        Eye,
   "mathspark":         Sparkles,
@@ -84,7 +87,7 @@ export function getGameIconAndCategory(title: string): {
   // know about this game (e.g., new seed entry).
   let category: CategoryKey = "default";
   if (slug === CAR_LOGO_GAME.id || slug.includes("memory")) category = "memory";
-  else if (slug.includes("math") || slug.includes("number") || slug.includes("subitizing")) category = "math";
+  else if (slug === MINI_SHOP_GAME.id || slug.includes("math") || slug.includes("number") || slug.includes("subitizing")) category = "math";
   else if (slug.includes("music") || slug.includes("rhythm")) category = "music";
   else if (slug.includes("read") || slug.includes("letter")) category = "reading";
   else if (slug === LIGHT_LINKS_GAME.id || slug.includes("puzzle") || slug.includes("shape") || slug.includes("spatial")) category = "spatial";

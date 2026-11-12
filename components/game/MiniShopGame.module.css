@@ -1,0 +1,96 @@
+.shop {
+  --shop-accent: #ffdb89;
+  --shop-muted: #ccc5df;
+  width: min(100%, 39rem);
+  margin-inline: auto;
+  color: #fff9ff;
+}
+
+.levels, .wallet { display: grid; gap: 0.45rem; }
+.levels { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.levels button, .edit button, .coinButton, .action {
+  border: 1px solid #5e526c;
+  border-radius: 0.78rem;
+  background: #28213d;
+  color: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.levels button {
+  display: grid;
+  min-height: 3.3rem;
+  align-content: center;
+  gap: 0.1rem;
+  padding: 0.35rem 0.2rem;
+}
+.levels strong { font: 600 1rem var(--font-fredoka), sans-serif; }
+.levels span { color: var(--shop-muted); font-size: 0.75rem; }
+.levels button[aria-pressed="true"] { border-color: #ae8c53; background: #49374b; color: var(--shop-accent); }
+
+.progress { display: flex; gap: 0.8rem; align-items: center; margin-block: 0.9rem 0.65rem; }
+.progress span { flex-shrink: 0; color: var(--shop-muted); font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+.progress progress { width: 100%; height: 0.45rem; appearance: none; overflow: hidden; border: 0; border-radius: 99px; background: #443653; color: var(--shop-accent); }
+.progress progress::-webkit-progress-bar { background: #443653; }
+.progress progress::-webkit-progress-value { background: var(--shop-accent); }
+.progress progress::-moz-progress-bar { background: var(--shop-accent); }
+
+.receipt {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(0.75rem, 4vw, 1.75rem);
+  padding: clamp(0.7rem, 2.8vw, 1.2rem);
+  border: 1px solid #fff4d9;
+  border-radius: 1.05rem;
+  background: #fff5de;
+  box-shadow: 0 8px 26px #10081f50, inset 0 0 0 4px #f6e4c4;
+  color: #332339;
+}
+.picture { display: grid; place-items: center; width: clamp(3.7rem, 17vw, 6rem); aspect-ratio: 1; font-size: clamp(2.35rem, 8vw, 4rem); }
+.receipt h2 { font: 600 clamp(1.5rem, 5vw, 2rem) / 1.05 var(--font-fredoka), sans-serif; text-wrap: balance; scroll-margin-block-start: 5rem; }
+.price { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.2rem 0.7rem; margin-top: 0.2rem; font-size: 0.9rem; }
+.price strong { color: #6e3746; font-variant-numeric: tabular-nums; }
+.prompt { margin-block: 0.8rem 0.5rem; font: 500 1.08rem var(--font-fredoka), sans-serif; }
+.wallet { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+.coinButton { display: grid; min-height: 3.7rem; place-items: center; }
+.coinButton[aria-pressed="true"] { border-color: var(--shop-accent); background: #4c3d43; }
+.coin {
+  display: grid;
+  width: 2.65rem;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 2px solid #9a8d9f;
+  border-radius: 50%;
+  background: linear-gradient(150deg, #fbf6ff, #c4becb);
+  color: #302339;
+  font: 600 1rem var(--font-fredoka), sans-serif;
+  box-shadow: inset 0 0 0 2px #ffffff70;
+}
+.coin[data-value="1"], .coin[data-value="2"] { border-color: #a75a42; background: linear-gradient(145deg, #ffcca3, #d68c67); }
+.coin[data-value="20"], .coin[data-value="50"] { clip-path: polygon(50% 0, 89% 19%, 99% 60%, 72% 96%, 28% 96%, 1% 60%, 11% 19%); border-radius: 0; }
+.coin[data-value="100"], .coin[data-value="200"] { border: 5px solid #c29b54; }
+.coin[data-value="100"] { clip-path: polygon(37% 0, 63% 0, 86% 14%, 100% 37%, 100% 63%, 86% 86%, 63% 100%, 37% 100%, 14% 86%, 0 63%, 0 37%, 14% 14%); border-radius: 0; }
+.tray { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-top: 0.65rem; padding: 0.55rem 0.7rem; border: 1px solid #564762; border-radius: 0.8rem; background: #201831; }
+.tray > div:first-child { min-width: 0; }
+.trayLabel { color: var(--shop-muted); font-size: 0.79rem; }
+.tray strong { font: 600 1.5rem / 1.2 var(--font-fredoka), sans-serif; color: var(--shop-accent); font-variant-numeric: tabular-nums; }
+.selected { color: var(--shop-muted); font-size: 0.8rem; overflow-wrap: anywhere; }
+.edit { display: flex; gap: 0.38rem; }
+.edit button { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; }
+.feedback { min-height: 1.4em; margin-block: 0.45rem; color: #ffc2ae; font-size: 0.92rem; }
+.feedback[data-solved="true"] { color: #a4f5c4; }
+.action { display: flex; align-items: center; justify-content: space-between; gap: 0.45rem; width: 100%; min-height: 2.9rem; padding: 0.5rem 0.85rem; border-color: #ffecb4; background: var(--shop-accent); color: #352335; font: 600 1rem var(--font-fredoka), sans-serif; }
+.shop button:disabled { cursor: default; opacity: 0.58; }
+.shop :is(button, h2, [role="region"]):focus-visible { outline: 2px solid var(--shop-accent); outline-offset: 3px; }
+.receipt h2:focus-visible { outline-color: #7a4655; }
+.shop button:not(:disabled):active { transform: scale(0.97); }
+@media (hover: hover) {
+  .shop button:not(:disabled):hover { filter: brightness(1.16); }
+}
+@media (max-width: 33rem) {
+  .wallet { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .coinButton { min-height: 3.3rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shop button:not(:disabled):active { transform: none; }
+}
