@@ -1,0 +1,111 @@
+Sound Detective audio credits
+
+All 18 sounds are recordings sourced from Wikimedia Commons. Learn Buddy trimmed, faded, adjusted playback levels and converted each recording to MP3. Each adapted recording is available under the listed licence.
+
+dog.mp3
+Original recording: Barking of a dog.ogg
+Creator: Amada44
+Source: https://commons.wikimedia.org/wiki/File:Barking_of_a_dog.ogg
+Licence: CC BY-SA 3.0 Unported (https://creativecommons.org/licenses/by-sa/3.0/)
+
+cat.mp3
+Original recording: Maullido de gata hembra joven.ogg
+Creator: George Miquilena
+Source: https://commons.wikimedia.org/wiki/File:Maullido_de_gata_hembra_joven.ogg
+Licence: CC0 1.0 Universal (https://creativecommons.org/publicdomain/zero/1.0/)
+
+cow.mp3
+Original recording: Mudchute cow 1.ogg
+Creator: Secretlondon
+Source: https://commons.wikimedia.org/wiki/File:Mudchute_cow_1.ogg
+Licence: CC BY-SA 3.0 Unported (https://creativecommons.org/licenses/by-sa/3.0/)
+
+rooster.mp3
+Original recording: Rooster crowing.ogg
+Creator: Filo gèn'
+Source: https://commons.wikimedia.org/wiki/File:Rooster_crowing.ogg
+Licence: CC BY-SA 4.0 International (https://creativecommons.org/licenses/by-sa/4.0/)
+
+sheep.mp3
+Original recording: Sheep bleating.ogg
+Creator: earthcalling
+Source: https://commons.wikimedia.org/wiki/File:Sheep_bleating.ogg
+Licence: Public domain
+
+horse.mp3
+Original recording: Wiehern.ogg
+Creator: Hü
+Source: https://commons.wikimedia.org/wiki/File:Wiehern.ogg
+Licence: Public domain
+
+piano.mp3
+Original recording: Piano acústico, acorde C.ogg
+Creator: ZappaMidiPF
+Source: https://commons.wikimedia.org/wiki/File:Piano_ac%C3%BAstico%2C_acorde_C.ogg
+Licence: CC BY-SA 4.0 International (https://creativecommons.org/licenses/by-sa/4.0/)
+
+guitar.mp3
+Original recording: AcousticGuitarSample.ogg
+Creator: RyGuy
+Source: https://commons.wikimedia.org/wiki/File:AcousticGuitarSample.ogg
+Licence: Public domain
+
+flute.mp3
+Original recording: Flute 2.ogg
+Creator: hokuspokus
+Source: https://commons.wikimedia.org/wiki/File:Flute_2.ogg
+Licence: Public domain
+
+violin.mp3
+Original recording: Violin vibrato on open string notes and on fingered notes.ogg
+Creator: Mutatis mutandis
+Source: https://commons.wikimedia.org/wiki/File:Violin_vibrato_on_open_string_notes_and_on_fingered_notes.ogg
+Licence: CC BY-SA 3.0 Unported (https://creativecommons.org/licenses/by-sa/3.0/)
+
+drum.mp3
+Original recording: Snare drum unmuffled.ogg
+Creator: Clngre~commonswiki
+Source: https://commons.wikimedia.org/wiki/File:Snare_drum_unmuffled.ogg
+Licence: CC BY-SA 3.0 Unported (https://creativecommons.org/licenses/by-sa/3.0/)
+
+harmonica.mp3
+Original recording: Harmonica.ogg
+Creator: mastermesh
+Source: https://commons.wikimedia.org/wiki/File:Harmonica.ogg
+Licence: Public domain
+
+doorbell.mp3
+Original recording: Sound Effect - Door Bell.ogg
+Creator: Amada44
+Source: https://commons.wikimedia.org/wiki/File:Sound_Effect_-_Door_Bell.ogg
+Licence: CC0 1.0 Universal (https://creativecommons.org/publicdomain/zero/1.0/)
+
+knock.mp3
+Original recording: Knocking on wood or door.ogg
+Creator: stephan
+Source: https://commons.wikimedia.org/wiki/File:Knocking_on_wood_or_door.ogg
+Licence: Public domain
+
+clock.mp3
+Original recording: Clock ticking.ogg
+Creator: natalie
+Source: https://commons.wikimedia.org/wiki/File:Clock_ticking.ogg
+Licence: Public domain
+
+keyboard.mp3
+Original recording: IBM M2 sound.ogg
+Creator: Anonimski
+Source: https://commons.wikimedia.org/wiki/File:IBM_M2_sound.ogg
+Licence: CC0 1.0 Universal (https://creativecommons.org/publicdomain/zero/1.0/)
+
+water.mp3
+Original recording: Pouring water bottles.ogg
+Creator: stephan
+Source: https://commons.wikimedia.org/wiki/File:Pouring_water_bottles.ogg
+Licence: Public domain
+
+telephone.mp3
+Original recording: Model 500 Telephone British ring.ogg
+Creator: CianMcCann
+Source: https://commons.wikimedia.org/wiki/File:Model_500_Telephone_British_ring.ogg
+Licence: CC BY-SA 3.0 Unported (https://creativecommons.org/licenses/by-sa/3.0/)

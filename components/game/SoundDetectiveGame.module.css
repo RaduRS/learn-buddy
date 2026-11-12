@@ -1,0 +1,31 @@
+.listen {
+  display: grid;
+  min-height: 8rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(0.65rem, 3vw, 1.45rem);
+  padding: clamp(0.8rem, 3vw, 1.25rem);
+  border: 1px solid #587e86;
+  border-radius: 1rem;
+  background: radial-gradient(ellipse at 0% 10%, #285458, transparent 70%), #1c283d;
+}
+.wave {
+  display: grid;
+  width: clamp(3.8rem, 17vw, 5.6rem);
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid #5c9d9b;
+  border-radius: 1rem;
+  background: #142d38;
+  color: #a6f0df;
+}
+.wave svg { width: 70%; height: auto; }
+.listen[data-playing="true"] .wave { border-color: #a6f0df; box-shadow: 0 0 1.25rem #86e6d256; }
+.listen button { width: fit-content; margin-bottom: 0.35rem; border-color: #8ee5cf; background: #a6f0df; color: #173138; }
+.clue { margin-top: 0.35rem; color: #d2e8e9; font-size: 0.87rem; }
+.clue summary { width: fit-content; min-height: 2rem; padding-block: 0.35rem; cursor: pointer; }
+.clue p { padding-bottom: 0.25rem; }
+.clue summary:focus-visible { outline: 2px solid #99efdc; outline-offset: 3px; }
+.credits { width: min(100%, 39rem); margin: 0.4rem auto 0; }
+.credits a { display: inline-flex; min-height: 2.75rem; align-items: center; color: #c2d9dc; font-size: 0.82rem; text-decoration: underline; text-underline-offset: 0.2em; }
+.credits a:focus-visible { outline: 2px solid #99efdc; outline-offset: 3px; }

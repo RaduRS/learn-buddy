@@ -1,7 +1,7 @@
 import { DatabaseService } from "../lib/database";
 import { CAR_LOGO_GAME } from "../lib/games/carLogoCatalog";
 import { LIGHT_LINKS_GAME } from "../lib/games/lightLinksCatalog";
-import { MINI_SHOP_GAME } from "../lib/games/learningCatalog";
+import { LEARNING_GAMES } from "../lib/games/learningCatalog";
 
 const initialGames = [
   {
@@ -64,7 +64,7 @@ const initialGames = [
   },
   LIGHT_LINKS_GAME,
   CAR_LOGO_GAME,
-  MINI_SHOP_GAME,
+  ...LEARNING_GAMES,
   {
     title: "Read Aloud Camera",
     description:

@@ -1,3 +1,5 @@
+import { shuffled } from "./shuffle";
+
 export const UK_COINS = [1, 2, 5, 10, 20, 50, 100, 200] as const;
 export type Coin = (typeof UK_COINS)[number];
 export type ShopLevel = "easy" | "medium" | "hard";
@@ -15,15 +17,6 @@ const CHANGE_ORDERS = [
   [12, 20], [14, 20], [17, 20], [21, 50], [25, 50], [32, 50], [35, 50], [44, 50],
   [55, 100], [62, 100], [75, 100], [86, 100], [110, 200], [125, 200], [140, 200], [155, 200],
 ] as const;
-
-export function shuffled<T>(items: readonly T[]): T[] {
-  const result = [...items];
-  for (let index = result.length - 1; index > 0; index--) {
-    const swap = Math.floor(Math.random() * (index + 1));
-    [result[index], result[swap]] = [result[swap], result[index]];
-  }
-  return result;
-}
 
 export function money(pence: number): string {
   if (pence < 100) return `${pence}p`;

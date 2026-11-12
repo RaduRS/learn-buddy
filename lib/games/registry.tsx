@@ -4,7 +4,7 @@ import { lazy, useState, type ComponentType } from "react";
 import type { CategoryKey } from "./categories";
 import { CAR_LOGO_GAME } from "./carLogoCatalog";
 import { LIGHT_LINKS_GAME } from "./lightLinksCatalog";
-import { MINI_SHOP_GAME } from "./learningCatalog";
+import { MAP_QUEST_GAME, MINI_SHOP_GAME, PATTERN_TRAIN_GAME, SOUND_DETECTIVE_GAME, WORD_BUILDER_GAME } from "./learningCatalog";
 
 /**
  * Unified context handed to every game adapter.
@@ -36,6 +36,10 @@ const PuzzleGame         = lazy(() => import("@/components/game/PuzzleGame"));
 const LightLinksGame     = lazy(() => import("@/components/game/LightLinksGame"));
 const CarLogoGame        = lazy(() => import("@/components/game/CarLogoGame"));
 const MiniShopGame        = lazy(() => import("@/components/game/MiniShopGame"));
+const WordBuilderGame     = lazy(() => import("@/components/game/WordBuilderGame"));
+const MapQuestGame        = lazy(() => import("@/components/game/MapQuestGame"));
+const PatternTrainGame    = lazy(() => import("@/components/game/PatternTrainGame"));
+const SoundDetectiveGame  = lazy(() => import("@/components/game/SoundDetectiveGame"));
 const MemoryMatchGame    = lazy(() => import("@/components/game/MemoryMatchGame"));
 const MemoryMatchConfig  = lazy(() => import("@/components/game/MemoryMatchConfig"));
 const NumberFunGame      = lazy(() => import("@/components/game/NumberFunGame"));
@@ -97,6 +101,11 @@ function CarLogoAdapter(ctx: GameContext) {
 function MiniShopAdapter(ctx: GameContext) {
   return <MiniShopGame key={ctx.userId} gameId={ctx.gameId} onGameComplete={ctx.onGameComplete} onExit={ctx.onExit} />;
 }
+
+const WordBuilderAdapter = (ctx: GameContext) => <WordBuilderGame key={ctx.userId} {...ctx} />;
+const MapQuestAdapter = (ctx: GameContext) => <MapQuestGame key={ctx.userId} {...ctx} />;
+const PatternTrainAdapter = (ctx: GameContext) => <PatternTrainGame key={ctx.userId} {...ctx} />;
+const SoundDetectiveAdapter = (ctx: GameContext) => <SoundDetectiveGame key={ctx.userId} {...ctx} />;
 
 function NumberFunAdapter(ctx: GameContext) {
   return (
@@ -217,6 +226,10 @@ export const REGISTRY: Record<string, RegistryEntry> = {
   [LIGHT_LINKS_GAME.id]: { title: LIGHT_LINKS_GAME.title, category: LIGHT_LINKS_GAME.category, Component: LightLinksAdapter },
   [CAR_LOGO_GAME.id]: { title: CAR_LOGO_GAME.title, category: CAR_LOGO_GAME.category, Component: CarLogoAdapter },
   [MINI_SHOP_GAME.id]: { title: MINI_SHOP_GAME.title, category: MINI_SHOP_GAME.category, Component: MiniShopAdapter },
+  [WORD_BUILDER_GAME.id]: { title: WORD_BUILDER_GAME.title, category: WORD_BUILDER_GAME.category, Component: WordBuilderAdapter },
+  [MAP_QUEST_GAME.id]: { title: MAP_QUEST_GAME.title, category: MAP_QUEST_GAME.category, Component: MapQuestAdapter },
+  [PATTERN_TRAIN_GAME.id]: { title: PATTERN_TRAIN_GAME.title, category: PATTERN_TRAIN_GAME.category, Component: PatternTrainAdapter },
+  [SOUND_DETECTIVE_GAME.id]: { title: SOUND_DETECTIVE_GAME.title, category: SOUND_DETECTIVE_GAME.category, Component: SoundDetectiveAdapter },
   "number-fun":     { title: "Number Fun",     category: "math",    Component: NumberFunAdapter },
   "subitizing":     { title: "Subitizing",     category: "math",    Component: SubitizingAdapter },
   "mathspark":      { title: "MathSpark",      category: "math",    Component: MathSparkAdapter },

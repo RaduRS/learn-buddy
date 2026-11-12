@@ -1,0 +1,39 @@
+.clue {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.7rem 1.2rem;
+  padding: clamp(0.75rem, 3vw, 1.25rem);
+  border: 1px solid #f7dfab;
+  border-radius: 1rem;
+  background: #fff1cf;
+  box-shadow: inset 0 0 0 4px #f3dfb7;
+  color: #332639;
+}
+.picture { display: grid; width: clamp(3.4rem, 16vw, 6.5rem); aspect-ratio: 1; place-items: center; font-size: clamp(2.45rem, 9vw, 4.6rem); }
+.clue p { margin-bottom: 0.45rem; font-size: 0.95rem; }
+.clue button { width: fit-content; background: #3c2d47; color: #fff4d6; }
+.clue .audioError { margin-block: 0.4rem 0; color: #743e49; font-size: 0.78rem; }
+.slots, .tiles { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem; margin-top: 0.75rem; }
+.slots button, .tiles button {
+  display: grid;
+  width: clamp(2.55rem, 13vw, 3.5rem);
+  min-height: 2.85rem;
+  place-items: center;
+  padding: 0.32rem;
+  border: 1px solid var(--practice-edge);
+  border-radius: 0.65rem;
+  background: var(--practice-control);
+  color: #fff8e8;
+  font: 600 clamp(1.35rem, 5vw, 1.8rem) / 1 var(--font-fredoka), sans-serif;
+  cursor: pointer;
+}
+.slots button { min-height: 3.3rem; border-style: dashed; background: #352943; color: var(--practice-accent); }
+.slots button:has(span) { opacity: 0.78; }
+.slots[data-result="right"] button { border: 1px solid #76cfad; background: #1f423d; color: #cbffe5; opacity: 1; }
+.slots[data-result="wrong"] button { border-color: #ed95a0; }
+.tiles button { border-color: #c19769; background: #f7d5a5; color: #362640; }
+.tiles button[aria-disabled="true"] { opacity: 0.5; }
+@media (max-width: 24rem) {
+  .slots { gap: 0.25rem; }
+}
