@@ -114,7 +114,7 @@ interface Choice {
   visual?: ReactNode;
 }
 
-export function ChoiceQuestion({ heading, children, choices, correctId, explanation, advance, last, ready = true, canSkip = false }: {
+export function ChoiceQuestion({ heading, children, choices, correctId, explanation, advance, last, ready = true, canSkip = false, iconsOnly = false }: {
   heading: string;
   children?: ReactNode;
   choices: readonly Choice[];
@@ -124,6 +124,7 @@ export function ChoiceQuestion({ heading, children, choices, correctId, explanat
   last: boolean;
   ready?: boolean;
   canSkip?: boolean;
+  iconsOnly?: boolean;
 }) {
   const { play } = useSfx();
   const [selected, setSelected] = useState<string | null>(null);
@@ -140,6 +141,7 @@ export function ChoiceQuestion({ heading, children, choices, correctId, explanat
           const wrong = !isCorrect && choice.id === selected;
           return (
             <button className={styles.choice} type="button" key={choice.id} aria-disabled={locked}
+              aria-label={iconsOnly ? choice.label : undefined} data-icon-only={iconsOnly || undefined}
               tabIndex={locked && choice.id !== selected ? -1 : undefined}
               data-result={revealed ? "correct" : wrong ? "wrong" : undefined}
               onClick={() => {
@@ -148,9 +150,9 @@ export function ChoiceQuestion({ heading, children, choices, correctId, explanat
                 play(choice.id === correctId ? "correct" : "wrong");
               }}>
               {choice.visual && <span aria-hidden="true">{choice.visual}</span>}
-              <span>{choice.label}</span>
-              {revealed && <Check className={styles.mark} size={18} aria-hidden="true" />}
-              {wrong && <X className={styles.mark} size={18} aria-hidden="true" />}
+              {!iconsOnly && <span>{choice.label}</span>}
+              {!iconsOnly && revealed && <Check className={styles.mark} size={18} aria-hidden="true" />}
+              {!iconsOnly && wrong && <X className={styles.mark} size={18} aria-hidden="true" />}
             </button>
           );
         })}

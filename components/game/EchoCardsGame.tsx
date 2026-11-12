@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, Cloud, Heart, Leaf, Moon, Snowflake, Star, Sun, Zap } from "lucide-react";
+import { ArrowRight, Check, Cloud, Heart, Leaf, Moon, Snowflake, Star, Sun, X, Zap } from "lucide-react";
 import { useSfx } from "@/components/sound/SoundProvider";
 import { makeEchoRound, type EchoQuestion, type EchoSymbol } from "@/lib/games/focusRounds";
 import { ChoiceQuestion, PracticeGame, type PracticeGameProps, type PracticeQuestionProps } from "./PracticeGame";
@@ -15,7 +15,10 @@ const MODES = [
   { id: "hard", name: "Hard", detail: "Two cards back" },
 ] as const;
 
-const ANSWERS = [{ id: "same", label: "Same" }, { id: "different", label: "Different" }] as const;
+const ANSWERS = [
+  { id: "same", label: "Same", visual: <Check size={30} strokeWidth={2.6} aria-hidden="true" /> },
+  { id: "different", label: "Different", visual: <X size={30} strokeWidth={2.6} aria-hidden="true" /> },
+] as const;
 
 export default function EchoCardsGame(props: PracticeGameProps) {
   return <PracticeGame {...props} category="memory" modes={MODES} makeRound={makeEchoRound} stepLabel="Card" QuestionView={EchoPuzzle} />;
@@ -62,7 +65,7 @@ function EchoPuzzle({ question, advance, last }: PracticeQuestionProps<EchoQuest
 
   return (
     <div ref={focus} tabIndex={-1} role="region" aria-label="Compare cards">
-      <ChoiceQuestion heading={`Does this match ${compareWith}?`} choices={ANSWERS}
+      <ChoiceQuestion heading={`Does this match ${compareWith}?`} choices={ANSWERS} iconsOnly
         correctId={question.symbol === question.comparison ? "same" : "different"}
         explanation={`The card to remember showed ${comparison}.`}
         advance={advance} last={last}>

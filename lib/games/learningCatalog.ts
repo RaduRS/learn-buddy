@@ -39,7 +39,7 @@ export const SWITCH_SORT_GAME = {
 } as const;
 
 export const SIGNAL_SCOUT_GAME = {
-  id: "signal-scout", title: "Signal Scout", description: "Spot which way the middle arrow is pointing among the other signals.",
+  id: "signal-scout", title: "Signal Scout", description: "Follow the turns and work out which way you’ll face at the end.",
   icon: "crosshair", category: "spatial", difficulty: 1, isActive: true,
 } as const;
 

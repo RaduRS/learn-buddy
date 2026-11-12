@@ -41,6 +41,8 @@
 .choices { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 0.65rem; }
 .choice { display: flex; align-items: center; gap: 0.5rem; min-width: 0; text-align: start; overflow-wrap: anywhere; }
 .choice > span { min-width: 0; }
+.choice[data-icon-only="true"] { min-height: 3.4rem; justify-content: center; }
+.choice[data-icon-only="true"] svg { display: block; }
 .choice[data-result="correct"] { border-color: #7edbaf; color: #c7ffe0; background: #203d39; }
 .choice[data-result="wrong"] { border-color: #e89eae; color: #ffe1e5; background: #4e2939; }
 .mark { flex-shrink: 0; margin-inline-start: auto; }
