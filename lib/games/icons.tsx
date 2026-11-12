@@ -5,6 +5,7 @@ import {
   BookOpenText,
   Brain,
   Cable,
+  CarFront,
   Calculator,
   CheckCircle2,
   Eye,
@@ -17,6 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { CategoryKey } from "./categories";
+import { CAR_LOGO_GAME } from "./carLogoCatalog";
 import { LIGHT_LINKS_GAME } from "./lightLinksCatalog";
 import { slugifyTitle } from "./registry";
 
@@ -24,6 +26,7 @@ const ICONS: Record<string, LucideIcon> = {
   "memory-match":      Brain,
   "puzzle":            Puzzle,
   [LIGHT_LINKS_GAME.id]: Cable,
+  [CAR_LOGO_GAME.id]: CarFront,
   "number-fun":        Calculator,
   "subitizing":        Eye,
   "mathspark":         Sparkles,
@@ -80,7 +83,7 @@ export function getGameIconAndCategory(title: string): {
   // Fall back to a sensible category default when the registry doesn't
   // know about this game (e.g., new seed entry).
   let category: CategoryKey = "default";
-  if (slug.includes("memory")) category = "memory";
+  if (slug === CAR_LOGO_GAME.id || slug.includes("memory")) category = "memory";
   else if (slug.includes("math") || slug.includes("number") || slug.includes("subitizing")) category = "math";
   else if (slug.includes("music") || slug.includes("rhythm")) category = "music";
   else if (slug.includes("read") || slug.includes("letter")) category = "reading";

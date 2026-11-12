@@ -1,4 +1,5 @@
 import { DatabaseService } from "../lib/database";
+import { CAR_LOGO_GAME } from "../lib/games/carLogoCatalog";
 import { LIGHT_LINKS_GAME } from "../lib/games/lightLinksCatalog";
 
 const initialGames = [
@@ -61,6 +62,7 @@ const initialGames = [
     isActive: true,
   },
   LIGHT_LINKS_GAME,
+  CAR_LOGO_GAME,
   {
     title: "Read Aloud Camera",
     description:
