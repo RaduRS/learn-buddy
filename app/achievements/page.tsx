@@ -31,6 +31,7 @@ export default function AchievementsPage() {
   const { play } = useSfx();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [items, setItems] = useState<GameAchievement[]>([]);
+  const [totalScore, setTotalScore] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -71,6 +72,7 @@ export default function AchievementsPage() {
       const gamesArr = Array.isArray(games) ? games : [];
       const progArr = Array.isArray(progress) ? progress : [];
       const achArr = Array.isArray(achievements) ? achievements : [];
+      setTotalScore(progArr.reduce((sum, progress) => sum + (progress.totalScore ?? 0), 0));
 
       const data: GameAchievement[] = gamesArr
         .filter((g) => g.isActive)
@@ -137,7 +139,6 @@ export default function AchievementsPage() {
     (sum, ga) => sum + Object.values(ga.tiers).filter((t) => t.unlocked).length,
     0,
   );
-  const totalScore = items.reduce((sum, ga) => sum + ga.totalScore, 0);
 
   return (
     <div className="bg-arcade min-h-screen">

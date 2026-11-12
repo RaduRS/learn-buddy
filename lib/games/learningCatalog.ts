@@ -38,9 +38,9 @@ export const SWITCH_SORT_GAME = {
   icon: "shapes", category: "spatial", difficulty: 2, isActive: true,
 } as const;
 
-export const SIGNAL_SCOUT_GAME = {
-  id: "signal-scout", title: "Signal Scout", description: "Follow the turns and work out which way you’ll face at the end.",
-  icon: "crosshair", category: "spatial", difficulty: 1, isActive: true,
+export const ROBOT_RULES_GAME = {
+  id: "robot-rules", title: "Robot Rules", description: "Build IF, THEN and ELSE rules to help a robot sort parcels.",
+  icon: "bot", category: "spatial", difficulty: 2, isActive: true,
 } as const;
 
 export const ECHO_CARDS_GAME = {
@@ -50,5 +50,5 @@ export const ECHO_CARDS_GAME = {
 
 export const LEARNING_GAMES = [
   MINI_SHOP_GAME, WORD_BUILDER_GAME, MAP_QUEST_GAME, PATTERN_TRAIN_GAME, SOUND_DETECTIVE_GAME,
-  LANTERN_GRID_GAME, SWITCH_SORT_GAME, SIGNAL_SCOUT_GAME, ECHO_CARDS_GAME,
+  LANTERN_GRID_GAME, SWITCH_SORT_GAME, ROBOT_RULES_GAME, ECHO_CARDS_GAME,
 ] as const;

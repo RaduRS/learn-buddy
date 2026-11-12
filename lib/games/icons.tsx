@@ -4,12 +4,12 @@ import type { ComponentProps, CSSProperties } from "react";
 import {
   AudioLines,
   BookOpenText,
+  Bot,
   Brain,
   Cable,
   CarFront,
   Calculator,
   CheckCircle2,
-  Crosshair,
   Eye,
   Layers,
   Lightbulb,
@@ -28,7 +28,7 @@ import {
 import type { CategoryKey } from "./categories";
 import { CAR_LOGO_GAME } from "./carLogoCatalog";
 import { LIGHT_LINKS_GAME } from "./lightLinksCatalog";
-import { ECHO_CARDS_GAME, LANTERN_GRID_GAME, LEARNING_GAMES, MAP_QUEST_GAME, MINI_SHOP_GAME, PATTERN_TRAIN_GAME, SIGNAL_SCOUT_GAME, SOUND_DETECTIVE_GAME, SWITCH_SORT_GAME, WORD_BUILDER_GAME } from "./learningCatalog";
+import { ECHO_CARDS_GAME, LANTERN_GRID_GAME, LEARNING_GAMES, MAP_QUEST_GAME, MINI_SHOP_GAME, PATTERN_TRAIN_GAME, ROBOT_RULES_GAME, SOUND_DETECTIVE_GAME, SWITCH_SORT_GAME, WORD_BUILDER_GAME } from "./learningCatalog";
 import { slugifyTitle } from "./registry";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -43,7 +43,7 @@ const ICONS: Record<string, LucideIcon> = {
   [SOUND_DETECTIVE_GAME.id]: AudioLines,
   [LANTERN_GRID_GAME.id]: Lightbulb,
   [SWITCH_SORT_GAME.id]: ShapesIcon,
-  [SIGNAL_SCOUT_GAME.id]: Crosshair,
+  [ROBOT_RULES_GAME.id]: Bot,
   [ECHO_CARDS_GAME.id]: Layers,
   "number-fun":        Calculator,
   "subitizing":        Eye,

@@ -1,22 +1,10 @@
-.signalPanel, .echoPanel {
-  border: 1px solid #658293;
-  border-radius: 1rem;
-  padding: clamp(0.75rem, 3vw, 1.35rem);
-  background: radial-gradient(ellipse at 50% 0%, #2f5360, transparent 84%), #1b263e;
-}
-.signalPanel { display: grid; gap: 0.7rem; }
-.startSignal { display: flex; align-items: center; gap: 0.7rem; font: 500 1.05rem var(--font-fredoka), sans-serif; }
-.startSignal > span { display: grid; width: 3.25rem; height: 3.25rem; flex-shrink: 0; place-items: center; border: 1px solid #fff0b5; border-radius: 0.75rem; background: #ffdd88; color: #30263a; box-shadow: inset 0 0 0 3px #ffedb3; }
-.startSignal strong { color: #ffe29c; }
-.turns { display: flex; gap: 0.45rem; }
-.turn { position: relative; display: grid; flex: 1 1 0; min-width: 0; justify-items: center; align-content: center; gap: 0.32rem; min-height: 4.2rem; padding: 0.62rem 0.3rem; border: 1px solid #6d8997; border-radius: 0.72rem; background: #273a4f; color: #ecf5fb; text-align: center; font: 500 0.91rem / 1.1 var(--font-fredoka), sans-serif; }
-.turn svg { color: #a9e3e1; }
-.step { position: absolute; top: 0.28rem; left: 0.38rem; color: #bdd4df; font-size: 0.69rem; }
 .echoPanel {
   display: flex;
+  padding: clamp(0.75rem, 3vw, 1.35rem);
+  border: 1px solid #897aa6;
+  border-radius: 1rem;
   justify-content: center;
   gap: clamp(0.55rem, 3vw, 1.25rem);
-  border-color: #897aa6;
   background: radial-gradient(ellipse at 50% 0%, #48395c, transparent 82%), #241d36;
 }
 .warmup { display: grid; min-width: 0; justify-items: center; gap: 0.45rem; color: #dfd2ec; font-size: 0.85rem; }

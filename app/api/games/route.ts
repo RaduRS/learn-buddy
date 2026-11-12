@@ -2,13 +2,9 @@ import { NextResponse } from 'next/server'
 import { DatabaseService } from '@/lib/database'
 import { CAR_LOGO_GAME } from '@/lib/games/carLogoCatalog'
 import { LIGHT_LINKS_GAME } from '@/lib/games/lightLinksCatalog'
-import { LEARNING_GAMES, MAP_QUEST_GAME, SIGNAL_SCOUT_GAME } from '@/lib/games/learningCatalog'
+import { LEARNING_GAMES, MAP_QUEST_GAME } from '@/lib/games/learningCatalog'
 
 const builtInGames = [LIGHT_LINKS_GAME, CAR_LOGO_GAME, ...LEARNING_GAMES]
-const revisedDescriptions = [
-  { game: MAP_QUEST_GAME, previous: 'Follow directions and find a path to the treasure.' },
-  { game: SIGNAL_SCOUT_GAME, previous: 'Spot which way the middle arrow is pointing among the other signals.' },
-]
 
 // GET /api/games - Get all games
 export async function GET() {
@@ -25,10 +21,12 @@ export async function GET() {
       }
     }
     const catalog = addedGame ? await DatabaseService.getAllGames() : games
-    return NextResponse.json(catalog.map((game) => {
-      const revision = revisedDescriptions.find(({ game: entry, previous }) => game.title === entry.title && game.description === previous)
-      return revision ? { ...game, description: revision.game.description } : game
-    }))
+    // Keep the retired game's record for stars that have already been earned.
+    return NextResponse.json(catalog
+      .filter((game) => game.id !== 'signal-scout' && game.title !== 'Signal Scout')
+      .map((game) => game.title === MAP_QUEST_GAME.title && game.description === 'Follow directions and find a path to the treasure.'
+        ? { ...game, description: MAP_QUEST_GAME.description }
+        : game))
   } catch (error) {
     console.error('Error fetching games:', error)
     return NextResponse.json(

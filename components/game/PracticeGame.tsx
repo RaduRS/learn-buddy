@@ -82,13 +82,13 @@ export function PracticeGame<Id extends string, Question>({
 
   return (
     <section className={styles.game} data-category={category}>
-      <div className={styles.levels} role="group" aria-label={modeLabel}>
+      {modes.length > 1 && <div className={styles.levels} role="group" aria-label={modeLabel}>
         {modes.map((item) => (
           <button type="button" key={item.id} aria-pressed={item.id === mode} onClick={() => { if (item.id !== mode) start(item.id); }}>
             <strong>{item.name}</strong>{item.detail && <span>{item.detail}</span>}
           </button>
         ))}
-      </div>
+      </div>}
       {index < round.length && (
         <div className={styles.progress}>
           <span>{stepLabel} {index + 1} of {round.length}</span>

@@ -4,7 +4,7 @@ import { lazy, useState, type ComponentType } from "react";
 import type { CategoryKey } from "./categories";
 import { CAR_LOGO_GAME } from "./carLogoCatalog";
 import { LIGHT_LINKS_GAME } from "./lightLinksCatalog";
-import { ECHO_CARDS_GAME, LANTERN_GRID_GAME, MAP_QUEST_GAME, MINI_SHOP_GAME, PATTERN_TRAIN_GAME, SIGNAL_SCOUT_GAME, SOUND_DETECTIVE_GAME, SWITCH_SORT_GAME, WORD_BUILDER_GAME } from "./learningCatalog";
+import { ECHO_CARDS_GAME, LANTERN_GRID_GAME, MAP_QUEST_GAME, MINI_SHOP_GAME, PATTERN_TRAIN_GAME, ROBOT_RULES_GAME, SOUND_DETECTIVE_GAME, SWITCH_SORT_GAME, WORD_BUILDER_GAME } from "./learningCatalog";
 
 /**
  * Unified context handed to every game adapter.
@@ -42,7 +42,7 @@ const PatternTrainGame    = lazy(() => import("@/components/game/PatternTrainGam
 const SoundDetectiveGame  = lazy(() => import("@/components/game/SoundDetectiveGame"));
 const LanternGridGame     = lazy(() => import("@/components/game/LanternGridGame"));
 const SwitchSortGame      = lazy(() => import("@/components/game/SwitchSortGame"));
-const SignalScoutGame     = lazy(() => import("@/components/game/SignalScoutGame"));
+const RobotRulesGame      = lazy(() => import("@/components/game/RobotRulesGame"));
 const EchoCardsGame       = lazy(() => import("@/components/game/EchoCardsGame"));
 const MemoryMatchGame    = lazy(() => import("@/components/game/MemoryMatchGame"));
 const MemoryMatchConfig  = lazy(() => import("@/components/game/MemoryMatchConfig"));
@@ -112,7 +112,7 @@ const PatternTrainAdapter = (ctx: GameContext) => <PatternTrainGame key={ctx.use
 const SoundDetectiveAdapter = (ctx: GameContext) => <SoundDetectiveGame key={ctx.userId} {...ctx} />;
 const LanternGridAdapter = (ctx: GameContext) => <LanternGridGame key={ctx.userId} {...ctx} />;
 const SwitchSortAdapter = (ctx: GameContext) => <SwitchSortGame key={ctx.userId} {...ctx} />;
-const SignalScoutAdapter = (ctx: GameContext) => <SignalScoutGame key={ctx.userId} {...ctx} />;
+const RobotRulesAdapter = (ctx: GameContext) => <RobotRulesGame key={ctx.userId} {...ctx} />;
 const EchoCardsAdapter = (ctx: GameContext) => <EchoCardsGame key={ctx.userId} {...ctx} />;
 
 function NumberFunAdapter(ctx: GameContext) {
@@ -240,7 +240,7 @@ export const REGISTRY: Record<string, RegistryEntry> = {
   [SOUND_DETECTIVE_GAME.id]: { title: SOUND_DETECTIVE_GAME.title, category: SOUND_DETECTIVE_GAME.category, Component: SoundDetectiveAdapter },
   [LANTERN_GRID_GAME.id]: { title: LANTERN_GRID_GAME.title, category: LANTERN_GRID_GAME.category, Component: LanternGridAdapter },
   [SWITCH_SORT_GAME.id]: { title: SWITCH_SORT_GAME.title, category: SWITCH_SORT_GAME.category, Component: SwitchSortAdapter },
-  [SIGNAL_SCOUT_GAME.id]: { title: SIGNAL_SCOUT_GAME.title, category: SIGNAL_SCOUT_GAME.category, Component: SignalScoutAdapter },
+  [ROBOT_RULES_GAME.id]: { title: ROBOT_RULES_GAME.title, category: ROBOT_RULES_GAME.category, Component: RobotRulesAdapter },
   [ECHO_CARDS_GAME.id]: { title: ECHO_CARDS_GAME.title, category: ECHO_CARDS_GAME.category, Component: EchoCardsAdapter },
   "number-fun":     { title: "Number Fun",     category: "math",    Component: NumberFunAdapter },
   "subitizing":     { title: "Subitizing",     category: "math",    Component: SubitizingAdapter },

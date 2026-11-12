@@ -10,6 +10,9 @@ const nextConfig: NextConfig = {
     return config;
   },
   productionBrowserSourceMaps: false,
+  async redirects() {
+    return [{ source: "/game/signal-scout", destination: "/game/robot-rules", permanent: false }];
+  },
   experimental: {
     optimizePackageImports: ["lucide-react"],
   },
