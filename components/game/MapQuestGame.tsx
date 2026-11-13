@@ -135,7 +135,7 @@ function Trail({ question: board, advance, last }: PracticeQuestionProps<MapQues
           <div className={styles.budget} data-low={remaining <= 2 && !won}>
             <p className={styles.budgetLabel}>Moves left</p>
             <p className={styles.budgetCount}><strong>{remaining}</strong> of {board.maxMoves}</p>
-            {!locked && <p>Take any path to the treasure.</p>}
+            {!locked && <p>Find a shortest path to the treasure.</p>}
           </div>
           <div className={styles.arrows} role="group" aria-label="Move around the map">
             {CONTROL_DIRECTIONS.map((direction) => {
@@ -155,7 +155,7 @@ function Trail({ question: board, advance, last }: PracticeQuestionProps<MapQues
             </button>
           </div>
           <p className={styles.feedback} role="status" data-won={won}>
-            {won ? "Treasure found! You earned a star." : exhausted ? "Out of moves. Undo a step or restart the trail." : message}
+            {won ? "Treasure found in the fewest moves!" : exhausted ? "Out of moves. Undo a step or restart the trail." : message}
             {!locked && !message && (
               <span className="sr-only">
                 Row {Math.floor(position / board.size) + 1}, column {position % board.size + 1}. {remaining} {remaining === 1 ? "move" : "moves"} left.

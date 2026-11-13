@@ -12,8 +12,6 @@ const OFFSETS: Record<Direction, readonly [number, number]> = {
   left: [0, -1],
 };
 
-const EXTRA_MOVES: Record<MapLevel, number> = { easy: 6, medium: 4, hard: 2 };
-
 export interface MapQuestBoard {
   size: number;
   start: number;
@@ -71,7 +69,7 @@ export function getMapTrailProgress(
   return { remaining, won, exhausted: remaining === 0 && !won };
 }
 
-function readBoard(level: MapLevel, encoded: string): MapQuestBoard {
+function readBoard(encoded: string): MapQuestBoard {
   const rows = encoded.split("/");
   const cells = rows.join("");
   const start = cells.indexOf("S");
@@ -87,7 +85,7 @@ function readBoard(level: MapLevel, encoded: string): MapQuestBoard {
   const visited = new Set([start]);
   for (let index = 0; index < queue.length; index++) {
     const { cell, distance } = queue[index];
-    if (cell === treasure) return { ...board, maxMoves: distance + EXTRA_MOVES[level] };
+    if (cell === treasure) return { ...board, maxMoves: distance };
     for (const direction of MAP_DIRECTIONS) {
       const next = moveOnMap(board, cell, direction);
       if (next === null || visited.has(next)) continue;
@@ -99,9 +97,9 @@ function readBoard(level: MapLevel, encoded: string): MapQuestBoard {
 }
 
 export const MAP_QUEST_BOARDS: Readonly<Record<MapLevel, readonly MapQuestBoard[]>> = {
-  easy: MAPS.easy.map((map) => readBoard("easy", map)),
-  medium: MAPS.medium.map((map) => readBoard("medium", map)),
-  hard: MAPS.hard.map((map) => readBoard("hard", map)),
+  easy: MAPS.easy.map(readBoard),
+  medium: MAPS.medium.map(readBoard),
+  hard: MAPS.hard.map(readBoard),
 };
 
 export function makeMapQuestRound(level: MapLevel): MapQuestBoard[] {

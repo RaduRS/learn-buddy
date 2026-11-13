@@ -22,13 +22,14 @@ import {
   ShoppingBasket,
   SpellCheck,
   Sparkles,
+  Timer,
   TrainFront,
   type LucideIcon,
 } from "lucide-react";
 import type { CategoryKey } from "./categories";
 import { CAR_LOGO_GAME } from "./carLogoCatalog";
 import { LIGHT_LINKS_GAME } from "./lightLinksCatalog";
-import { ECHO_CARDS_GAME, LANTERN_GRID_GAME, LEARNING_GAMES, MAP_QUEST_GAME, MINI_SHOP_GAME, PATTERN_TRAIN_GAME, ROBOT_RULES_GAME, SOUND_DETECTIVE_GAME, SWITCH_SORT_GAME, WORD_BUILDER_GAME } from "./learningCatalog";
+import { ECHO_CARDS_GAME, LANTERN_GRID_GAME, LEARNING_GAMES, MAP_QUEST_GAME, MINI_SHOP_GAME, PATTERN_TRAIN_GAME, ROBOT_RULES_GAME, SOUND_DETECTIVE_GAME, SWITCH_SORT_GAME, TIMES_TABLE_SPRINT_GAME, WORD_BUILDER_GAME } from "./learningCatalog";
 import { slugifyTitle } from "./registry";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -44,6 +45,7 @@ const ICONS: Record<string, LucideIcon> = {
   [LANTERN_GRID_GAME.id]: Lightbulb,
   [SWITCH_SORT_GAME.id]: ShapesIcon,
   [ROBOT_RULES_GAME.id]: Bot,
+  [TIMES_TABLE_SPRINT_GAME.id]: Timer,
   [ECHO_CARDS_GAME.id]: Layers,
   "number-fun":        Calculator,
   "subitizing":        Eye,

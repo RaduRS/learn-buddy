@@ -4,7 +4,7 @@ import { MAP_QUEST_BOARDS, getMapTrailProgress, makeMapQuestRound, moveOnMap, ty
 
 const levels: readonly MapLevel[] = ["easy", "medium", "hard"];
 
-test("every Map Quest board has a reachable treasure with spare moves for exploration", () => {
+test("every Map Quest board allows exactly the shortest route length", () => {
   for (const [index, level] of levels.entries()) {
     const boards = MAP_QUEST_BOARDS[level];
     for (const board of boards) {
@@ -30,7 +30,7 @@ test("every Map Quest board has a reachable treasure with spare moves for explor
         distance++;
       }
       assert.ok(reached.has(treasure), level + " treasure exceeds the move limit");
-      assert.equal(maxMoves - distance, [6, 4, 2][index]);
+      assert.equal(maxMoves, distance, `${level} has extra moves on the ${size} × ${size} map`);
     }
     assert.equal(new Set(makeMapQuestRound(level)).size, 8);
   }

@@ -48,7 +48,12 @@ export const ECHO_CARDS_GAME = {
   icon: "layers", category: "memory", difficulty: 2, isActive: true,
 } as const;
 
+export const TIMES_TABLE_SPRINT_GAME = {
+  id: "times-table-sprint", title: "Times Table Sprint", description: "Race the clock with the 1 to 10 times tables.",
+  icon: "timer", category: "math", difficulty: 2, isActive: true,
+} as const;
+
 export const LEARNING_GAMES = [
   MINI_SHOP_GAME, WORD_BUILDER_GAME, MAP_QUEST_GAME, PATTERN_TRAIN_GAME, SOUND_DETECTIVE_GAME,
-  LANTERN_GRID_GAME, SWITCH_SORT_GAME, ROBOT_RULES_GAME, ECHO_CARDS_GAME,
+  LANTERN_GRID_GAME, SWITCH_SORT_GAME, ROBOT_RULES_GAME, ECHO_CARDS_GAME, TIMES_TABLE_SPRINT_GAME,
 ] as const;
